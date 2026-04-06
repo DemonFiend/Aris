@@ -24,10 +24,10 @@ export function ProviderSettings() {
   const [models, setModels] = useState<Record<string, ModelInfo[]>>({});
 
   const loadConfigs = useCallback(async () => {
-    const cfgs = (await window.aris.invoke('ai:get-provider-configs')) as ProviderConfig[];
-    setConfigs(cfgs);
-    const provs = (await window.aris.invoke('ai:get-providers')) as ProviderInfo[];
-    setProviders(provs);
+    const cfgs = (await window.aris.invoke('ai:get-provider-configs')) as ProviderConfig[] | undefined;
+    setConfigs(cfgs ?? []);
+    const provs = (await window.aris.invoke('ai:get-providers')) as ProviderInfo[] | undefined;
+    setProviders(provs ?? []);
   }, []);
 
   useEffect(() => {
@@ -54,8 +54,8 @@ export function ProviderSettings() {
       const ok = (await window.aris.invoke('ai:test-connection', id)) as boolean;
       setTestStatus((s) => ({ ...s, [id]: ok ? 'ok' : 'fail' }));
       if (ok) {
-        const m = (await window.aris.invoke('ai:get-models', id)) as ModelInfo[];
-        setModels((prev) => ({ ...prev, [id]: m }));
+        const m = (await window.aris.invoke('ai:get-models', id)) as ModelInfo[] | undefined;
+        setModels((prev) => ({ ...prev, [id]: m ?? [] }));
       }
     } catch {
       setTestStatus((s) => ({ ...s, [id]: 'fail' }));

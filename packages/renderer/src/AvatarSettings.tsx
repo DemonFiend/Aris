@@ -13,8 +13,8 @@ export function AvatarSettings() {
 
   const loadAvatars = useCallback(async () => {
     setLoading(true);
-    const list = (await window.aris.invoke('avatar:list-available')) as AvatarInfo[];
-    setAvatars(list);
+    const list = (await window.aris.invoke('avatar:list-available')) as AvatarInfo[] | undefined;
+    setAvatars(list ?? []);
     setLoading(false);
   }, []);
 

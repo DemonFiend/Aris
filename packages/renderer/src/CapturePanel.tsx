@@ -10,8 +10,8 @@ export function CapturePanel() {
   const loadSources = useCallback(async () => {
     setLoading(true);
     try {
-      const srcs = (await window.aris.invoke('vision:get-sources')) as CaptureSource[];
-      setSources(srcs);
+      const srcs = (await window.aris.invoke('vision:get-sources')) as CaptureSource[] | undefined;
+      setSources(srcs ?? []);
     } catch {
       setSources([]);
     }

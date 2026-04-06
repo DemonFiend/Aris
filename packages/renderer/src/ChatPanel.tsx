@@ -38,10 +38,10 @@ export function ChatPanel({ conversationId, onConversationCreated, onAssistantMe
       return;
     }
     (async () => {
-      const stored = (await window.aris.invoke('messages:list', conversationId)) as StoredMessage[];
+      const stored = (await window.aris.invoke('messages:list', conversationId)) as StoredMessage[] | undefined;
       if (activeConvRef.current === conversationId) {
         setMessages(
-          stored
+          (stored ?? [])
             .filter((m) => m.role !== 'system')
             .map((m) => ({ role: m.role as 'user' | 'assistant', content: m.content })),
         );

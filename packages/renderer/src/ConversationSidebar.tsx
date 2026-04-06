@@ -13,11 +13,11 @@ export function ConversationSidebar({ activeId, onSelect, onNew }: Props) {
 
   const load = useCallback(async () => {
     if (search.trim()) {
-      const results = (await window.aris.invoke('conversations:search', search)) as Conversation[];
-      setConversations(results);
+      const results = (await window.aris.invoke('conversations:search', search)) as Conversation[] | undefined;
+      setConversations(results ?? []);
     } else {
-      const list = (await window.aris.invoke('conversations:list', 50, 0)) as Conversation[];
-      setConversations(list);
+      const list = (await window.aris.invoke('conversations:list', 50, 0)) as Conversation[] | undefined;
+      setConversations(list ?? []);
     }
   }, [search]);
 

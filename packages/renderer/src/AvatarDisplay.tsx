@@ -25,7 +25,7 @@ export function AvatarDisplay({ lastAssistantMessage }: Props) {
       sceneRef.current = scene;
 
       // Load default avatar
-      const avatars = (await window.aris.invoke('avatar:list-available')) as AvatarInfo[];
+      const avatars = ((await window.aris.invoke('avatar:list-available')) ?? []) as AvatarInfo[];
       const defaultAvatar = avatars.find((a) => a.isDefault) ?? avatars[0];
 
       if (!defaultAvatar) {
