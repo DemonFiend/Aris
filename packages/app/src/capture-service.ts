@@ -7,13 +7,16 @@ import {
   CAPTURE_JPEG_QUALITY,
 } from '@aris/shared';
 import { detectGameFromTitle } from '@aris/vision';
+import { loadCaptureSettings, saveScreenshot, pruneScreenshots } from './screenshot-store';
 
 let captureInterval: ReturnType<typeof setInterval> | null = null;
+let heartbeatInterval: ReturnType<typeof setInterval> | null = null;
 let frameCount = 0;
 let currentConfig: CaptureConfig | null = null;
 let currentSourceName: string | null = null;
 let detectedGame: string | undefined;
 let latestFrameBuffer: Buffer | null = null;
+let savedScreenshotCount = 0;
 
 export async function getSources(): Promise<CaptureSource[]> {
   const sources = await desktopCapturer.getSources({
@@ -29,19 +32,37 @@ export async function getSources(): Promise<CaptureSource[]> {
   }));
 }
 
+export async function getSourcesFiltered(mode: 'monitor' | 'window'): Promise<CaptureSource[]> {
+  const types: Array<'screen' | 'window'> = mode === 'monitor' ? ['screen'] : ['window'];
+  const sources = await desktopCapturer.getSources({
+    types,
+    thumbnailSize: { width: 320, height: 180 },
+  });
+
+  return sources.map((source) => ({
+    id: source.id,
+    name: source.name,
+    thumbnailDataUrl: source.thumbnail.toDataURL(),
+    isScreen: source.id.startsWith('screen:'),
+  }));
+}
+
 export function startCapture(config: Partial<CaptureConfig> & { sourceId: string }): void {
   stopCapture();
 
+  const settings = loadCaptureSettings();
+
   currentConfig = {
     sourceId: config.sourceId,
-    fps: config.fps ?? CAPTURE_FPS_DEFAULT,
-    maxWidth: config.maxWidth ?? CAPTURE_MAX_WIDTH,
-    maxHeight: config.maxHeight ?? CAPTURE_MAX_HEIGHT,
-    jpegQuality: config.jpegQuality ?? CAPTURE_JPEG_QUALITY,
+    fps: config.fps ?? settings.fps ?? CAPTURE_FPS_DEFAULT,
+    maxWidth: config.maxWidth ?? settings.maxWidth ?? CAPTURE_MAX_WIDTH,
+    maxHeight: config.maxHeight ?? settings.maxHeight ?? CAPTURE_MAX_HEIGHT,
+    jpegQuality: config.jpegQuality ?? settings.jpegQuality ?? CAPTURE_JPEG_QUALITY,
   };
   currentSourceName = null;
   detectedGame = undefined;
   frameCount = 0;
+  savedScreenshotCount = 0;
 
   const intervalMs = Math.max(100, Math.floor(1000 / currentConfig.fps));
 
@@ -59,11 +80,13 @@ export function stopCapture(): void {
     clearInterval(captureInterval);
     captureInterval = null;
   }
+  stopHeartbeat();
   currentConfig = null;
   currentSourceName = null;
   detectedGame = undefined;
   latestFrameBuffer = null;
   frameCount = 0;
+  savedScreenshotCount = 0;
 }
 
 export function getStatus(): CaptureStatus {
@@ -79,6 +102,63 @@ export function getStatus(): CaptureStatus {
 
 export function getLatestFrame(): Buffer | null {
   return latestFrameBuffer;
+}
+
+/** Start heartbeat capture — periodic screenshots for context awareness */
+export function startHeartbeat(): void {
+  stopHeartbeat();
+  const settings = loadCaptureSettings();
+  if (!settings.heartbeatEnabled) return;
+
+  const intervalMs = settings.heartbeatIntervalSeconds * 1000;
+
+  heartbeatInterval = setInterval(async () => {
+    try {
+      await captureHeartbeatFrame();
+    } catch {
+      // Silently skip failed heartbeat frames
+    }
+  }, intervalMs);
+}
+
+export function stopHeartbeat(): void {
+  if (heartbeatInterval) {
+    clearInterval(heartbeatInterval);
+    heartbeatInterval = null;
+  }
+}
+
+async function captureHeartbeatFrame(): Promise<void> {
+  const settings = loadCaptureSettings();
+
+  // Get all screens for heartbeat (captures primary display)
+  const sources = await desktopCapturer.getSources({
+    types: ['screen'],
+    thumbnailSize: { width: settings.maxWidth, height: settings.maxHeight },
+  });
+
+  if (sources.length === 0) return;
+
+  // Use preferred source if active capture is running, otherwise primary display
+  const source = currentConfig
+    ? sources.find((s) => s.id === currentConfig!.sourceId) ?? sources[0]
+    : sources[0];
+
+  let img = source.thumbnail;
+  const size = img.getSize();
+
+  if (size.width > settings.maxWidth || size.height > settings.maxHeight) {
+    const scale = Math.min(settings.maxWidth / size.width, settings.maxHeight / size.height);
+    img = img.resize({
+      width: Math.round(size.width * scale),
+      height: Math.round(size.height * scale),
+    });
+  }
+
+  const buffer = img.toJPEG(settings.jpegQuality);
+  const game = detectGameFromTitle(source.name);
+  saveScreenshot(buffer, game ?? 'heartbeat');
+  pruneScreenshots();
 }
 
 async function captureFrame(): Promise<void> {
@@ -119,6 +199,17 @@ async function captureFrame(): Promise<void> {
 
   latestFrameBuffer = img.toJPEG(currentConfig.jpegQuality);
   frameCount++;
+
+  // Save to disk periodically (every 30th frame to avoid excessive writes)
+  if (frameCount % 30 === 0) {
+    saveScreenshot(latestFrameBuffer, detectedGame);
+    savedScreenshotCount++;
+
+    // Prune every 100 saved screenshots
+    if (savedScreenshotCount % 100 === 0) {
+      pruneScreenshots();
+    }
+  }
 
   // Emit frame event to all renderer windows
   const windows = BrowserWindow.getAllWindows();

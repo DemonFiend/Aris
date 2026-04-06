@@ -8,6 +8,16 @@ export const CAPTURE_MAX_WIDTH = 1280;
 export const CAPTURE_MAX_HEIGHT = 720;
 export const CAPTURE_JPEG_QUALITY = 70;
 
+/** Screenshot storage defaults */
+export const SCREENSHOTS_SUBFOLDER = 'screenshots';
+export const SCREENSHOTS_MAX_COUNT = 500;
+export const SCREENSHOTS_PRUNE_INTERVAL_MINUTES = 30;
+export const SCREENSHOTS_FOLDER_SIZE_LIMIT_MB = 500;
+
+/** Heartbeat capture defaults */
+export const HEARTBEAT_ENABLED_DEFAULT = false;
+export const HEARTBEAT_INTERVAL_SECONDS = 60;
+
 /** Default AI settings */
 export const DEFAULT_MAX_TOKENS = 2048;
 export const DEFAULT_TEMPERATURE = 0.7;

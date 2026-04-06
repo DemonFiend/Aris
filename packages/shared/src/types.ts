@@ -119,6 +119,53 @@ export interface CaptureStatus {
   detectedGame?: string;
 }
 
+/** Persistent capture settings stored in settings DB */
+export interface CaptureSettings {
+  // Source preferences
+  captureMode: 'monitor' | 'window';
+  preferredSourceId?: string;
+
+  // Capture quality
+  fps: number;
+  maxWidth: number;
+  maxHeight: number;
+  jpegQuality: number;
+
+  // Screenshot storage
+  saveToDisk: boolean;
+  screenshotFolder: string;
+  maxScreenshots: number;
+  pruneIntervalMinutes: number;
+  folderSizeLimitMb: number;
+
+  // Heartbeat captures
+  heartbeatEnabled: boolean;
+  heartbeatIntervalSeconds: number;
+
+  // Video options
+  videoEnabled: boolean;
+  videoMaxDurationSeconds: number;
+  videoFps: number;
+  videoQuality: 'low' | 'medium' | 'high';
+}
+
+/** Screenshot file info returned from main process */
+export interface ScreenshotInfo {
+  filename: string;
+  path: string;
+  sizeBytes: number;
+  createdAt: string;
+  detectedGame?: string;
+}
+
+/** Screenshot folder stats */
+export interface ScreenshotFolderStats {
+  totalFiles: number;
+  totalSizeMb: number;
+  oldestFile?: string;
+  newestFile?: string;
+}
+
 /** Voice pipeline configuration */
 export interface VoiceConfig {
   sttEngine: 'web-speech' | 'whisper-local' | 'cloud';
@@ -215,6 +262,12 @@ export type IpcChannel =
   | 'vision:get-sources'
   | 'vision:get-status'
   | 'vision:analyze-frame'
+  | 'vision:get-capture-settings'
+  | 'vision:set-capture-settings'
+  | 'vision:get-screenshot-stats'
+  | 'vision:prune-screenshots'
+  | 'vision:open-screenshot-folder'
+  | 'vision:pick-screenshot-folder'
   | 'settings:get'
   | 'settings:set'
   | 'settings:delete'

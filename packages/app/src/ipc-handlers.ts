@@ -34,8 +34,17 @@ import {
   stopCapture,
   getStatus,
   getLatestFrame,
+  startHeartbeat,
 } from './capture-service';
-import type { CaptureConfig } from '@aris/shared';
+import {
+  loadCaptureSettings,
+  saveCaptureSettings,
+  getScreenshotFolderStats,
+  pruneScreenshots,
+  openScreenshotFolder,
+  startPruneSchedule,
+} from './screenshot-store';
+import type { CaptureConfig, CaptureSettings } from '@aris/shared';
 
 const registry = new ProviderRegistry();
 
@@ -286,6 +295,50 @@ export function registerIpcHandlers(): void {
     const provider = registry.getActive();
     return provider.vision(frame, prompt, options);
   });
+
+  // Capture settings handlers
+  ipcMain.handle('vision:get-capture-settings', async () => {
+    return loadCaptureSettings();
+  });
+
+  ipcMain.handle('vision:set-capture-settings', async (_event, settings: CaptureSettings) => {
+    saveCaptureSettings(settings);
+    // Restart heartbeat if settings changed
+    if (settings.heartbeatEnabled) {
+      startHeartbeat();
+    }
+    return true;
+  });
+
+  ipcMain.handle('vision:get-screenshot-stats', async () => {
+    return getScreenshotFolderStats();
+  });
+
+  ipcMain.handle('vision:prune-screenshots', async () => {
+    return pruneScreenshots();
+  });
+
+  ipcMain.handle('vision:open-screenshot-folder', async () => {
+    openScreenshotFolder();
+    return true;
+  });
+
+  ipcMain.handle('vision:pick-screenshot-folder', async () => {
+    const { dialog } = await import('electron');
+    const result = await dialog.showOpenDialog({
+      properties: ['openDirectory'],
+      title: 'Select Screenshot Folder',
+    });
+    if (result.canceled || result.filePaths.length === 0) return null;
+    return result.filePaths[0];
+  });
+
+  // Initialize prune schedule and heartbeat on startup
+  startPruneSchedule();
+  const captureSettings = loadCaptureSettings();
+  if (captureSettings.heartbeatEnabled) {
+    startHeartbeat();
+  }
 }
 
 export { registry };
