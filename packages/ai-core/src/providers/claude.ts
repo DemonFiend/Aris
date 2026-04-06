@@ -141,7 +141,7 @@ export class ClaudeProvider implements AIProvider {
       }
 
       if (msg.images?.length) {
-        const content: Anthropic.ContentBlockParam[] = msg.images.map((img) => ({
+        const content: Anthropic.ContentBlockParam[] = msg.images.map((img: Buffer) => ({
           type: 'image' as const,
           source: {
             type: 'base64' as const,

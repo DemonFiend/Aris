@@ -190,7 +190,7 @@ export class OllamaProvider implements AIProvider {
         content: msg.content,
       };
       if (msg.images?.length) {
-        entry.images = msg.images.map((img) => img.toString('base64'));
+        entry.images = msg.images.map((img: Buffer) => img.toString('base64'));
       }
       result.push(entry);
     }

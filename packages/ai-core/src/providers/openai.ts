@@ -157,14 +157,14 @@ export class OpenAIProvider implements AIProvider {
       }
 
       if (msg.images?.length) {
-        const content: OpenAI.ChatCompletionContentPart[] = msg.images.map((img) => ({
+        const content: OpenAI.ChatCompletionContentPart[] = msg.images.map((img: Buffer) => ({
           type: 'image_url' as const,
           image_url: {
             url: `data:${this.detectMediaType(img)};base64,${img.toString('base64')}`,
           },
         }));
         content.push({ type: 'text' as const, text: msg.content });
-        result.push({ role: msg.role, content });
+        result.push({ role: 'user', content });
       } else {
         result.push({ role: msg.role, content: msg.content });
       }
