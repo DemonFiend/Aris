@@ -5,14 +5,9 @@
  */
 import { spawn, execSync } from 'child_process';
 import { request } from 'http';
+import { createRequire } from 'module';
 
-// 1. Rebuild native modules for Electron (no-op if already correct)
-console.log('[dev] Rebuilding native modules for Electron...');
-try {
-  execSync('npx electron-rebuild', { stdio: 'inherit' });
-} catch {
-  console.warn('[dev] electron-rebuild failed — native modules may not load. Try: pnpm install');
-}
+const require = createRequire(import.meta.url);
 
 // 2. Build all packages except renderer (sync — must finish first)
 console.log('[dev] Building packages...');
@@ -57,9 +52,9 @@ if (!ready) {
 }
 
 console.log('[dev] Launching Electron...');
-const electron = spawn('npx', ['electron', '.'], {
+const electronPath = require('electron');
+const electron = spawn(electronPath, ['.'], {
   stdio: 'inherit',
-  shell: true,
   env: { ...process.env, NODE_ENV: 'development' },
 });
 

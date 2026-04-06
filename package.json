@@ -7,7 +7,7 @@
   "author": "Aris Team",
   "license": "Unlicense",
   "scripts": {
-    "postinstall": "electron-rebuild",
+    "rebuild": "electron-rebuild",
     "dev": "node scripts/dev.mjs",
     "build": "pnpm -r build",
     "build:app": "pnpm build && electron-builder",
