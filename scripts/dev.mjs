@@ -6,18 +6,26 @@
 import { spawn, execSync } from 'child_process';
 import { request } from 'http';
 
-// 1. Build all packages except renderer (sync — must finish first)
+// 1. Rebuild native modules for Electron (no-op if already correct)
+console.log('[dev] Rebuilding native modules for Electron...');
+try {
+  execSync('npx electron-rebuild', { stdio: 'inherit' });
+} catch {
+  console.warn('[dev] electron-rebuild failed — native modules may not load. Try: pnpm install');
+}
+
+// 2. Build all packages except renderer (sync — must finish first)
 console.log('[dev] Building packages...');
 execSync('pnpm -r --filter "!@aris/renderer" build', { stdio: 'inherit' });
 
-// 2. Start Vite dev server in background
+// 3. Start Vite dev server in background
 console.log('[dev] Starting Vite dev server...');
 const vite = spawn('pnpm', ['--filter', '@aris/renderer', 'dev'], {
   stdio: 'inherit',
   shell: true,
 });
 
-// 3. Poll until Vite is ready, then launch Electron
+// 4. Poll until Vite is ready, then launch Electron
 const VITE_URL = 'http://localhost:5173';
 const MAX_WAIT = 30_000;
 const POLL_INTERVAL = 500;

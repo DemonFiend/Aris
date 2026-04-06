@@ -7,6 +7,7 @@
   "author": "Aris Team",
   "license": "Unlicense",
   "scripts": {
+    "postinstall": "electron-rebuild",
     "dev": "node scripts/dev.mjs",
     "build": "pnpm -r build",
     "build:app": "pnpm build && electron-builder",
@@ -20,6 +21,7 @@
     "clean": "pnpm -r exec rm -rf dist && pnpm -r exec rm -f tsconfig.tsbuildinfo && rm -rf release"
   },
   "devDependencies": {
+    "@electron/rebuild": "^4.0.0",
     "@playwright/test": "^1.58.0",
     "@types/node": "^22.0.0",
     "electron": "^33.0.0",
