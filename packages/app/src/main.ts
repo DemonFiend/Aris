@@ -4,6 +4,7 @@ import { APP_NAME } from '@aris/shared';
 import { registerIpcHandlers, initProviders } from './ipc-handlers';
 import { registerVoiceHandlers } from './voice-handlers';
 import { getDb, closeDb } from './database';
+import { initAutoUpdater } from './auto-updater';
 
 let mainWindow: BrowserWindow | null = null;
 let tray: Tray | null = null;
@@ -107,6 +108,7 @@ app.whenReady().then(() => {
   registerWindowHandlers();
   createTray();
   createWindow();
+  initAutoUpdater();
 });
 
 app.on('before-quit', () => {

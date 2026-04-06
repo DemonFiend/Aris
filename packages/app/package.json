@@ -12,7 +12,8 @@
     "@aris/ai-core": "workspace:*",
     "@aris/shared": "workspace:*",
     "@aris/vision": "workspace:*",
-    "better-sqlite3": "^12.8.0"
+    "better-sqlite3": "^12.8.0",
+    "electron-updater": "^6.3.0"
   },
   "devDependencies": {
     "@types/better-sqlite3": "^7.6.13"
