@@ -6,7 +6,7 @@
   "author": "Aris Team",
   "license": "Unlicense",
   "scripts": {
-    "dev": "pnpm --filter @aris/renderer dev & pnpm --filter @aris/app dev",
+    "dev": "pnpm --filter @aris/shared build && (pnpm --filter @aris/renderer dev & pnpm --filter @aris/app dev)",
     "build": "pnpm -r build",
     "build:app": "pnpm build && electron-builder",
     "lint": "eslint packages/*/src --ext .ts,.tsx",
