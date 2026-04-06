@@ -117,6 +117,26 @@ function registerWindowHandlers(): void {
 }
 
 app.whenReady().then(() => {
+  // Ensure CSP always allows the avatar: scheme, even if the HTML meta tag
+  // is cached by Vite or the browser. This overrides any stale CSP.
+  const session = mainWindow?.webContents?.session ?? require('electron').session.defaultSession;
+  session.webRequest.onHeadersReceived((details: Electron.OnHeadersReceivedListenerDetails, callback: (response: Electron.HeadersReceivedResponse) => void) => {
+    const csp = [
+      "default-src 'self' avatar:",
+      "script-src 'self' 'unsafe-inline'",
+      "style-src 'self' 'unsafe-inline'",
+      "img-src 'self' data: blob: avatar:",
+      "connect-src 'self' ws: wss: http: https: avatar:",
+      "worker-src 'self' blob:",
+    ].join('; ');
+    callback({
+      responseHeaders: {
+        ...details.responseHeaders,
+        'Content-Security-Policy': [csp],
+      },
+    });
+  });
+
   // Register avatar:// protocol handler to serve VRM files from user data
   const avatarDir = path.join(app.getPath('userData'), 'avatars');
   protocol.handle('avatar', (request) => {
