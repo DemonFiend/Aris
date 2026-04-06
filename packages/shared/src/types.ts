@@ -61,6 +61,37 @@ export interface ProviderConfig {
   defaultModel?: string;
 }
 
+/** Conversation stored in database */
+export interface Conversation {
+  id: string;
+  title: string;
+  gameProfileId?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/** Message within a conversation */
+export interface StoredMessage {
+  id: string;
+  conversationId: string;
+  role: 'system' | 'user' | 'assistant';
+  content: string;
+  model?: string;
+  tokenCount?: number;
+  createdAt: string;
+}
+
+/** Game profile for context-aware AI */
+export interface GameProfile {
+  id: string;
+  name: string;
+  executablePath?: string;
+  systemPrompt?: string;
+  captureEnabled: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
 /** IPC channel names for main <-> renderer communication */
 export type IpcChannel =
   | 'ai:chat'
@@ -80,5 +111,21 @@ export type IpcChannel =
   | 'vision:get-sources'
   | 'settings:get'
   | 'settings:set'
+  | 'settings:delete'
+  | 'settings:get-all'
+  | 'conversations:list'
+  | 'conversations:get'
+  | 'conversations:create'
+  | 'conversations:delete'
+  | 'conversations:search'
+  | 'messages:list'
+  | 'messages:add'
+  | 'game-profiles:list'
+  | 'game-profiles:get'
+  | 'game-profiles:create'
+  | 'game-profiles:update'
+  | 'game-profiles:delete'
+  | 'data:export'
+  | 'data:wipe'
   | 'avatar:set-expression'
   | 'avatar:set-speaking';

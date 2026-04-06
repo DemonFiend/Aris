@@ -2,6 +2,7 @@ import { app, BrowserWindow } from 'electron';
 import * as path from 'path';
 import { APP_NAME } from '@aris/shared';
 import { registerIpcHandlers, initProviders } from './ipc-handlers';
+import { getDb, closeDb } from './database';
 
 let mainWindow: BrowserWindow | null = null;
 
@@ -34,9 +35,14 @@ function createWindow(): void {
 }
 
 app.whenReady().then(() => {
+  getDb(); // Initialize database and run migrations
   initProviders();
   registerIpcHandlers();
   createWindow();
+});
+
+app.on('before-quit', () => {
+  closeDb();
 });
 
 app.on('window-all-closed', () => {
