@@ -2,6 +2,7 @@ import { app, BrowserWindow, Tray, Menu, nativeImage, ipcMain } from 'electron';
 import * as path from 'path';
 import { APP_NAME } from '@aris/shared';
 import { registerIpcHandlers, initProviders } from './ipc-handlers';
+import { registerVoiceHandlers } from './voice-handlers';
 import { getDb, closeDb } from './database';
 
 let mainWindow: BrowserWindow | null = null;
@@ -102,6 +103,7 @@ app.whenReady().then(() => {
   getDb(); // Initialize database and run migrations
   initProviders();
   registerIpcHandlers();
+  registerVoiceHandlers();
   registerWindowHandlers();
   createTray();
   createWindow();

@@ -119,6 +119,28 @@ export interface CaptureStatus {
   detectedGame?: string;
 }
 
+/** Voice pipeline configuration */
+export interface VoiceConfig {
+  sttEngine: 'web-speech' | 'whisper-local' | 'cloud';
+  ttsEngine: 'web-speech' | 'piper-local' | 'cloud';
+  language: string;
+  pushToTalk: boolean;
+  pushToTalkKey: string;
+  vadEnabled: boolean;
+  vadThreshold: number;
+  ttsRate: number;
+  ttsPitch: number;
+}
+
+/** Voice session status */
+export interface VoiceStatus {
+  listening: boolean;
+  speaking: boolean;
+  sttEngine: string;
+  ttsEngine: string;
+  error?: string;
+}
+
 /** IPC channel names for main <-> renderer communication */
 export type IpcChannel =
   | 'ai:chat'
@@ -133,6 +155,11 @@ export type IpcChannel =
   | 'voice:start-listening'
   | 'voice:stop-listening'
   | 'voice:speak'
+  | 'voice:stop-speaking'
+  | 'voice:get-status'
+  | 'voice:get-config'
+  | 'voice:set-config'
+  | 'voice:get-voices'
   | 'vision:start-capture'
   | 'vision:stop-capture'
   | 'vision:get-sources'
