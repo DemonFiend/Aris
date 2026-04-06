@@ -11,7 +11,10 @@ interface ProviderInfo {
 const PROVIDER_DEFS = [
   { id: 'claude', name: 'Claude (Anthropic)', needsKey: true },
   { id: 'openai', name: 'OpenAI', needsKey: true },
-  { id: 'ollama', name: 'Ollama (Local)', needsKey: false, needsUrl: true },
+  { id: 'ollama', name: 'Ollama (Local)', needsKey: false, needsUrl: true, defaultUrl: 'http://127.0.0.1:11434' },
+  { id: 'custom-openai', name: 'Custom OpenAI-compatible', needsKey: true, needsUrl: true, defaultUrl: 'http://127.0.0.1:8000/v1' },
+  { id: 'custom-anthropic', name: 'Custom Anthropic-compatible', needsKey: true, needsUrl: true, defaultUrl: 'http://127.0.0.1:8000/v1' },
+  { id: 'lmstudio', name: 'LM Studio (Local)', needsKey: false, needsUrl: true, defaultUrl: 'http://127.0.0.1:1234/v1' },
 ];
 
 export function ProviderSettings() {
@@ -111,7 +114,15 @@ export function ProviderSettings() {
                   </button>
                 </>
               )}
-              <button onClick={() => setEditing(editing === def.id ? null : def.id)} style={btnStyle}>
+              <button onClick={() => {
+                if (editing === def.id) {
+                  setEditing(null);
+                } else {
+                  setEditing(def.id);
+                  setApiKey('');
+                  setBaseUrl(def.defaultUrl ?? '');
+                }
+              }} style={btnStyle}>
                 {editing === def.id ? 'Cancel' : 'Configure'}
               </button>
             </div>

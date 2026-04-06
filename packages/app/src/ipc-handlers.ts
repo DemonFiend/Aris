@@ -4,6 +4,9 @@ import {
   ClaudeProvider,
   OpenAIProvider,
   OllamaProvider,
+  CustomOpenAIProvider,
+  CustomAnthropicProvider,
+  LMStudioProvider,
 } from '@aris/ai-core';
 import type { ChatMessage, ChatOptions, ProviderConfig } from '@aris/shared';
 import { loadProviderConfigs, saveProviderConfig } from './key-store';
@@ -54,6 +57,19 @@ function initProviderFromConfig(config: ProviderConfig): void {
       break;
     case 'ollama':
       registry.register(new OllamaProvider(config.baseUrl));
+      break;
+    case 'custom-openai':
+      if (config.baseUrl) {
+        registry.register(new CustomOpenAIProvider(config.baseUrl, config.apiKey, config.defaultModel));
+      }
+      break;
+    case 'custom-anthropic':
+      if (config.baseUrl) {
+        registry.register(new CustomAnthropicProvider(config.baseUrl, config.apiKey, config.defaultModel));
+      }
+      break;
+    case 'lmstudio':
+      registry.register(new LMStudioProvider(config.baseUrl));
       break;
   }
 }
