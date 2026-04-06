@@ -13,6 +13,9 @@
     "typecheck": "pnpm -r typecheck",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:e2e": "playwright test",
+    "test:e2e:headed": "playwright test --headed",
+    "test:e2e:ui": "playwright test --ui",
     "clean": "pnpm -r exec rm -rf dist && rm -rf release"
   },
   "devDependencies": {
@@ -22,6 +25,8 @@
     "eslint": "^9.0.0",
     "prettier": "^3.4.0",
     "typescript": "^5.7.0",
+    "@playwright/test": "^1.58.0",
+    "playwright": "^1.58.0",
     "vitest": "^3.0.0"
   },
   "packageManager": "pnpm@9.15.0",
