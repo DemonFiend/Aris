@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 
 interface AvatarInfo {
   filename: string;
@@ -6,15 +6,25 @@ interface AvatarInfo {
   isDefault: boolean;
 }
 
+const isElectron = navigator.userAgent.toLowerCase().includes('electron');
+
 export function AvatarSettings() {
   const [avatars, setAvatars] = useState<AvatarInfo[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [status, setStatus] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const loadAvatars = useCallback(async () => {
     setLoading(true);
-    const list = (await window.aris.invoke('avatar:list-available')) as AvatarInfo[] | undefined;
-    setAvatars(list ?? []);
+    setError(null);
+    try {
+      const list = (await window.aris.invoke('avatar:list-available')) as AvatarInfo[] | undefined;
+      setAvatars(list ?? []);
+    } catch (e) {
+      setError(`Failed to load avatars: ${e instanceof Error ? e.message : e}`);
+    }
     setLoading(false);
   }, []);
 
@@ -24,20 +34,69 @@ export function AvatarSettings() {
 
   const handleSetDefault = async (filename: string) => {
     setSaving(true);
-    await window.aris.invoke('avatar:set-default', filename);
-    await loadAvatars();
+    setError(null);
+    try {
+      await window.aris.invoke('avatar:set-default', filename);
+      await loadAvatars();
+    } catch (e) {
+      setError(`Failed to set default avatar: ${e instanceof Error ? e.message : e}`);
+    }
     setSaving(false);
   };
 
   const handleImport = async () => {
-    const imported = (await window.aris.invoke('avatar:import')) as string[] | undefined;
-    if (imported && imported.length > 0) {
-      await loadAvatars();
+    setError(null);
+    setStatus(null);
+
+    if (!isElectron) {
+      // Browser fallback: open a native file picker via hidden input
+      fileInputRef.current?.click();
+      return;
+    }
+
+    try {
+      const imported = (await window.aris.invoke('avatar:import')) as string[] | undefined;
+      if (imported && imported.length > 0) {
+        setStatus(`Imported ${imported.length} avatar${imported.length > 1 ? 's' : ''}.`);
+        await loadAvatars();
+      }
+    } catch (e) {
+      setError(`Import failed: ${e instanceof Error ? e.message : e}`);
     }
   };
 
+  const handleFileInputChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    // In browser mode we can't write to the filesystem directly.
+    // Show an informative message with the file names so the user knows what to do.
+    const names = Array.from(files).map((f) => f.name);
+    setError(
+      `Browser mode cannot copy files to disk. Please run the Electron desktop app, ` +
+      `or manually place these files in the avatars folder: ${names.join(', ')}`,
+    );
+    // Reset so the same file can be re-selected
+    e.target.value = '';
+  };
+
   const handleOpenFolder = async () => {
-    await window.aris.invoke('avatar:open-folder');
+    setError(null);
+    setStatus(null);
+
+    if (!isElectron) {
+      setError('Open Folder requires the Electron desktop app. Run "pnpm dev" and use the Electron window.');
+      return;
+    }
+
+    try {
+      const dir = (await window.aris.invoke('avatar:open-folder')) as string | undefined;
+      if (dir) {
+        setStatus(`Opened: ${dir}`);
+      }
+    } catch (e) {
+      setError(`Could not open folder: ${e instanceof Error ? e.message : e}`);
+    }
   };
 
   const currentDefault = avatars.find((a) => a.isDefault);
@@ -45,6 +104,22 @@ export function AvatarSettings() {
   if (loading) {
     return <div style={sectionStyle}><p style={hintStyle}>Loading avatars...</p></div>;
   }
+
+  const feedback = (
+    <>
+      {error && <p style={errorStyle}>{error}</p>}
+      {status && <p style={statusStyle}>{status}</p>}
+      {/* Hidden file input for browser-mode fallback */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept=".vrm"
+        multiple
+        style={{ display: 'none' }}
+        onChange={handleFileInputChange}
+      />
+    </>
+  );
 
   if (avatars.length === 0) {
     return (
@@ -57,6 +132,7 @@ export function AvatarSettings() {
           <button onClick={handleImport} style={actionBtnStyle}>Import .vrm</button>
           <button onClick={handleOpenFolder} style={secondaryBtnStyle}>Open Folder</button>
         </div>
+        {feedback}
       </div>
     );
   }
@@ -71,6 +147,7 @@ export function AvatarSettings() {
         <button onClick={handleImport} style={actionBtnStyle}>Import .vrm</button>
         <button onClick={handleOpenFolder} style={secondaryBtnStyle}>Open Folder</button>
       </div>
+      {feedback}
 
       {currentDefault && (
         <div style={currentStyle}>
@@ -117,6 +194,22 @@ const hintStyle: React.CSSProperties = {
   fontSize: '0.75rem',
   color: '#666',
   margin: '0.15rem 0 0',
+};
+
+const errorStyle: React.CSSProperties = {
+  fontSize: '0.75rem',
+  color: '#f87171',
+  background: '#1c1111',
+  border: '1px solid #7f1d1d',
+  borderRadius: '4px',
+  padding: '0.35rem 0.5rem',
+  marginTop: '0.5rem',
+};
+
+const statusStyle: React.CSSProperties = {
+  fontSize: '0.75rem',
+  color: '#4ade80',
+  marginTop: '0.5rem',
 };
 
 const currentStyle: React.CSSProperties = {

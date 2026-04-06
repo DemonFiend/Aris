@@ -1,4 +1,4 @@
-import { ipcMain, app, dialog, shell } from 'electron';
+import { ipcMain, app, dialog, shell, BrowserWindow } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs';
 import type { AvatarInfo } from '@aris/shared';
@@ -64,16 +64,21 @@ export function registerAvatarHandlers(): void {
 
   ipcMain.handle('avatar:open-folder', async () => {
     const dir = ensureAvatarDirectory();
-    await shell.openPath(dir);
+    const errMsg = await shell.openPath(dir);
+    if (errMsg) throw new Error(`Could not open folder: ${errMsg}`);
     return dir;
   });
 
-  ipcMain.handle('avatar:import', async () => {
-    const result = await dialog.showOpenDialog({
+  ipcMain.handle('avatar:import', async (event) => {
+    const win = BrowserWindow.fromWebContents(event.sender);
+    const opts: Electron.OpenDialogOptions = {
       title: 'Import VRM Avatar',
       filters: [{ name: 'VRM Models', extensions: ['vrm'] }],
       properties: ['openFile', 'multiSelections'],
-    });
+    };
+    const result = win
+      ? await dialog.showOpenDialog(win, opts)
+      : await dialog.showOpenDialog(opts);
     if (result.canceled || result.filePaths.length === 0) return [];
 
     const dir = ensureAvatarDirectory();
