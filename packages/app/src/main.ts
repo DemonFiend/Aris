@@ -1,6 +1,7 @@
 import { app, BrowserWindow } from 'electron';
 import * as path from 'path';
 import { APP_NAME } from '@aris/shared';
+import { registerIpcHandlers, initProviders } from './ipc-handlers';
 
 let mainWindow: BrowserWindow | null = null;
 
@@ -32,7 +33,11 @@ function createWindow(): void {
   });
 }
 
-app.whenReady().then(createWindow);
+app.whenReady().then(() => {
+  initProviders();
+  registerIpcHandlers();
+  createWindow();
+});
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {

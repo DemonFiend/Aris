@@ -52,6 +52,15 @@ export interface AIProvider {
   getModels(): Promise<ModelInfo[]>;
 }
 
+/** Provider configuration stored per-provider */
+export interface ProviderConfig {
+  id: string;
+  enabled: boolean;
+  apiKey?: string;
+  baseUrl?: string;
+  defaultModel?: string;
+}
+
 /** IPC channel names for main <-> renderer communication */
 export type IpcChannel =
   | 'ai:chat'
@@ -60,6 +69,9 @@ export type IpcChannel =
   | 'ai:get-providers'
   | 'ai:set-provider'
   | 'ai:test-connection'
+  | 'ai:get-models'
+  | 'ai:get-provider-configs'
+  | 'ai:save-provider-config'
   | 'voice:start-listening'
   | 'voice:stop-listening'
   | 'voice:speak'
