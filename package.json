@@ -1,0 +1,31 @@
+{
+  "name": "aris",
+  "version": "0.1.0",
+  "private": true,
+  "description": "AI gaming companion — expressive, private, model-agnostic",
+  "author": "Aris Team",
+  "license": "Unlicense",
+  "scripts": {
+    "dev": "pnpm --filter @aris/renderer dev & pnpm --filter @aris/app dev",
+    "build": "pnpm -r build",
+    "build:app": "pnpm build && electron-builder",
+    "lint": "eslint packages/*/src --ext .ts,.tsx",
+    "typecheck": "pnpm -r typecheck",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "clean": "pnpm -r exec rm -rf dist && rm -rf release"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "electron": "^33.0.0",
+    "electron-builder": "^25.0.0",
+    "eslint": "^9.0.0",
+    "prettier": "^3.4.0",
+    "typescript": "^5.7.0",
+    "vitest": "^3.0.0"
+  },
+  "packageManager": "pnpm@9.15.0",
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}

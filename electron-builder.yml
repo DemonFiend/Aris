@@ -1,0 +1,43 @@
+appId: com.aris.app
+productName: Aris
+copyright: "Public Domain (Unlicense)"
+
+directories:
+  output: release
+  buildResources: build
+
+files:
+  - "packages/app/dist/**/*"
+  - "packages/renderer/dist/**/*"
+  - "packages/ai-core/dist/**/*"
+  - "packages/voice/dist/**/*"
+  - "packages/vision/dist/**/*"
+  - "packages/avatar/dist/**/*"
+  - "packages/shared/dist/**/*"
+
+win:
+  target:
+    - nsis
+  icon: build/icon.ico
+
+mac:
+  target:
+    - dmg
+  icon: build/icon.icns
+  category: public.app-category.games
+
+linux:
+  target:
+    - AppImage
+    - deb
+  icon: build/icon.png
+  category: Game
+
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+
+publish:
+  provider: github
+  owner: DemonFiend
+  repo: Aris
