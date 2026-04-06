@@ -2,11 +2,12 @@
   "name": "aris",
   "version": "0.1.0",
   "private": true,
+  "main": "packages/app/dist/main.js",
   "description": "AI gaming companion — expressive, private, model-agnostic",
   "author": "Aris Team",
   "license": "Unlicense",
   "scripts": {
-    "dev": "pnpm --filter @aris/shared build && pnpm --filter @aris/ai-core build && pnpm --filter @aris/vision build && pnpm --filter @aris/voice build && pnpm --filter @aris/avatar build && (pnpm --filter @aris/renderer dev & pnpm --filter @aris/app dev)",
+    "dev": "pnpm -r --filter '!@aris/renderer' build && (pnpm --filter @aris/renderer dev & sleep 2 && NODE_ENV=development electron .)",
     "build": "pnpm -r build",
     "build:app": "pnpm build && electron-builder",
     "lint": "eslint packages/*/src --ext .ts,.tsx",
