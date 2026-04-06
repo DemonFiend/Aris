@@ -1,7 +1,7 @@
 import { contextBridge, ipcRenderer } from 'electron';
 import type { IpcChannel } from '@aris/shared';
 
-type EventChannel = 'ai:stream-chunk';
+type EventChannel = 'ai:stream-chunk' | 'vision:frame';
 
 /**
  * Expose a typed IPC bridge to the renderer process.

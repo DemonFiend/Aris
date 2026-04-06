@@ -4,6 +4,9 @@ export const APP_VERSION = '0.1.0';
 /** Default capture settings */
 export const CAPTURE_FPS_DEFAULT = 2;
 export const CAPTURE_FPS_MAX = 10;
+export const CAPTURE_MAX_WIDTH = 1280;
+export const CAPTURE_MAX_HEIGHT = 720;
+export const CAPTURE_JPEG_QUALITY = 70;
 
 /** Default AI settings */
 export const DEFAULT_MAX_TOKENS = 2048;

@@ -11,6 +11,7 @@
   "dependencies": {
     "@aris/ai-core": "workspace:*",
     "@aris/shared": "workspace:*",
+    "@aris/vision": "workspace:*",
     "better-sqlite3": "^12.8.0"
   },
   "devDependencies": {

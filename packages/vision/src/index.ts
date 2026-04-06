@@ -1,3 +1,1 @@
-// Vision pipeline — screen capture + frame processing
-// Implementation coming in dedicated subtask
-export {};
+export { detectGameFromTitle, isLikelyGameWindow } from './game-detect';

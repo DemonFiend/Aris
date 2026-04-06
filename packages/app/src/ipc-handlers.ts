@@ -25,6 +25,14 @@ import {
   deleteGameProfile,
 } from './game-profile-store';
 import { exportAllData, wipeAllData } from './data-export';
+import {
+  getSources,
+  startCapture,
+  stopCapture,
+  getStatus,
+  getLatestFrame,
+} from './capture-service';
+import type { CaptureConfig } from '@aris/shared';
 
 const registry = new ProviderRegistry();
 
@@ -232,6 +240,35 @@ export function registerIpcHandlers(): void {
   ipcMain.handle('data:wipe', async () => {
     wipeAllData();
     return true;
+  });
+
+  // Vision capture handlers
+  ipcMain.handle('vision:get-sources', async () => {
+    return getSources();
+  });
+
+  ipcMain.handle(
+    'vision:start-capture',
+    async (_event, config: Partial<CaptureConfig> & { sourceId: string }) => {
+      startCapture(config);
+      return getStatus();
+    },
+  );
+
+  ipcMain.handle('vision:stop-capture', async () => {
+    stopCapture();
+    return getStatus();
+  });
+
+  ipcMain.handle('vision:get-status', async () => {
+    return getStatus();
+  });
+
+  ipcMain.handle('vision:analyze-frame', async (_event, prompt: string, options?: ChatOptions) => {
+    const frame = getLatestFrame();
+    if (!frame) throw new Error('No captured frame available');
+    const provider = registry.getActive();
+    return provider.vision(frame, prompt, options);
   });
 }
 

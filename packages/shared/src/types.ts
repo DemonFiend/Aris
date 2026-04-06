@@ -92,6 +92,33 @@ export interface GameProfile {
   updatedAt: string;
 }
 
+/** Available capture source (screen or window) */
+export interface CaptureSource {
+  id: string;
+  name: string;
+  thumbnailDataUrl: string;
+  isScreen: boolean;
+}
+
+/** Capture configuration */
+export interface CaptureConfig {
+  sourceId: string;
+  fps: number;
+  maxWidth: number;
+  maxHeight: number;
+  jpegQuality: number;
+}
+
+/** Capture status reported to renderer */
+export interface CaptureStatus {
+  active: boolean;
+  sourceId?: string;
+  sourceName?: string;
+  fps: number;
+  frameCount: number;
+  detectedGame?: string;
+}
+
 /** IPC channel names for main <-> renderer communication */
 export type IpcChannel =
   | 'ai:chat'
@@ -109,6 +136,8 @@ export type IpcChannel =
   | 'vision:start-capture'
   | 'vision:stop-capture'
   | 'vision:get-sources'
+  | 'vision:get-status'
+  | 'vision:analyze-frame'
   | 'settings:get'
   | 'settings:set'
   | 'settings:delete'
