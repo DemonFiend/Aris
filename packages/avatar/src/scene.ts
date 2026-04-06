@@ -1,0 +1,133 @@
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import { VRMLoaderPlugin, VRM } from '@pixiv/three-vrm';
+
+export class AvatarScene {
+  readonly renderer: THREE.WebGLRenderer;
+  readonly scene: THREE.Scene;
+  readonly camera: THREE.PerspectiveCamera;
+
+  private clock = new THREE.Clock();
+  private animationId: number | null = null;
+  private vrm: VRM | null = null;
+  private onFrameCallbacks: Array<(delta: number) => void> = [];
+
+  constructor(canvas: HTMLCanvasElement) {
+    // Renderer
+    this.renderer = new THREE.WebGLRenderer({
+      canvas,
+      alpha: true,
+      antialias: true,
+    });
+    this.renderer.setPixelRatio(window.devicePixelRatio);
+    this.renderer.outputColorSpace = THREE.SRGBColorSpace;
+
+    // Scene
+    this.scene = new THREE.Scene();
+
+    // Camera — portrait framing for bust/head shot
+    this.camera = new THREE.PerspectiveCamera(30, 1, 0.1, 20);
+    this.camera.position.set(0, 1.4, 1.5);
+    this.camera.lookAt(0, 1.3, 0);
+
+    // Lighting
+    const ambient = new THREE.AmbientLight(0xffffff, 0.7);
+    this.scene.add(ambient);
+
+    const directional = new THREE.DirectionalLight(0xffffff, 0.8);
+    directional.position.set(1, 2, 3);
+    this.scene.add(directional);
+
+    const rim = new THREE.DirectionalLight(0x8888ff, 0.3);
+    rim.position.set(-1, 1, -2);
+    this.scene.add(rim);
+  }
+
+  async loadVRM(url: string): Promise<VRM> {
+    const loader = new GLTFLoader();
+    loader.register((parser) => new VRMLoaderPlugin(parser));
+
+    return new Promise((resolve, reject) => {
+      loader.load(
+        url,
+        (gltf) => {
+          const vrm = gltf.userData.vrm as VRM;
+          if (!vrm) {
+            reject(new Error('No VRM data in model'));
+            return;
+          }
+
+          // Remove old model
+          if (this.vrm) {
+            this.scene.remove(this.vrm.scene);
+          }
+
+          this.vrm = vrm;
+          this.scene.add(vrm.scene);
+
+          // Rotate model to face camera
+          vrm.scene.rotation.y = Math.PI;
+
+          resolve(vrm);
+        },
+        undefined,
+        reject,
+      );
+    });
+  }
+
+  getVRM(): VRM | null {
+    return this.vrm;
+  }
+
+  onFrame(callback: (delta: number) => void): () => void {
+    this.onFrameCallbacks.push(callback);
+    return () => {
+      this.onFrameCallbacks = this.onFrameCallbacks.filter((cb) => cb !== callback);
+    };
+  }
+
+  resize(width: number, height: number): void {
+    this.camera.aspect = width / height;
+    this.camera.updateProjectionMatrix();
+    this.renderer.setSize(width, height);
+  }
+
+  start(): void {
+    if (this.animationId !== null) return;
+
+    const animate = () => {
+      this.animationId = requestAnimationFrame(animate);
+      const delta = this.clock.getDelta();
+
+      // Update VRM
+      if (this.vrm) {
+        this.vrm.update(delta);
+      }
+
+      // Run frame callbacks
+      for (const cb of this.onFrameCallbacks) {
+        cb(delta);
+      }
+
+      this.renderer.render(this.scene, this.camera);
+    };
+
+    animate();
+  }
+
+  stop(): void {
+    if (this.animationId !== null) {
+      cancelAnimationFrame(this.animationId);
+      this.animationId = null;
+    }
+  }
+
+  dispose(): void {
+    this.stop();
+    this.renderer.dispose();
+    if (this.vrm) {
+      this.scene.remove(this.vrm.scene);
+    }
+  }
+}
