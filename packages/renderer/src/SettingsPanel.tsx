@@ -1,8 +1,10 @@
 import { useState, useEffect, useCallback } from 'react';
 import { ProviderSettings } from './ProviderSettings';
 import { AvatarSettings } from './AvatarSettings';
+import { CapturePanel } from './CapturePanel';
+import { VoiceSettings } from './VoiceSettings';
 
-type Tab = 'providers' | 'avatar' | 'general' | 'data';
+type Tab = 'providers' | 'avatar' | 'voice' | 'capture' | 'general' | 'data';
 
 export function SettingsPanel() {
   const [tab, setTab] = useState<Tab>('providers');
@@ -46,6 +48,8 @@ export function SettingsPanel() {
   const tabs: { key: Tab; label: string }[] = [
     { key: 'providers', label: 'AI Providers' },
     { key: 'avatar', label: 'Avatar' },
+    { key: 'voice', label: 'Voice' },
+    { key: 'capture', label: 'Capture' },
     { key: 'general', label: 'General' },
     { key: 'data', label: 'Data' },
   ];
@@ -71,6 +75,10 @@ export function SettingsPanel() {
       {tab === 'providers' && <ProviderSettings />}
 
       {tab === 'avatar' && <AvatarSettings />}
+
+      {tab === 'voice' && <VoiceSettings />}
+
+      {tab === 'capture' && <CapturePanel />}
 
       {tab === 'general' && (
         <div style={sectionStyle}>

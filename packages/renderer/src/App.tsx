@@ -3,6 +3,7 @@ import { APP_NAME } from '@aris/shared';
 import { SettingsPanel } from './SettingsPanel';
 import { ChatPanel } from './ChatPanel';
 import { ConversationSidebar } from './ConversationSidebar';
+import { AvatarDisplay } from './AvatarDisplay';
 
 type View = 'chat' | 'settings';
 
@@ -10,6 +11,7 @@ export function App() {
   const [view, setView] = useState<View>('chat');
   const [activeConversation, setActiveConversation] = useState<string | null>(null);
   const [sidebarKey, setSidebarKey] = useState(0);
+  const [lastAssistantMsg, setLastAssistantMsg] = useState<string | undefined>();
 
   const handleNewChat = useCallback(() => {
     setActiveConversation(null);
@@ -41,10 +43,16 @@ export function App() {
               onSelect={setActiveConversation}
               onNew={handleNewChat}
             />
-            <ChatPanel
-              conversationId={activeConversation}
-              onConversationCreated={handleConversationCreated}
-            />
+            <div style={chatColumnStyle}>
+              <div style={avatarPanelStyle}>
+                <AvatarDisplay lastAssistantMessage={lastAssistantMsg} />
+              </div>
+              <ChatPanel
+                conversationId={activeConversation}
+                onConversationCreated={handleConversationCreated}
+                onAssistantMessage={setLastAssistantMsg}
+              />
+            </div>
           </>
         )}
         {view === 'settings' && <SettingsPanel />}
@@ -75,6 +83,20 @@ const bodyStyle: React.CSSProperties = {
   flex: 1,
   display: 'flex',
   overflow: 'hidden',
+};
+
+const chatColumnStyle: React.CSSProperties = {
+  flex: 1,
+  display: 'flex',
+  flexDirection: 'column',
+  minWidth: 0,
+  overflow: 'hidden',
+};
+
+const avatarPanelStyle: React.CSSProperties = {
+  height: 200,
+  borderBottom: '1px solid #333',
+  flexShrink: 0,
 };
 
 const navBtnStyle: React.CSSProperties = {

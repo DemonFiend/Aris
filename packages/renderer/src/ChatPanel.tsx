@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import type { ChatChunk, StoredMessage } from '@aris/shared';
+import { VoiceControls } from './VoiceControls';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -9,9 +10,10 @@ interface Message {
 interface Props {
   conversationId: string | null;
   onConversationCreated: (id: string) => void;
+  onAssistantMessage?: (text: string) => void;
 }
 
-export function ChatPanel({ conversationId, onConversationCreated }: Props) {
+export function ChatPanel({ conversationId, onConversationCreated, onAssistantMessage }: Props) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [streaming, setStreaming] = useState(false);
@@ -68,6 +70,7 @@ export function ChatPanel({ conversationId, onConversationCreated }: Props) {
         const convId = activeConvRef.current;
         if (convId && finalContent) {
           window.aris.invoke('messages:add', convId, 'assistant', finalContent);
+          onAssistantMessage?.(finalContent);
         }
         streamBufferRef.current = '';
       }
@@ -136,6 +139,12 @@ export function ChatPanel({ conversationId, onConversationCreated }: Props) {
     }
   };
 
+  const handleVoiceTranscript = useCallback((transcript: string) => {
+    if (transcript && !streaming) {
+      setInput(transcript);
+    }
+  }, [streaming]);
+
   return (
     <div style={containerStyle}>
       <div style={messageListStyle}>
@@ -157,6 +166,7 @@ export function ChatPanel({ conversationId, onConversationCreated }: Props) {
       </div>
 
       <div style={inputAreaStyle}>
+        <VoiceControls onTranscript={handleVoiceTranscript} />
         <textarea
           ref={inputRef}
           value={input}

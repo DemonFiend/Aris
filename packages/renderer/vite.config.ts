@@ -13,6 +13,6 @@ export default defineConfig({
     strictPort: true,
   },
   optimizeDeps: {
-    exclude: ['@aris/shared'],
+    exclude: ['@aris/shared', '@aris/avatar'],
   },
 });

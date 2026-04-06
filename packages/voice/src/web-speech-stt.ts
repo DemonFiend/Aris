@@ -27,25 +27,25 @@ export class WebSpeechSTT implements STTEngine {
       return;
     }
 
-    this.recognition = new SpeechRecognition();
-    this.recognition.continuous = true;
-    this.recognition.interimResults = true;
-    this.recognition.lang = language;
+    const rec = new SpeechRecognition();
+    rec.continuous = true;
+    rec.interimResults = true;
+    rec.lang = language;
 
-    this.recognition.onresult = (event: SpeechRecognitionEvent) => {
+    rec.onresult = (event: SpeechRecognitionEvent) => {
       for (let i = event.resultIndex; i < event.results.length; i++) {
         const result = event.results[i];
         this.onResult?.(result[0].transcript, result.isFinal);
       }
     };
 
-    this.recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
+    rec.onerror = (event: SpeechRecognitionErrorEvent) => {
       if (event.error !== 'aborted') {
         this.onError?.(event.error);
       }
     };
 
-    this.recognition.onend = () => {
+    rec.onend = () => {
       // Auto-restart if still supposed to be listening
       if (this.listening && this.recognition) {
         try {
@@ -56,7 +56,8 @@ export class WebSpeechSTT implements STTEngine {
       }
     };
 
-    this.recognition.start();
+    this.recognition = rec;
+    rec.start();
     this.listening = true;
   }
 
