@@ -128,4 +128,7 @@ export type IpcChannel =
   | 'data:export'
   | 'data:wipe'
   | 'avatar:set-expression'
-  | 'avatar:set-speaking';
+  | 'avatar:set-speaking'
+  | 'window:toggle-overlay'
+  | 'window:get-overlay'
+  | 'window:minimize-to-tray';

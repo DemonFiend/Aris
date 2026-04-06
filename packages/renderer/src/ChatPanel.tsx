@@ -1,18 +1,24 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import type { ChatChunk } from '@aris/shared';
+import type { ChatChunk, StoredMessage } from '@aris/shared';
 
 interface Message {
   role: 'user' | 'assistant';
   content: string;
 }
 
-export function ChatPanel() {
+interface Props {
+  conversationId: string | null;
+  onConversationCreated: (id: string) => void;
+}
+
+export function ChatPanel({ conversationId, onConversationCreated }: Props) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [streaming, setStreaming] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const streamBufferRef = useRef('');
+  const activeConvRef = useRef<string | null>(conversationId);
 
   const scrollToBottom = useCallback(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -21,6 +27,25 @@ export function ChatPanel() {
   useEffect(() => {
     scrollToBottom();
   }, [messages, scrollToBottom]);
+
+  // Load messages when conversation changes
+  useEffect(() => {
+    activeConvRef.current = conversationId;
+    if (!conversationId) {
+      setMessages([]);
+      return;
+    }
+    (async () => {
+      const stored = (await window.aris.invoke('messages:list', conversationId)) as StoredMessage[];
+      if (activeConvRef.current === conversationId) {
+        setMessages(
+          stored
+            .filter((m) => m.role !== 'system')
+            .map((m) => ({ role: m.role as 'user' | 'assistant', content: m.content })),
+        );
+      }
+    })();
+  }, [conversationId]);
 
   useEffect(() => {
     const cleanup = window.aris.on('ai:stream-chunk', (chunk: unknown) => {
@@ -38,6 +63,12 @@ export function ChatPanel() {
       }
       if (done) {
         setStreaming(false);
+        // Persist the completed assistant message
+        const finalContent = streamBufferRef.current;
+        const convId = activeConvRef.current;
+        if (convId && finalContent) {
+          window.aris.invoke('messages:add', convId, 'assistant', finalContent);
+        }
         streamBufferRef.current = '';
       }
     });
@@ -55,6 +86,21 @@ export function ChatPanel() {
     setMessages((prev) => [...prev, userMsg, assistantMsg]);
     setStreaming(true);
     streamBufferRef.current = '';
+
+    // Create conversation if none active
+    let convId = activeConvRef.current;
+    if (!convId) {
+      const title = text.length > 50 ? text.slice(0, 50) + '...' : text;
+      const conv = (await window.aris.invoke('conversations:create', title)) as {
+        id: string;
+      };
+      convId = conv.id;
+      activeConvRef.current = convId;
+      onConversationCreated(convId);
+    }
+
+    // Persist user message
+    await window.aris.invoke('messages:add', convId, 'user', text);
 
     try {
       const chatMessages = [...messages, userMsg].map((m) => ({
@@ -134,7 +180,8 @@ const thinkingDot = '\u2026';
 const containerStyle: React.CSSProperties = {
   display: 'flex',
   flexDirection: 'column',
-  height: 'calc(100vh - 49px)',
+  flex: 1,
+  minWidth: 0,
 };
 
 const messageListStyle: React.CSSProperties = {
