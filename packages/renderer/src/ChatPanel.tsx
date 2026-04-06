@@ -94,9 +94,13 @@ export function ChatPanel({ conversationId, onConversationCreated, onAssistantMe
     let convId = activeConvRef.current;
     if (!convId) {
       const title = text.length > 50 ? text.slice(0, 50) + '...' : text;
-      const conv = (await window.aris.invoke('conversations:create', title)) as {
-        id: string;
-      };
+      const conv = (await window.aris.invoke('conversations:create', title)) as
+        | { id: string }
+        | undefined;
+      if (!conv) {
+        setStreaming(false);
+        return;
+      }
       convId = conv.id;
       activeConvRef.current = convId;
       onConversationCreated(convId);

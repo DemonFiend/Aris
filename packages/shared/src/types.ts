@@ -195,6 +195,8 @@ export type IpcChannel =
   | 'avatar:list-available'
   | 'avatar:get-default'
   | 'avatar:set-default'
+  | 'avatar:open-folder'
+  | 'avatar:import'
   | 'window:toggle-overlay'
   | 'window:get-overlay'
   | 'window:minimize-to-tray';
