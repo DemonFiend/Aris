@@ -3,3 +3,6 @@ export { ExpressionController, sentimentToExpression } from './expressions';
 export type { Expression } from './expressions';
 export { LipSync } from './lip-sync';
 export { IdleAnimation } from './idle-animation';
+export type { IdleConfig } from './idle-animation';
+export { GestureController } from './gestures';
+export type { GestureType } from './gestures';

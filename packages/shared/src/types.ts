@@ -148,6 +148,49 @@ export interface AvatarInfo {
   isDefault: boolean;
 }
 
+/** Companion personality configuration */
+export interface CompanionPersonality {
+  name: string;
+  greeting: string;
+  responseStyle: 'casual' | 'formal' | 'playful' | 'serious';
+  defaultExpression: 'neutral' | 'happy' | 'thinking';
+}
+
+/** Companion idle behavior settings */
+export interface CompanionIdleBehavior {
+  breathingIntensity: number;    // 0-1, scales idle breathing animation
+  swayIntensity: number;         // 0-1, scales head sway
+  blinkFrequency: number;        // average seconds between blinks (2-10)
+  expressionSensitivity: number; // 0-1, how easily expressions trigger from text
+}
+
+/** Full companion config — extensible with sensible defaults */
+export interface CompanionConfig {
+  personality: CompanionPersonality;
+  idle: CompanionIdleBehavior;
+  defaultAvatar: string | null;
+  ttsVoice: string | null;
+  wakeWord: string | null;
+}
+
+export const DEFAULT_COMPANION_CONFIG: CompanionConfig = {
+  personality: {
+    name: 'Aris',
+    greeting: 'Hey! Ready to game?',
+    responseStyle: 'casual',
+    defaultExpression: 'neutral',
+  },
+  idle: {
+    breathingIntensity: 1.0,
+    swayIntensity: 1.0,
+    blinkFrequency: 4,
+    expressionSensitivity: 0.5,
+  },
+  defaultAvatar: null,
+  ttsVoice: null,
+  wakeWord: null,
+};
+
 /** IPC channel names for main <-> renderer communication */
 export type IpcChannel =
   | 'ai:chat'
@@ -197,6 +240,8 @@ export type IpcChannel =
   | 'avatar:set-default'
   | 'avatar:open-folder'
   | 'avatar:import'
+  | 'companion:get-config'
+  | 'companion:set-config'
   | 'window:toggle-overlay'
   | 'window:get-overlay'
   | 'window:minimize-to-tray';

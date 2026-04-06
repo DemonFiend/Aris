@@ -5,6 +5,7 @@ import { APP_NAME } from '@aris/shared';
 import { registerIpcHandlers, initProviders } from './ipc-handlers';
 import { registerVoiceHandlers } from './voice-handlers';
 import { registerAvatarHandlers } from './avatar-handlers';
+import { registerCompanionHandlers } from './companion-handlers';
 import { getDb, closeDb } from './database';
 import { initAutoUpdater } from './auto-updater';
 import { pathToFileURL } from 'url';
@@ -156,6 +157,7 @@ app.whenReady().then(() => {
   registerIpcHandlers();
   registerVoiceHandlers();
   registerAvatarHandlers();
+  registerCompanionHandlers();
   registerWindowHandlers();
   createTray();
   createWindow();

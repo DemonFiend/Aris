@@ -47,9 +47,19 @@ export class AvatarScene {
     const loader = new GLTFLoader();
     loader.register((parser) => new VRMLoaderPlugin(parser));
 
+    // Use fetch() + parse() instead of load() because Three.js's FileLoader
+    // uses XHR internally, which doesn't work with Electron custom protocols.
+    // The avatar:// protocol only supports the fetch API.
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error(`Failed to fetch VRM: ${response.status} ${response.statusText}`);
+    }
+    const arrayBuffer = await response.arrayBuffer();
+
     return new Promise((resolve, reject) => {
-      loader.load(
-        url,
+      loader.parse(
+        arrayBuffer,
+        '',
         (gltf) => {
           const vrm = gltf.userData.vrm as VRM;
           if (!vrm) {
@@ -70,8 +80,7 @@ export class AvatarScene {
 
           resolve(vrm);
         },
-        undefined,
-        reject,
+        (error: unknown) => reject(error instanceof Error ? error : new Error(String(error))),
       );
     });
   }

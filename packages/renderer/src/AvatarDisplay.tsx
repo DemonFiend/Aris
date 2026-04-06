@@ -1,7 +1,7 @@
 import { useRef, useEffect, useState, useCallback } from 'react';
-import { AvatarScene, IdleAnimation, ExpressionController, sentimentToExpression } from '@aris/avatar';
-import type { Expression } from '@aris/avatar';
-import type { AvatarInfo } from '@aris/shared';
+import { AvatarScene, IdleAnimation, ExpressionController, GestureController, sentimentToExpression } from '@aris/avatar';
+import type { Expression, GestureType } from '@aris/avatar';
+import type { AvatarInfo, CompanionConfig } from '@aris/shared';
 
 interface Props {
   /** Text of latest assistant message — used to drive expressions */
@@ -13,6 +13,7 @@ export function AvatarDisplay({ lastAssistantMessage }: Props) {
   const sceneRef = useRef<AvatarScene | null>(null);
   const idleRef = useRef<IdleAnimation | null>(null);
   const exprRef = useRef<ExpressionController | null>(null);
+  const gestureRef = useRef<GestureController | null>(null);
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -35,17 +36,30 @@ export function AvatarDisplay({ lastAssistantMessage }: Props) {
           const avatarUrl = `avatar://${defaultAvatar.filename}`;
           const vrm = await scene.loadVRM(avatarUrl);
 
+          const companionConfig = (await window.aris.invoke('companion:get-config')) as CompanionConfig | null;
+
           const idle = new IdleAnimation();
           idle.setVRM(vrm);
+          if (companionConfig?.idle) {
+            idle.setConfig(companionConfig.idle);
+          }
           idleRef.current = idle;
 
           const expr = new ExpressionController();
           expr.setVRM(vrm);
+          if (companionConfig?.personality?.defaultExpression) {
+            expr.setExpression(companionConfig.personality.defaultExpression as Expression);
+          }
           exprRef.current = expr;
+
+          const gesture = new GestureController();
+          gesture.setVRM(vrm);
+          gestureRef.current = gesture;
 
           scene.onFrame((delta: number) => {
             idle.update(delta);
             expr.update(delta);
+            gesture.update(delta);
           });
           vrmLoaded = true;
         } catch {
@@ -72,19 +86,35 @@ export function AvatarDisplay({ lastAssistantMessage }: Props) {
       sceneRef.current = null;
       idleRef.current = null;
       exprRef.current = null;
+      gestureRef.current = null;
     };
   }, [initScene]);
 
-  // Resize handler
+  // Listen for gesture triggers from main process
+  useEffect(() => {
+    const cleanup = window.aris.on?.('avatar:gesture', (gesture: unknown) => {
+      gestureRef.current?.play(gesture as GestureType);
+    });
+    return cleanup;
+  }, []);
+
+  // Resize handler — debounced so the model only repositions after resize ends
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
+    let timeout: ReturnType<typeof setTimeout>;
     const observer = new ResizeObserver(() => {
-      sceneRef.current?.resize(canvas.clientWidth, canvas.clientHeight);
+      clearTimeout(timeout);
+      timeout = setTimeout(() => {
+        sceneRef.current?.resize(canvas.clientWidth, canvas.clientHeight);
+      }, 150);
     });
     observer.observe(canvas);
-    return () => observer.disconnect();
+    return () => {
+      clearTimeout(timeout);
+      observer.disconnect();
+    };
   }, []);
 
   // Drive expressions from assistant messages
