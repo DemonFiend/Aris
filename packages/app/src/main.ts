@@ -1,11 +1,26 @@
-import { app, BrowserWindow, Tray, Menu, nativeImage, ipcMain } from 'electron';
+import { app, BrowserWindow, Tray, Menu, nativeImage, ipcMain, protocol, net } from 'electron';
 import * as path from 'path';
+import * as fs from 'fs';
 import { APP_NAME } from '@aris/shared';
 import { registerIpcHandlers, initProviders } from './ipc-handlers';
 import { registerVoiceHandlers } from './voice-handlers';
 import { registerAvatarHandlers } from './avatar-handlers';
 import { getDb, closeDb } from './database';
 import { initAutoUpdater } from './auto-updater';
+import { pathToFileURL } from 'url';
+
+// Register custom avatar:// protocol as privileged (must be before app.whenReady)
+protocol.registerSchemesAsPrivileged([
+  {
+    scheme: 'avatar',
+    privileges: {
+      standard: true,
+      secure: true,
+      supportFetchAPI: true,
+      bypassCSP: true,
+    },
+  },
+]);
 
 let mainWindow: BrowserWindow | null = null;
 let tray: Tray | null = null;
@@ -102,6 +117,20 @@ function registerWindowHandlers(): void {
 }
 
 app.whenReady().then(() => {
+  // Register avatar:// protocol handler to serve VRM files from user data
+  const avatarDir = path.join(app.getPath('userData'), 'avatars');
+  protocol.handle('avatar', (request) => {
+    const url = new URL(request.url);
+    // avatar://filename.vrm -> host is the filename
+    const filename = decodeURIComponent(url.hostname || url.pathname.replace(/^\/+/, ''));
+    const filePath = path.join(avatarDir, filename);
+
+    if (!fs.existsSync(filePath)) {
+      return new Response('Not found', { status: 404 });
+    }
+    return net.fetch(pathToFileURL(filePath).toString());
+  });
+
   getDb(); // Initialize database and run migrations
   initProviders();
   registerIpcHandlers();

@@ -80,6 +80,42 @@ export class AvatarScene {
     return this.vrm;
   }
 
+  /** Render a simple procedural ghost when no VRM is available */
+  loadGhostFallback(): void {
+    // Ghost body — rounded capsule shape
+    const bodyGeo = new THREE.CapsuleGeometry(0.2, 0.35, 8, 16);
+    const bodyMat = new THREE.MeshStandardMaterial({
+      color: 0xccccff,
+      transparent: true,
+      opacity: 0.7,
+      emissive: 0x4444aa,
+      emissiveIntensity: 0.3,
+    });
+    const body = new THREE.Mesh(bodyGeo, bodyMat);
+    body.position.set(0, 1.3, 0);
+
+    // Eyes
+    const eyeGeo = new THREE.SphereGeometry(0.035, 8, 8);
+    const eyeMat = new THREE.MeshBasicMaterial({ color: 0x222244 });
+    const leftEye = new THREE.Mesh(eyeGeo, eyeMat);
+    leftEye.position.set(-0.07, 1.38, 0.17);
+    const rightEye = new THREE.Mesh(eyeGeo, eyeMat);
+    rightEye.position.set(0.07, 1.38, 0.17);
+
+    const group = new THREE.Group();
+    group.add(body, leftEye, rightEye);
+
+    this.scene.add(group);
+
+    // Gentle floating animation
+    let time = 0;
+    this.onFrame((delta) => {
+      time += delta;
+      group.position.y = Math.sin(time * 1.5) * 0.03;
+      group.rotation.y = Math.sin(time * 0.5) * 0.1;
+    });
+  }
+
   onFrame(callback: (delta: number) => void): () => void {
     this.onFrameCallbacks.push(callback);
     return () => {

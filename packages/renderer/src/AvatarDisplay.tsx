@@ -28,29 +28,35 @@ export function AvatarDisplay({ lastAssistantMessage }: Props) {
       const avatars = ((await window.aris.invoke('avatar:list-available')) ?? []) as AvatarInfo[];
       const defaultAvatar = avatars.find((a) => a.isDefault) ?? avatars[0];
 
-      if (!defaultAvatar) {
-        setError('No avatar files found. Add .vrm files in Settings > Avatar.');
-        return;
+      let vrmLoaded = false;
+
+      if (defaultAvatar) {
+        try {
+          const avatarUrl = `avatar://${defaultAvatar.filename}`;
+          const vrm = await scene.loadVRM(avatarUrl);
+
+          const idle = new IdleAnimation();
+          idle.setVRM(vrm);
+          idleRef.current = idle;
+
+          const expr = new ExpressionController();
+          expr.setVRM(vrm);
+          exprRef.current = expr;
+
+          scene.onFrame((delta: number) => {
+            idle.update(delta);
+            expr.update(delta);
+          });
+          vrmLoaded = true;
+        } catch {
+          // VRM load failed — fall through to ghost fallback
+        }
       }
 
-      // Load the VRM model from the avatar data directory
-      const avatarUrl = `avatar://${defaultAvatar.filename}`;
-      const vrm = await scene.loadVRM(avatarUrl);
-
-      // Initialize idle animation and expression controller
-      const idle = new IdleAnimation();
-      idle.setVRM(vrm);
-      idleRef.current = idle;
-
-      const expr = new ExpressionController();
-      expr.setVRM(vrm);
-      exprRef.current = expr;
-
-      // Hook animations into render loop
-      scene.onFrame((delta: number) => {
-        idle.update(delta);
-        expr.update(delta);
-      });
+      if (!vrmLoaded) {
+        // Render a simple procedural ghost as fallback
+        scene.loadGhostFallback();
+      }
 
       scene.start();
       setLoaded(true);
