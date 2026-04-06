@@ -19,6 +19,15 @@ function ensureAvatarDirectory(): string {
   return dir;
 }
 
+/** Resolve a filename inside the avatar directory, rejecting path traversal */
+function safeAvatarPath(dir: string, filename: string): string {
+  const resolved = path.resolve(dir, filename);
+  if (!resolved.startsWith(dir + path.sep) && resolved !== dir) {
+    throw new Error('Invalid avatar filename');
+  }
+  return resolved;
+}
+
 function listAvatarFiles(): AvatarInfo[] {
   const dir = ensureAvatarDirectory();
 
@@ -36,8 +45,12 @@ function listAvatarFiles(): AvatarInfo[] {
 export function getDefaultAvatarPath(): string | null {
   const defaultFile = getSetting(DEFAULT_AVATAR_KEY);
   if (!defaultFile) return null;
-  const fullPath = path.join(ensureAvatarDirectory(), defaultFile);
-  return fs.existsSync(fullPath) ? fullPath : null;
+  try {
+    const fullPath = safeAvatarPath(ensureAvatarDirectory(), defaultFile);
+    return fs.existsSync(fullPath) ? fullPath : null;
+  } catch {
+    return null;
+  }
 }
 
 export function registerAvatarHandlers(): void {
@@ -48,13 +61,18 @@ export function registerAvatarHandlers(): void {
   ipcMain.handle('avatar:get-default', async () => {
     const defaultFile = getSetting(DEFAULT_AVATAR_KEY);
     if (!defaultFile) return null;
-    const fullPath = path.join(ensureAvatarDirectory(), defaultFile);
-    if (!fs.existsSync(fullPath)) return null;
-    return { filename: defaultFile, path: fullPath };
+    try {
+      const fullPath = safeAvatarPath(ensureAvatarDirectory(), defaultFile);
+      if (!fs.existsSync(fullPath)) return null;
+      return { filename: defaultFile, path: fullPath };
+    } catch {
+      return null;
+    }
   });
 
   ipcMain.handle('avatar:set-default', async (_event, filename: string) => {
-    const fullPath = path.join(ensureAvatarDirectory(), filename);
+    const dir = ensureAvatarDirectory();
+    const fullPath = safeAvatarPath(dir, filename);
     if (!fs.existsSync(fullPath)) {
       throw new Error(`Avatar file not found: ${filename}`);
     }
@@ -71,11 +89,7 @@ export function registerAvatarHandlers(): void {
 
   ipcMain.handle('avatar:delete', async (_event, filename: string) => {
     const dir = ensureAvatarDirectory();
-    const fullPath = path.join(dir, filename);
-    // Security: ensure the resolved path is inside the avatar directory
-    if (!fullPath.startsWith(dir)) {
-      throw new Error('Invalid avatar filename');
-    }
+    const fullPath = safeAvatarPath(dir, filename);
     if (!fs.existsSync(fullPath)) {
       throw new Error(`Avatar file not found: ${filename}`);
     }

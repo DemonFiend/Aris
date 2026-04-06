@@ -118,16 +118,24 @@ function registerWindowHandlers(): void {
 }
 
 app.whenReady().then(() => {
-  // Ensure CSP always allows the avatar: scheme, even if the HTML meta tag
-  // is cached by Vite or the browser. This overrides any stale CSP.
+  // Set a strict CSP that overrides the HTML meta tag.
+  // In dev mode, Vite injects inline scripts for HMR so we must allow unsafe-inline.
+  // In prod, all scripts are bundled into external files — no unsafe-inline needed.
+  const isDev = process.env.NODE_ENV === 'development';
   const session = mainWindow?.webContents?.session ?? require('electron').session.defaultSession;
   session.webRequest.onHeadersReceived((details: Electron.OnHeadersReceivedListenerDetails, callback: (response: Electron.HeadersReceivedResponse) => void) => {
+    const scriptSrc = isDev ? "script-src 'self' 'unsafe-inline'" : "script-src 'self'";
+    const styleSrc = isDev ? "style-src 'self' 'unsafe-inline'" : "style-src 'self'";
+    // In dev, allow all HTTP/WS for local servers. In prod, HTTPS only + localhost for local LLMs.
+    const connectSrc = isDev
+      ? "connect-src 'self' ws: wss: http: https: avatar:"
+      : "connect-src 'self' https: wss: http://localhost:* http://127.0.0.1:* avatar:";
     const csp = [
       "default-src 'self' avatar:",
-      "script-src 'self' 'unsafe-inline'",
-      "style-src 'self' 'unsafe-inline'",
+      scriptSrc,
+      styleSrc,
       "img-src 'self' data: blob: avatar:",
-      "connect-src 'self' ws: wss: http: https: avatar:",
+      connectSrc,
       "worker-src 'self' blob:",
     ].join('; ');
     callback({
@@ -144,7 +152,12 @@ app.whenReady().then(() => {
     const url = new URL(request.url);
     // avatar://filename.vrm -> host is the filename
     const filename = decodeURIComponent(url.hostname || url.pathname.replace(/^\/+/, ''));
-    const filePath = path.join(avatarDir, filename);
+    const filePath = path.resolve(avatarDir, filename);
+
+    // Guard against path traversal (e.g. avatar://../../etc/passwd)
+    if (!filePath.startsWith(avatarDir)) {
+      return new Response('Forbidden', { status: 403 });
+    }
 
     if (!fs.existsSync(filePath)) {
       return new Response('Not found', { status: 404 });
