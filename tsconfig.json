@@ -18,5 +18,14 @@
       "@aris/*": ["packages/*/src"]
     }
   },
-  "exclude": ["node_modules", "dist", "release"]
+  "exclude": ["node_modules", "dist", "release"],
+  "references": [
+    { "path": "packages/shared" },
+    { "path": "packages/ai-core" },
+    { "path": "packages/vision" },
+    { "path": "packages/voice" },
+    { "path": "packages/avatar" },
+    { "path": "packages/app" },
+    { "path": "packages/renderer" }
+  ]
 }

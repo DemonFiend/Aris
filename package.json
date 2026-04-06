@@ -6,7 +6,7 @@
   "author": "Aris Team",
   "license": "Unlicense",
   "scripts": {
-    "dev": "pnpm --filter @aris/shared build && pnpm --filter @aris/avatar build && (pnpm --filter @aris/renderer dev & pnpm --filter @aris/app dev)",
+    "dev": "pnpm --filter @aris/shared build && pnpm --filter @aris/ai-core build && pnpm --filter @aris/vision build && pnpm --filter @aris/voice build && pnpm --filter @aris/avatar build && (pnpm --filter @aris/renderer dev & pnpm --filter @aris/app dev)",
     "build": "pnpm -r build",
     "build:app": "pnpm build && electron-builder",
     "lint": "eslint packages/*/src --ext .ts,.tsx",
@@ -16,7 +16,7 @@
     "test:e2e": "playwright test",
     "test:e2e:headed": "playwright test --headed",
     "test:e2e:ui": "playwright test --ui",
-    "clean": "pnpm -r exec rm -rf dist && rm -rf release"
+    "clean": "pnpm -r exec rm -rf dist && pnpm -r exec rm -f tsconfig.tsbuildinfo && rm -rf release"
   },
   "devDependencies": {
     "@playwright/test": "^1.58.0",
