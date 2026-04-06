@@ -16,16 +16,18 @@ export class OpenAIProvider implements AIProvider {
   readonly supportsStreaming = true;
 
   private client: OpenAI;
+  private defaultModel: string;
 
-  constructor(apiKey: string) {
+  constructor(apiKey: string, defaultModel = 'gpt-4o') {
     this.client = new OpenAI({ apiKey });
+    this.defaultModel = defaultModel;
   }
 
   async chat(messages: ChatMessage[], options?: ChatOptions): Promise<ChatResponse> {
     const openaiMessages = this.prepareMessages(messages, options?.systemPrompt);
 
     const response = await this.client.chat.completions.create({
-      model: options?.model ?? 'gpt-4o',
+      model: options?.model ?? this.defaultModel,
       max_tokens: options?.maxTokens ?? DEFAULT_MAX_TOKENS,
       temperature: options?.temperature ?? DEFAULT_TEMPERATURE,
       messages: openaiMessages,
@@ -48,7 +50,7 @@ export class OpenAIProvider implements AIProvider {
     const openaiMessages = this.prepareMessages(messages, options?.systemPrompt);
 
     const stream = await this.client.chat.completions.create({
-      model: options?.model ?? 'gpt-4o',
+      model: options?.model ?? this.defaultModel,
       max_tokens: options?.maxTokens ?? DEFAULT_MAX_TOKENS,
       temperature: options?.temperature ?? DEFAULT_TEMPERATURE,
       messages: openaiMessages,
@@ -69,7 +71,7 @@ export class OpenAIProvider implements AIProvider {
     const mediaType = this.detectMediaType(image);
 
     const response = await this.client.chat.completions.create({
-      model: options?.model ?? 'gpt-4o',
+      model: options?.model ?? this.defaultModel,
       max_tokens: options?.maxTokens ?? DEFAULT_MAX_TOKENS,
       temperature: options?.temperature ?? DEFAULT_TEMPERATURE,
       messages: [

@@ -17,9 +17,11 @@ export class LMStudioProvider implements AIProvider {
 
   private client: OpenAI;
   private baseUrl: string;
+  private defaultModel: string;
 
-  constructor(baseUrl = 'http://127.0.0.1:1234/v1') {
+  constructor(baseUrl = 'http://127.0.0.1:1234/v1', defaultModel = '') {
     this.baseUrl = baseUrl.replace(/\/$/, '');
+    this.defaultModel = defaultModel;
     this.client = new OpenAI({
       apiKey: 'lm-studio',
       baseURL: this.baseUrl,
@@ -30,7 +32,7 @@ export class LMStudioProvider implements AIProvider {
     const openaiMessages = this.prepareMessages(messages, options?.systemPrompt);
 
     const response = await this.client.chat.completions.create({
-      model: options?.model ?? '',
+      model: options?.model ?? this.defaultModel,
       max_tokens: options?.maxTokens ?? DEFAULT_MAX_TOKENS,
       temperature: options?.temperature ?? DEFAULT_TEMPERATURE,
       messages: openaiMessages,
@@ -53,7 +55,7 @@ export class LMStudioProvider implements AIProvider {
     const openaiMessages = this.prepareMessages(messages, options?.systemPrompt);
 
     const stream = await this.client.chat.completions.create({
-      model: options?.model ?? '',
+      model: options?.model ?? this.defaultModel,
       max_tokens: options?.maxTokens ?? DEFAULT_MAX_TOKENS,
       temperature: options?.temperature ?? DEFAULT_TEMPERATURE,
       messages: openaiMessages,
@@ -74,7 +76,7 @@ export class LMStudioProvider implements AIProvider {
     const mediaType = this.detectMediaType(image);
 
     const response = await this.client.chat.completions.create({
-      model: options?.model ?? '',
+      model: options?.model ?? this.defaultModel,
       max_tokens: options?.maxTokens ?? DEFAULT_MAX_TOKENS,
       temperature: options?.temperature ?? DEFAULT_TEMPERATURE,
       messages: [

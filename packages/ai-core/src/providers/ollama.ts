@@ -30,14 +30,16 @@ export class OllamaProvider implements AIProvider {
   readonly supportsStreaming = true;
 
   private baseUrl: string;
+  private defaultModel: string;
 
-  constructor(baseUrl = 'http://127.0.0.1:11434') {
+  constructor(baseUrl = 'http://127.0.0.1:11434', defaultModel = 'llama3.2') {
     this.baseUrl = baseUrl.replace(/\/$/, '');
+    this.defaultModel = defaultModel;
   }
 
   async chat(messages: ChatMessage[], options?: ChatOptions): Promise<ChatResponse> {
     const body = {
-      model: options?.model ?? 'llama3.2',
+      model: options?.model ?? this.defaultModel,
       messages: this.prepareMessages(messages, options?.systemPrompt),
       stream: false,
       options: {
@@ -67,7 +69,7 @@ export class OllamaProvider implements AIProvider {
 
   async *streamChat(messages: ChatMessage[], options?: ChatOptions): AsyncIterable<ChatChunk> {
     const body = {
-      model: options?.model ?? 'llama3.2',
+      model: options?.model ?? this.defaultModel,
       messages: this.prepareMessages(messages, options?.systemPrompt),
       stream: true,
       options: {

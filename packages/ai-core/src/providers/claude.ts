@@ -16,16 +16,18 @@ export class ClaudeProvider implements AIProvider {
   readonly supportsStreaming = true;
 
   private client: Anthropic;
+  private defaultModel: string;
 
-  constructor(apiKey: string) {
+  constructor(apiKey: string, defaultModel = 'claude-sonnet-4-20250514') {
     this.client = new Anthropic({ apiKey });
+    this.defaultModel = defaultModel;
   }
 
   async chat(messages: ChatMessage[], options?: ChatOptions): Promise<ChatResponse> {
     const { systemPrompt, anthropicMessages } = this.prepareMessages(messages);
 
     const response = await this.client.messages.create({
-      model: options?.model ?? 'claude-sonnet-4-20250514',
+      model: options?.model ?? this.defaultModel,
       max_tokens: options?.maxTokens ?? DEFAULT_MAX_TOKENS,
       temperature: options?.temperature ?? DEFAULT_TEMPERATURE,
       ...(systemPrompt ? { system: systemPrompt } : {}),
@@ -51,7 +53,7 @@ export class ClaudeProvider implements AIProvider {
     const { systemPrompt, anthropicMessages } = this.prepareMessages(messages);
 
     const stream = this.client.messages.stream({
-      model: options?.model ?? 'claude-sonnet-4-20250514',
+      model: options?.model ?? this.defaultModel,
       max_tokens: options?.maxTokens ?? DEFAULT_MAX_TOKENS,
       temperature: options?.temperature ?? DEFAULT_TEMPERATURE,
       ...(systemPrompt ? { system: systemPrompt } : {}),
@@ -74,7 +76,7 @@ export class ClaudeProvider implements AIProvider {
     const mediaType = this.detectMediaType(image);
 
     const response = await this.client.messages.create({
-      model: options?.model ?? 'claude-sonnet-4-20250514',
+      model: options?.model ?? this.defaultModel,
       max_tokens: options?.maxTokens ?? DEFAULT_MAX_TOKENS,
       temperature: options?.temperature ?? DEFAULT_TEMPERATURE,
       messages: [

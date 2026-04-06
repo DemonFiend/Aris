@@ -47,16 +47,16 @@ function initProviderFromConfig(config: ProviderConfig): void {
   switch (config.id) {
     case 'claude':
       if (config.apiKey) {
-        registry.register(new ClaudeProvider(config.apiKey));
+        registry.register(new ClaudeProvider(config.apiKey, config.defaultModel));
       }
       break;
     case 'openai':
       if (config.apiKey) {
-        registry.register(new OpenAIProvider(config.apiKey));
+        registry.register(new OpenAIProvider(config.apiKey, config.defaultModel));
       }
       break;
     case 'ollama':
-      registry.register(new OllamaProvider(config.baseUrl));
+      registry.register(new OllamaProvider(config.baseUrl, config.defaultModel));
       break;
     case 'custom-openai':
       if (config.baseUrl) {
@@ -69,7 +69,7 @@ function initProviderFromConfig(config: ProviderConfig): void {
       }
       break;
     case 'lmstudio':
-      registry.register(new LMStudioProvider(config.baseUrl));
+      registry.register(new LMStudioProvider(config.baseUrl, config.defaultModel));
       break;
   }
 }
