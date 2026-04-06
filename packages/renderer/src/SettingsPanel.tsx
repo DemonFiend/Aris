@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { ProviderSettings } from './ProviderSettings';
+import { AvatarSettings } from './AvatarSettings';
 
-type Tab = 'providers' | 'general' | 'data';
+type Tab = 'providers' | 'avatar' | 'general' | 'data';
 
 export function SettingsPanel() {
   const [tab, setTab] = useState<Tab>('providers');
@@ -44,6 +45,7 @@ export function SettingsPanel() {
 
   const tabs: { key: Tab; label: string }[] = [
     { key: 'providers', label: 'AI Providers' },
+    { key: 'avatar', label: 'Avatar' },
     { key: 'general', label: 'General' },
     { key: 'data', label: 'Data' },
   ];
@@ -67,6 +69,8 @@ export function SettingsPanel() {
       </div>
 
       {tab === 'providers' && <ProviderSettings />}
+
+      {tab === 'avatar' && <AvatarSettings />}
 
       {tab === 'general' && (
         <div style={sectionStyle}>

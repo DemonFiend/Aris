@@ -141,6 +141,13 @@ export interface VoiceStatus {
   error?: string;
 }
 
+/** Available avatar model */
+export interface AvatarInfo {
+  filename: string;
+  name: string;
+  isDefault: boolean;
+}
+
 /** IPC channel names for main <-> renderer communication */
 export type IpcChannel =
   | 'ai:chat'
@@ -185,6 +192,9 @@ export type IpcChannel =
   | 'data:wipe'
   | 'avatar:set-expression'
   | 'avatar:set-speaking'
+  | 'avatar:list-available'
+  | 'avatar:get-default'
+  | 'avatar:set-default'
   | 'window:toggle-overlay'
   | 'window:get-overlay'
   | 'window:minimize-to-tray';

@@ -3,6 +3,7 @@ import * as path from 'path';
 import { APP_NAME } from '@aris/shared';
 import { registerIpcHandlers, initProviders } from './ipc-handlers';
 import { registerVoiceHandlers } from './voice-handlers';
+import { registerAvatarHandlers } from './avatar-handlers';
 import { getDb, closeDb } from './database';
 import { initAutoUpdater } from './auto-updater';
 
@@ -105,6 +106,7 @@ app.whenReady().then(() => {
   initProviders();
   registerIpcHandlers();
   registerVoiceHandlers();
+  registerAvatarHandlers();
   registerWindowHandlers();
   createTray();
   createWindow();
