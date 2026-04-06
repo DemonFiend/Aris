@@ -69,6 +69,25 @@ export function registerAvatarHandlers(): void {
     return dir;
   });
 
+  ipcMain.handle('avatar:delete', async (_event, filename: string) => {
+    const dir = ensureAvatarDirectory();
+    const fullPath = path.join(dir, filename);
+    // Security: ensure the resolved path is inside the avatar directory
+    if (!fullPath.startsWith(dir)) {
+      throw new Error('Invalid avatar filename');
+    }
+    if (!fs.existsSync(fullPath)) {
+      throw new Error(`Avatar file not found: ${filename}`);
+    }
+    fs.unlinkSync(fullPath);
+    // If this was the default, clear the default setting
+    const currentDefault = getSetting(DEFAULT_AVATAR_KEY);
+    if (currentDefault === filename) {
+      setSetting(DEFAULT_AVATAR_KEY, '');
+    }
+    return true;
+  });
+
   ipcMain.handle('avatar:import', async (event) => {
     const win = BrowserWindow.fromWebContents(event.sender);
     const opts: Electron.OpenDialogOptions = {

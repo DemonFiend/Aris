@@ -293,6 +293,7 @@ export type IpcChannel =
   | 'avatar:set-default'
   | 'avatar:open-folder'
   | 'avatar:import'
+  | 'avatar:delete'
   | 'companion:get-config'
   | 'companion:set-config'
   | 'window:toggle-overlay'

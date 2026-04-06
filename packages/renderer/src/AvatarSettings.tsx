@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { AvatarScene } from '@aris/avatar';
 
 interface AvatarInfo {
   filename: string;
@@ -15,6 +16,90 @@ export function AvatarSettings() {
   const [error, setError] = useState<string | null>(null);
   const [status, setStatus] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Preview state
+  const previewCanvasRef = useRef<HTMLCanvasElement>(null);
+  const previewSceneRef = useRef<AvatarScene | null>(null);
+  const [previewAvatar, setPreviewAvatar] = useState<string | null>(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const [previewError, setPreviewError] = useState<string | null>(null);
+  const [previewSuccess, setPreviewSuccess] = useState(false);
+
+  // Initialize / tear down preview scene
+  useEffect(() => {
+    return () => {
+      previewSceneRef.current?.dispose();
+      previewSceneRef.current = null;
+    };
+  }, []);
+
+  const handlePreview = useCallback(async (filename: string) => {
+    setPreviewAvatar(filename);
+    setPreviewLoading(true);
+    setPreviewError(null);
+    setPreviewSuccess(false);
+
+    // Wait a tick for the canvas to mount
+    await new Promise((r) => setTimeout(r, 50));
+
+    const canvas = previewCanvasRef.current;
+    if (!canvas) {
+      setPreviewError('Preview canvas not available');
+      setPreviewLoading(false);
+      return;
+    }
+
+    // Dispose previous scene
+    previewSceneRef.current?.dispose();
+    previewSceneRef.current = null;
+
+    try {
+      const scene = new AvatarScene(canvas);
+      previewSceneRef.current = scene;
+
+      const avatarUrl = `avatar://${filename}`;
+      await scene.loadVRM(avatarUrl);
+      scene.start();
+
+      // Force a resize to match the canvas container
+      scene.resize(canvas.clientWidth, canvas.clientHeight);
+
+      setPreviewSuccess(true);
+    } catch (e) {
+      setPreviewError(
+        `Failed to load VRM: ${e instanceof Error ? e.message : String(e)}`,
+      );
+      // Clean up the broken scene
+      previewSceneRef.current?.dispose();
+      previewSceneRef.current = null;
+    }
+    setPreviewLoading(false);
+  }, []);
+
+  const handleClosePreview = useCallback(() => {
+    previewSceneRef.current?.dispose();
+    previewSceneRef.current = null;
+    setPreviewAvatar(null);
+    setPreviewLoading(false);
+    setPreviewError(null);
+    setPreviewSuccess(false);
+  }, []);
+
+  const handleDelete = async (filename: string) => {
+    setError(null);
+    setStatus(null);
+    try {
+      await window.aris.invoke('avatar:delete', filename);
+      setStatus(`Deleted ${filename}`);
+      // If we were previewing this avatar, close the preview
+      if (previewAvatar === filename) {
+        handleClosePreview();
+      }
+      await loadAvatars();
+    } catch (e) {
+      setError(`Delete failed: ${e instanceof Error ? e.message : e}`);
+    }
+  };
 
   const loadAvatars = useCallback(async () => {
     setLoading(true);
@@ -137,6 +222,37 @@ export function AvatarSettings() {
     );
   }
 
+  const previewPanel = previewAvatar && (
+    <div style={previewContainerStyle}>
+      <div style={previewHeaderStyle}>
+        <span style={{ fontSize: '0.85rem', fontWeight: 600 }}>
+          Preview: {avatars.find((a) => a.filename === previewAvatar)?.name ?? previewAvatar}
+        </span>
+        <button onClick={handleClosePreview} style={closeBtnStyle}>Close</button>
+      </div>
+      <div style={previewCanvasWrapStyle}>
+        <canvas ref={previewCanvasRef} style={previewCanvasStyle} />
+        {previewLoading && (
+          <div style={previewOverlayStyle}>
+            <span style={{ color: '#888', fontSize: '0.8rem' }}>Loading model...</span>
+          </div>
+        )}
+        {previewError && (
+          <div style={previewOverlayStyle}>
+            <span style={{ color: '#f87171', fontSize: '0.8rem', textAlign: 'center', padding: '0.5rem' }}>
+              {previewError}
+            </span>
+          </div>
+        )}
+        {previewSuccess && !previewLoading && (
+          <div style={previewBadgeStyle}>
+            <span style={{ color: '#4ade80', fontSize: '0.75rem', fontWeight: 600 }}>Model OK</span>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+
   return (
     <div style={sectionStyle}>
       <h3 style={headingStyle}>Avatars</h3>
@@ -148,6 +264,8 @@ export function AvatarSettings() {
         <button onClick={handleOpenFolder} style={secondaryBtnStyle}>Open Folder</button>
       </div>
       {feedback}
+
+      {previewPanel}
 
       {currentDefault && (
         <div style={currentStyle}>
@@ -162,17 +280,34 @@ export function AvatarSettings() {
               <span style={avatarNameStyle}>{avatar.name}</span>
               <span style={hintStyle}>{avatar.filename}</span>
             </div>
-            {avatar.isDefault ? (
-              <span style={activeBadgeStyle}>Active</span>
-            ) : (
+            <div style={avatarActionsStyle}>
               <button
-                onClick={() => handleSetDefault(avatar.filename)}
-                disabled={saving}
-                style={selectBtnStyle}
+                onClick={() => handlePreview(avatar.filename)}
+                style={previewBtnStyle}
+                disabled={previewLoading}
               >
-                {saving ? '...' : 'Set Default'}
+                Preview
               </button>
-            )}
+              {avatar.isDefault ? (
+                <span style={activeBadgeStyle}>Active</span>
+              ) : (
+                <>
+                  <button
+                    onClick={() => handleSetDefault(avatar.filename)}
+                    disabled={saving}
+                    style={selectBtnStyle}
+                  >
+                    {saving ? '...' : 'Set Default'}
+                  </button>
+                  <button
+                    onClick={() => handleDelete(avatar.filename)}
+                    style={deleteBtnStyle}
+                  >
+                    Delete
+                  </button>
+                </>
+              )}
+            </div>
           </div>
         ))}
       </div>
@@ -290,4 +425,90 @@ const secondaryBtnStyle: React.CSSProperties = {
   padding: '0.4rem 0.8rem',
   cursor: 'pointer',
   fontSize: '0.8rem',
+};
+
+const avatarActionsStyle: React.CSSProperties = {
+  display: 'flex',
+  gap: '0.35rem',
+  alignItems: 'center',
+};
+
+const previewBtnStyle: React.CSSProperties = {
+  background: '#1e3a5f',
+  color: '#93c5fd',
+  border: '1px solid #2563eb',
+  borderRadius: '4px',
+  padding: '0.25rem 0.5rem',
+  cursor: 'pointer',
+  fontSize: '0.75rem',
+  fontWeight: 500,
+};
+
+const deleteBtnStyle: React.CSSProperties = {
+  background: '#3b1111',
+  color: '#f87171',
+  border: '1px solid #7f1d1d',
+  borderRadius: '4px',
+  padding: '0.25rem 0.5rem',
+  cursor: 'pointer',
+  fontSize: '0.75rem',
+  fontWeight: 500,
+};
+
+const previewContainerStyle: React.CSSProperties = {
+  marginTop: '0.75rem',
+  border: '1px solid #333',
+  borderRadius: '8px',
+  overflow: 'hidden',
+  background: '#111',
+};
+
+const previewHeaderStyle: React.CSSProperties = {
+  display: 'flex',
+  justifyContent: 'space-between',
+  alignItems: 'center',
+  padding: '0.4rem 0.6rem',
+  background: '#1a1a1a',
+  borderBottom: '1px solid #333',
+};
+
+const closeBtnStyle: React.CSSProperties = {
+  background: '#333',
+  color: '#eee',
+  border: '1px solid #555',
+  borderRadius: '4px',
+  padding: '0.15rem 0.5rem',
+  cursor: 'pointer',
+  fontSize: '0.75rem',
+};
+
+const previewCanvasWrapStyle: React.CSSProperties = {
+  position: 'relative',
+  width: '100%',
+  height: 220,
+  background: '#0a0a0a',
+};
+
+const previewCanvasStyle: React.CSSProperties = {
+  width: '100%',
+  height: '100%',
+  display: 'block',
+};
+
+const previewOverlayStyle: React.CSSProperties = {
+  position: 'absolute',
+  inset: 0,
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  background: 'rgba(10, 10, 10, 0.85)',
+};
+
+const previewBadgeStyle: React.CSSProperties = {
+  position: 'absolute',
+  bottom: 8,
+  right: 8,
+  background: 'rgba(20, 83, 45, 0.85)',
+  padding: '0.15rem 0.5rem',
+  borderRadius: '4px',
 };
