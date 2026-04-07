@@ -1,7 +1,7 @@
 import { ipcMain, app, dialog, shell, BrowserWindow } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs';
-import type { AvatarInfo, VirtualSpaceConfig } from '@aris/shared';
+import type { AvatarInfo, AvatarMetadata, VirtualSpaceConfig } from '@aris/shared';
 import { DEFAULT_VIRTUAL_SPACE_CONFIG } from '@aris/shared';
 import { getSetting, setSetting } from './settings-store';
 
@@ -45,6 +45,39 @@ function safeAvatarPath(dir: string, filename: string): string {
   return resolved;
 }
 
+function getMetaPath(dir: string, vrmFilename: string): string {
+  return path.join(dir, vrmFilename.replace(/\.vrm$/i, '.meta.json'));
+}
+
+function readMetadata(dir: string, vrmFilename: string): AvatarMetadata | undefined {
+  const metaPath = getMetaPath(dir, vrmFilename);
+  if (!fs.existsSync(metaPath)) return undefined;
+  try {
+    return JSON.parse(fs.readFileSync(metaPath, 'utf-8')) as AvatarMetadata;
+  } catch {
+    return undefined;
+  }
+}
+
+function writeMetadata(dir: string, vrmFilename: string, meta: AvatarMetadata): void {
+  const metaPath = getMetaPath(dir, vrmFilename);
+  fs.writeFileSync(metaPath, JSON.stringify(meta, null, 2), 'utf-8');
+}
+
+function ensureMetadata(dir: string, vrmFilename: string, importedAt?: string): AvatarMetadata {
+  const existing = readMetadata(dir, vrmFilename);
+  if (existing) return existing;
+  const meta: AvatarMetadata = {
+    isHumanoid: null,
+    humanoidOverride: null,
+    hasExpressions: null,
+    hasLipSync: null,
+    importedAt: importedAt ?? new Date().toISOString(),
+  };
+  writeMetadata(dir, vrmFilename, meta);
+  return meta;
+}
+
 function listAvatarFiles(): AvatarInfo[] {
   const dir = ensureAvatarDirectory();
 
@@ -56,6 +89,7 @@ function listAvatarFiles(): AvatarInfo[] {
       filename,
       name: path.basename(filename, path.extname(filename)),
       isDefault: filename === defaultAvatar,
+      metadata: readMetadata(dir, filename),
     }));
 }
 
@@ -79,6 +113,7 @@ function seedDefaultAvatar(): void {
 
   const dest = path.join(dir, DEFAULT_VRM_FILENAME);
   fs.copyFileSync(bundledPath, dest);
+  ensureMetadata(dir, DEFAULT_VRM_FILENAME);
 
   // Set as default if none is configured yet
   if (!getSetting(DEFAULT_AVATAR_KEY)) {
@@ -140,6 +175,9 @@ export function registerAvatarHandlers(): void {
       throw new Error(`Avatar file not found: ${filename}`);
     }
     fs.unlinkSync(fullPath);
+    // Clean up associated metadata file if present
+    const metaPath = getMetaPath(dir, filename);
+    if (fs.existsSync(metaPath)) fs.unlinkSync(metaPath);
     // If this was the default, clear the default setting
     const currentDefault = getSetting(DEFAULT_AVATAR_KEY);
     if (currentDefault === filename) {
@@ -196,12 +234,32 @@ export function registerAvatarHandlers(): void {
 
     const dir = ensureAvatarDirectory();
     const imported: string[] = [];
+    const importedAt = new Date().toISOString();
     for (const src of result.filePaths) {
       const filename = path.basename(src);
       const dest = path.join(dir, filename);
       fs.copyFileSync(src, dest);
+      ensureMetadata(dir, filename, importedAt);
       imported.push(filename);
     }
     return imported;
+  });
+
+  ipcMain.handle('avatar:update-metadata', async (_event, filename: string, partial: Partial<Pick<AvatarMetadata, 'isHumanoid' | 'hasExpressions' | 'hasLipSync'>>) => {
+    const dir = ensureAvatarDirectory();
+    safeAvatarPath(dir, filename); // validate filename
+    const current = ensureMetadata(dir, filename);
+    const updated: AvatarMetadata = { ...current, ...partial };
+    writeMetadata(dir, filename, updated);
+    return updated;
+  });
+
+  ipcMain.handle('avatar:set-humanoid-override', async (_event, filename: string, override: boolean | null) => {
+    const dir = ensureAvatarDirectory();
+    safeAvatarPath(dir, filename); // validate filename
+    const current = ensureMetadata(dir, filename);
+    const updated: AvatarMetadata = { ...current, humanoidOverride: override };
+    writeMetadata(dir, filename, updated);
+    return updated;
   });
 }

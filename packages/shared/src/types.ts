@@ -191,11 +191,26 @@ export interface VoiceStatus {
   error?: string;
 }
 
+/** Persisted metadata for an avatar VRM file */
+export interface AvatarMetadata {
+  /** Auto-detected from VRM humanoid bone mapping; null = not yet detected */
+  isHumanoid: boolean | null;
+  /** User override for humanoid classification; null = no override */
+  humanoidOverride: boolean | null;
+  /** Whether the VRM has VRM expression/blend-shape data; null = not yet detected */
+  hasExpressions: boolean | null;
+  /** Whether the VRM has lip-sync blend shapes; null = not yet detected */
+  hasLipSync: boolean | null;
+  /** ISO timestamp of when the file was first imported */
+  importedAt: string;
+}
+
 /** Available avatar model */
 export interface AvatarInfo {
   filename: string;
   name: string;
   isDefault: boolean;
+  metadata?: AvatarMetadata;
 }
 
 /** Companion persona union types */
@@ -516,6 +531,8 @@ export type IpcChannel =
   | 'avatar:set-space-config'
   | 'avatar:set-camera-mode'
   | 'avatar:get-camera-mode'
+  | 'avatar:update-metadata'
+  | 'avatar:set-humanoid-override'
   | 'companion:get-config'
   | 'companion:set-config'
   | 'password:get-config'
