@@ -47,6 +47,11 @@ export class IdleAnimation {
     bodyIntensity: 1,
   };
 
+  // 2B: Weight shift state
+  private weightShiftTimer = 8;
+  private weightShiftTarget = 0;   // -1 = left, 0 = center, +1 = right
+  private weightShiftCurrent = 0;  // smoothly interpolated
+
   setVRM(vrm: VRM): void {
     this.vrm = vrm;
     // Capture rest-pose transforms for every bone any controller may touch
@@ -98,6 +103,9 @@ export class IdleAnimation {
       neck.rotation.z += Math.sin(this.time * 0.5) * 0.01 * this.config.swayIntensity;
     }
 
+    // 2B: Update weight shift state each frame
+    this.updateWeightShift(delta);
+
     // Body-level idle motions (scaled by bodyIntensity)
     this.updateBody();
 
@@ -105,46 +113,116 @@ export class IdleAnimation {
     this.updateBlink(delta);
   }
 
+  /** 2B: Periodic weight shift — smoothly interpolates toward a left/center/right target. */
+  private updateWeightShift(delta: number): void {
+    this.weightShiftTimer -= delta;
+    if (this.weightShiftTimer <= 0) {
+      // Alternate: shifted → center → shifted (opposite side)
+      if (this.weightShiftTarget === 0) {
+        this.weightShiftTarget = Math.random() > 0.5 ? 1 : -1;
+      } else {
+        this.weightShiftTarget = 0;
+      }
+      this.weightShiftTimer = 8 + Math.random() * 7; // 8-15 s
+    }
+    // Exponential-decay lerp — reaches ~95% of target in ~1.5 s
+    const factor = Math.min(2.0 * delta, 1.0);
+    this.weightShiftCurrent += (this.weightShiftTarget - this.weightShiftCurrent) * factor;
+  }
+
   private updateBody(): void {
     if (!this.vrm) return;
     const bi = this.config.bodyIntensity;
     if (bi <= 0) return;
 
-    // Weight shift — gentle lateral hip sway
+    const t = this.time;
+    const ws = this.weightShiftCurrent;
+
+    // 2A: Hip sway — composite curve (distinct frequencies, no single-sine pattern)
     const hips = this.vrm.humanoid?.getNormalizedBoneNode('hips');
     if (hips) {
-      hips.rotation.z += Math.sin(this.time * 0.2) * 0.015 * bi;
-      hips.position.x += Math.sin(this.time * 0.2) * 0.002 * bi;
+      const hipRot =
+        Math.sin(t * 0.18) * 0.012 +
+        Math.sin(t * 0.43) * 0.005 +
+        Math.sin(t * 0.07) * 0.008 +
+        Math.sin(t * 2.1)  * 0.001; // micro muscle tension
+      hips.rotation.z += hipRot * bi;
+      hips.position.x += (Math.sin(t * 0.18) * 0.0015 + Math.sin(t * 0.43) * 0.0006) * bi;
+      // 2B: Weight shift overlaid on hips
+      hips.rotation.z += ws * 0.020 * bi;
+      hips.position.x += ws * 0.003 * bi;
     }
 
-    // Torso rock — breathing-linked forward/back sway
+    // 2A: Torso rock — breathing-linked, distinct from hip frequencies
     const spine = this.vrm.humanoid?.getNormalizedBoneNode('spine');
     if (spine) {
-      spine.rotation.x += Math.sin(this.time * 1.5) * 0.008 * bi;
+      spine.rotation.x +=
+        (Math.sin(t * 0.20) * 0.006 +
+         Math.sin(t * 0.51) * 0.003 +
+         Math.sin(t * 0.09) * 0.005 +
+         Math.sin(t * 1.8)  * 0.001) * bi;
+      // 2B: Spine counters weight shift for balance
+      spine.rotation.z -= ws * 0.010 * bi;
     }
     const chest = this.vrm.humanoid?.getNormalizedBoneNode('chest');
     if (chest) {
-      chest.rotation.x += Math.sin(this.time * 1.5 + 0.5) * 0.005 * bi;
+      chest.rotation.x +=
+        (Math.sin(t * 0.22 + 0.5) * 0.004 +
+         Math.sin(t * 0.55 + 0.3) * 0.002 +
+         Math.sin(t * 0.11)       * 0.004 +
+         Math.sin(t * 1.9)        * 0.001) * bi;
     }
 
-    // Arm drift — natural arm hang movement (different phase per arm)
+    // 2C: Arm swing counter to hip sway + composite drift
+    // Primary hip sway component drives the counter-swing direction
+    const hipSwaySign = Math.sin(t * 0.18);
     const leftArm = this.vrm.humanoid?.getNormalizedBoneNode('leftUpperArm');
     const rightArm = this.vrm.humanoid?.getNormalizedBoneNode('rightUpperArm');
     if (leftArm) {
-      leftArm.rotation.z += Math.sin(this.time * 0.25 + 1.0) * 0.01 * bi;
+      leftArm.rotation.z +=
+        (Math.sin(t * 0.25 + 1.0) * 0.014 +
+         Math.sin(t * 0.63 + 0.5) * 0.006 +
+         Math.sin(t * 0.11 + 0.2) * 0.005 -
+         hipSwaySign               * 0.009) * bi; // counter hip sway
     }
     if (rightArm) {
-      rightArm.rotation.z += Math.sin(this.time * 0.25 + 2.0) * -0.01 * bi;
+      rightArm.rotation.z +=
+        (Math.sin(t * 0.25 + 2.0) * -0.014 +
+         Math.sin(t * 0.63 + 1.5) * -0.006 +
+         Math.sin(t * 0.11 + 1.2) * -0.005 +
+         hipSwaySign                *  0.009) * bi; // counter hip sway (opposite side)
     }
 
-    // Shoulder settle — micro-adjustments, opposing phase
+    // 2C: Forearm subtle rotation variety
+    const leftForearm = this.vrm.humanoid?.getNormalizedBoneNode('leftLowerArm');
+    const rightForearm = this.vrm.humanoid?.getNormalizedBoneNode('rightLowerArm');
+    if (leftForearm) {
+      leftForearm.rotation.z +=
+        (Math.sin(t * 0.31 + 0.7) * 0.007 +
+         Math.sin(t * 0.77 + 0.3) * 0.003) * bi;
+    }
+    if (rightForearm) {
+      rightForearm.rotation.z +=
+        (Math.sin(t * 0.31 + 1.8) * -0.007 +
+         Math.sin(t * 0.77 + 1.4) * -0.003) * bi;
+    }
+
+    // 2A: Shoulder settle — micro-adjustments, opposing phase
     const leftShoulder = this.vrm.humanoid?.getNormalizedBoneNode('leftShoulder');
     const rightShoulder = this.vrm.humanoid?.getNormalizedBoneNode('rightShoulder');
     if (leftShoulder) {
-      leftShoulder.rotation.y += Math.sin(this.time * 0.15) * 0.008 * bi;
+      leftShoulder.rotation.y +=
+        (Math.sin(t * 0.15)       * 0.006 +
+         Math.sin(t * 0.37)       * 0.003 +
+         Math.sin(t * 0.06)       * 0.004 +
+         Math.sin(t * 2.5)        * 0.001) * bi;
     }
     if (rightShoulder) {
-      rightShoulder.rotation.y += Math.sin(this.time * 0.15 + Math.PI) * 0.008 * bi;
+      rightShoulder.rotation.y +=
+        (Math.sin(t * 0.15 + Math.PI) * 0.006 +
+         Math.sin(t * 0.37 + Math.PI) * 0.003 +
+         Math.sin(t * 0.06 + Math.PI) * 0.004 +
+         Math.sin(t * 2.5  + Math.PI) * 0.001) * bi;
     }
   }
 
