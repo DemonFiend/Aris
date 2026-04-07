@@ -84,6 +84,7 @@ export function AvatarDisplay({ lastAssistantMessage, streaming }: Props) {
           });
 
           scene.onFrame((delta: number) => {
+            idle.resetBones();
             idle.update(delta);
             variations.update(delta);
             expr.update(delta);
