@@ -92,23 +92,26 @@ export function ChatPanel({ conversationId, onConversationCreated, onAssistantMe
         lastHandledGen = gen;
 
         const finalContent = streamBufferRef.current;
-        if (finalContent) {
-          setMessages((prev) => {
-            const updated = [...prev];
-            const last = updated[updated.length - 1];
-            if (last?.role === 'assistant') {
-              updated[updated.length - 1] = { ...last, content: finalContent };
-            }
-            return updated;
-          });
-        }
         streamBufferRef.current = '';
         setStreaming(false);
         const convId = activeConvRef.current;
         if (convId && finalContent) {
           savedRef.current = true;
-          window.aris.invoke('messages:add', convId, 'assistant', finalContent);
           onAssistantMessage?.(finalContent);
+          // Save then reload from DB — this is the single source of truth
+          // and makes the state immune to any React batching edge-cases.
+          window.aris.invoke('messages:add', convId, 'assistant', finalContent)
+            .then(() => window.aris.invoke('messages:list', convId) as Promise<StoredMessage[]>)
+            .then((stored) => {
+              // Only reload if still on the same conversation and no new stream started
+              if (activeConvRef.current === convId && streamGenRef.current === gen) {
+                setMessages(
+                  (stored ?? [])
+                    .filter((m: StoredMessage) => m.role !== 'system')
+                    .map((m: StoredMessage) => ({ role: m.role as 'user' | 'assistant', content: m.content })),
+                );
+              }
+            });
         }
       }
     });
