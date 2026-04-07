@@ -153,7 +153,11 @@ function initProviderFromConfig(config: ProviderConfig): void {
 export function initProviders(): void {
   const configs = loadProviderConfigs();
   for (const config of configs) {
-    initProviderFromConfig(config);
+    try {
+      initProviderFromConfig(config);
+    } catch (err) {
+      console.warn(`[initProviders] Skipping provider "${config.id}": ${err instanceof Error ? err.message : err}`);
+    }
   }
 }
 
