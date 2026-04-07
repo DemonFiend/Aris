@@ -15,7 +15,6 @@ export function VoiceControls({ onTranscript }: Props) {
   const recognitionRef = useRef<any>(null);
   const synthRef = useRef(globalThis.speechSynthesis);
 
-  // Load voice config
   useEffect(() => {
     (async () => {
       const cfg = (await window.aris.invoke('voice:get-config')) as VoiceConfig;
@@ -23,7 +22,6 @@ export function VoiceControls({ onTranscript }: Props) {
     })();
   }, []);
 
-  // Listen for voice commands from main process (push-to-talk, etc.)
   useEffect(() => {
     const cleanup = window.aris.on('voice:command', (command: unknown, ...args: unknown[]) => {
       switch (command) {
@@ -90,7 +88,6 @@ export function VoiceControls({ onTranscript }: Props) {
     };
 
     rec.onend = () => {
-      // Auto-restart if still supposed to be listening
       if (recognitionRef.current === rec) {
         try {
           rec.start();
@@ -146,18 +143,32 @@ export function VoiceControls({ onTranscript }: Props) {
       <button
         onClick={toggleListening}
         style={{
-          ...micBtnStyle,
+          ...voiceBtnStyle,
           background: listening ? 'var(--color-error)' : 'var(--bg-elevated)',
           borderColor: listening ? 'var(--color-error)' : 'var(--border-default)',
+          color: listening ? '#fff' : 'var(--text-secondary)',
+          boxShadow: listening ? '0 0 10px rgba(255,83,112,0.4)' : 'none',
         }}
-        title={listening ? 'Stop listening' : 'Start voice input'}
+        title={listening ? 'Stop listening' : 'Listen to my Voice'}
       >
-        {listening ? '⏹' : '🎤'}
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
+          <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+          <line x1="12" y1="19" x2="12" y2="23" />
+          <line x1="8" y1="23" x2="16" y2="23" />
+        </svg>
+        <span style={{ fontSize: 'var(--text-xs)' }}>
+          {listening ? 'Listening...' : 'Voice'}
+        </span>
       </button>
 
       {speaking && (
         <button onClick={stopSpeaking} style={speakBtnStyle} title="Stop speaking">
-          🔇
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5" />
+            <line x1="23" y1="9" x2="17" y2="15" />
+            <line x1="17" y1="9" x2="23" y2="15" />
+          </svg>
         </button>
       )}
 
@@ -166,8 +177,6 @@ export function VoiceControls({ onTranscript }: Props) {
       )}
 
       {error && <span style={errorStyle}>{error}</span>}
-
-      {speaking && <span style={statusStyle}>Speaking...</span>}
     </div>
   );
 }
@@ -176,31 +185,35 @@ const containerStyle: React.CSSProperties = {
   display: 'flex',
   alignItems: 'center',
   gap: 'var(--space-1)',
+  flexShrink: 0,
 };
 
-const micBtnStyle: React.CSSProperties = {
+const voiceBtnStyle: React.CSSProperties = {
   border: '1px solid var(--border-default)',
-  color: 'var(--text-primary)',
-  borderRadius: 'var(--radius-lg)',
+  borderRadius: 'var(--radius-2xl)',
   padding: 'var(--space-1) var(--space-2)',
   cursor: 'pointer',
-  fontSize: 'var(--text-base)',
+  display: 'flex',
+  alignItems: 'center',
+  gap: 'var(--space-1)',
+  transition: 'all 200ms ease',
   lineHeight: 1,
   flexShrink: 0,
-  transition: 'var(--transition-fast)',
 };
 
 const speakBtnStyle: React.CSSProperties = {
   background: 'var(--bg-elevated)',
   border: '1px solid var(--border-default)',
   color: 'var(--text-primary)',
-  borderRadius: 'var(--radius-lg)',
-  padding: 'var(--space-1) var(--space-2)',
+  borderRadius: 'var(--radius-full)',
+  width: 28,
+  height: 28,
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
   cursor: 'pointer',
-  fontSize: 'var(--text-base)',
-  lineHeight: 1,
-  flexShrink: 0,
   transition: 'var(--transition-fast)',
+  flexShrink: 0,
 };
 
 const interimStyle: React.CSSProperties = {
@@ -210,15 +223,10 @@ const interimStyle: React.CSSProperties = {
   overflow: 'hidden',
   textOverflow: 'ellipsis',
   whiteSpace: 'nowrap',
-  maxWidth: '200px',
+  maxWidth: '120px',
 };
 
 const errorStyle: React.CSSProperties = {
   fontSize: 'var(--text-xs)',
   color: 'var(--color-error)',
-};
-
-const statusStyle: React.CSSProperties = {
-  fontSize: 'var(--text-xs)',
-  color: 'var(--color-info)',
 };

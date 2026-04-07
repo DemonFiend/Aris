@@ -17,6 +17,8 @@ export function ChatPanel({ conversationId, onConversationCreated, onAssistantMe
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [streaming, setStreaming] = useState(false);
+  const [historyExpanded, setHistoryExpanded] = useState(false);
+  const [inputFocused, setInputFocused] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const streamBufferRef = useRef('');
@@ -29,6 +31,13 @@ export function ChatPanel({ conversationId, onConversationCreated, onAssistantMe
   useEffect(() => {
     scrollToBottom();
   }, [messages, scrollToBottom]);
+
+  // Auto-expand history when messages arrive
+  useEffect(() => {
+    if (messages.length > 0 && streaming) {
+      setHistoryExpanded(true);
+    }
+  }, [messages.length, streaming]);
 
   // Load messages when conversation changes
   useEffect(() => {
@@ -65,7 +74,6 @@ export function ChatPanel({ conversationId, onConversationCreated, onAssistantMe
       }
       if (done) {
         setStreaming(false);
-        // Persist the completed assistant message
         const finalContent = streamBufferRef.current;
         const convId = activeConvRef.current;
         if (convId && finalContent) {
@@ -88,9 +96,9 @@ export function ChatPanel({ conversationId, onConversationCreated, onAssistantMe
     setInput('');
     setMessages((prev) => [...prev, userMsg, assistantMsg]);
     setStreaming(true);
+    setHistoryExpanded(true);
     streamBufferRef.current = '';
 
-    // Create conversation if none active
     let convId = activeConvRef.current;
     if (!convId) {
       const title = text.length > 50 ? text.slice(0, 50) + '...' : text;
@@ -106,7 +114,6 @@ export function ChatPanel({ conversationId, onConversationCreated, onAssistantMe
       onConversationCreated(convId);
     }
 
-    // Persist user message
     await window.aris.invoke('messages:add', convId, 'user', text);
 
     try {
@@ -151,68 +158,156 @@ export function ChatPanel({ conversationId, onConversationCreated, onAssistantMe
 
   return (
     <div style={containerStyle}>
-      <div style={messageListStyle}>
-        {messages.length === 0 && (
-          <div style={emptyStyle}>
-            <p style={{ fontSize: 'var(--text-xl)', margin: '0 0 var(--space-2)', color: 'var(--text-primary)' }}>Hey! I'm Aris.</p>
-            <p style={{ color: 'var(--text-muted)', margin: 0 }}>Your AI gaming companion. Ask me anything.</p>
-          </div>
-        )}
+      {/* ── Collapsible Message History Toggle ─── */}
+      <button
+        onClick={() => setHistoryExpanded(!historyExpanded)}
+        style={historyToggleStyle}
+      >
+        <span style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+          <svg
+            width="12" height="12" viewBox="0 0 24 24" fill="none"
+            stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
+            style={{
+              transform: historyExpanded ? 'rotate(180deg)' : 'rotate(0deg)',
+              transition: 'var(--transition-normal)',
+            }}
+          >
+            <polyline points="18 15 12 9 6 15" />
+          </svg>
+          Messages
+          {messages.length > 0 && (
+            <span style={badgeStyle}>{messages.length}</span>
+          )}
+        </span>
+        <span style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)' }}>
+          {historyExpanded ? 'Collapse' : 'Expand'}
+        </span>
+      </button>
 
-        {messages.map((msg, i) => (
-          <div key={i} style={msg.role === 'user' ? userBubbleWrap : assistantBubbleWrap}>
-            <div style={msg.role === 'user' ? userBubble : assistantBubble}>
-              {msg.content || (streaming && i === messages.length - 1 ? thinkingDot : '')}
+      {/* ── Message History Area ─────────────── */}
+      <div
+        style={{
+          ...historyPanelStyle,
+          maxHeight: historyExpanded ? '40vh' : '0',
+        }}
+      >
+        <div style={messageListStyle}>
+          {messages.length === 0 && (
+            <div style={emptyStyle}>
+              <p style={{ fontSize: 'var(--text-lg)', margin: '0 0 var(--space-1)', color: 'var(--text-primary)' }}>
+                Hey! I'm Aris.
+              </p>
+              <p style={{ color: 'var(--text-muted)', margin: 0, fontSize: 'var(--text-sm)' }}>
+                Your AI gaming companion. Ask me anything.
+              </p>
             </div>
-          </div>
-        ))}
-        <div ref={bottomRef} />
+          )}
+
+          {messages.map((msg, i) => (
+            <div key={i} style={msg.role === 'user' ? userBubbleWrap : assistantBubbleWrap}>
+              <div style={msg.role === 'user' ? userBubble : assistantBubble}>
+                {msg.content || (streaming && i === messages.length - 1 ? '\u2026' : '')}
+              </div>
+            </div>
+          ))}
+          <div ref={bottomRef} />
+        </div>
       </div>
 
-      <div style={inputAreaStyle}>
+      {/* ── Input Bar ────────────────────────── */}
+      <div style={inputBarStyle}>
         <VoiceControls onTranscript={handleVoiceTranscript} />
-        <textarea
-          ref={inputRef}
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyDown={handleKeyDown}
-          placeholder={streaming ? 'Aris is thinking...' : 'Message Aris...'}
-          disabled={streaming}
-          rows={1}
-          style={textareaStyle}
-        />
-        <button onClick={sendMessage} disabled={streaming || !input.trim()} style={sendBtnStyle}>
-          Send
+        <div style={{
+          ...inputWrapperStyle,
+          borderColor: inputFocused ? 'var(--border-strong)' : 'var(--border-default)',
+          boxShadow: inputFocused ? 'var(--shadow-glow-sm)' : 'none',
+        }}>
+          <textarea
+            ref={inputRef}
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={handleKeyDown}
+            onFocus={() => setInputFocused(true)}
+            onBlur={() => setInputFocused(false)}
+            placeholder={streaming ? 'Aris is thinking...' : 'Message Aris...'}
+            disabled={streaming}
+            rows={1}
+            style={textareaStyle}
+          />
+        </div>
+        <button
+          onClick={sendMessage}
+          disabled={streaming || !input.trim()}
+          style={{
+            ...sendBtnStyle,
+            opacity: streaming || !input.trim() ? 0.4 : 1,
+          }}
+        >
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <line x1="22" y1="2" x2="11" y2="13" />
+            <polygon points="22 2 15 22 11 13 2 9 22 2" />
+          </svg>
         </button>
       </div>
     </div>
   );
 }
 
-const thinkingDot = '\u2026';
+/* ── Styles ─────────────────────────────────────────── */
 
 const containerStyle: React.CSSProperties = {
   display: 'flex',
   flexDirection: 'column',
-  flex: 1,
-  minWidth: 0,
+  flexShrink: 0,
+};
+
+const historyToggleStyle: React.CSSProperties = {
+  width: '100%',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+  padding: 'var(--space-2) var(--space-4)',
+  background: 'var(--bg-surface)',
+  border: 'none',
+  borderTop: '1px solid var(--border-subtle)',
+  color: 'var(--text-secondary)',
+  fontSize: 'var(--text-sm)',
+  fontWeight: 'var(--font-medium)' as any,
+  cursor: 'pointer',
+  transition: 'var(--transition-fast)',
+};
+
+const badgeStyle: React.CSSProperties = {
+  background: 'var(--color-primary-subtle)',
+  color: 'var(--text-accent)',
+  fontSize: '0.65rem',
+  fontWeight: 'var(--font-bold)' as any,
+  borderRadius: 'var(--radius-full)',
+  padding: '1px 6px',
+  lineHeight: 1.4,
+};
+
+const historyPanelStyle: React.CSSProperties = {
+  overflow: 'hidden',
+  transition: 'max-height 300ms ease',
+  background: 'var(--bg-base)',
 };
 
 const messageListStyle: React.CSSProperties = {
-  flex: 1,
   overflowY: 'auto',
-  padding: 'var(--space-4)',
+  maxHeight: '40vh',
+  padding: 'var(--space-3) var(--space-4)',
   display: 'flex',
   flexDirection: 'column',
   gap: 'var(--space-2)',
 };
 
 const emptyStyle: React.CSSProperties = {
-  flex: 1,
   display: 'flex',
   flexDirection: 'column',
   alignItems: 'center',
   justifyContent: 'center',
+  padding: 'var(--space-4) 0',
   color: 'var(--text-secondary)',
 };
 
@@ -227,10 +322,9 @@ const assistantBubbleWrap: React.CSSProperties = {
 };
 
 const bubbleBase: React.CSSProperties = {
-  maxWidth: '80%',
   padding: 'var(--space-2) var(--space-3)',
   borderRadius: 'var(--radius-xl)',
-  fontSize: 'var(--text-base)',
+  fontSize: 'var(--text-sm)',
   lineHeight: 'var(--leading-relaxed)',
   whiteSpace: 'pre-wrap',
   wordBreak: 'break-word',
@@ -253,35 +347,51 @@ const assistantBubble: React.CSSProperties = {
   maxWidth: '85%',
 };
 
-const inputAreaStyle: React.CSSProperties = {
+const inputBarStyle: React.CSSProperties = {
   display: 'flex',
+  alignItems: 'center',
   gap: 'var(--space-2)',
   padding: 'var(--space-3) var(--space-4)',
-  borderTop: '1px solid var(--border-subtle)',
   background: 'var(--bg-base)',
+  borderTop: '1px solid var(--border-subtle)',
+};
+
+const inputWrapperStyle: React.CSSProperties = {
+  flex: 1,
+  display: 'flex',
+  alignItems: 'center',
+  background: 'var(--bg-surface)',
+  border: '1px solid var(--border-default)',
+  borderRadius: 'var(--radius-2xl)',
+  padding: '0 var(--space-3)',
+  transition: 'border-color 200ms ease, box-shadow 200ms ease',
 };
 
 const textareaStyle: React.CSSProperties = {
   flex: 1,
   resize: 'none',
-  background: 'var(--bg-surface)',
+  background: 'transparent',
   color: 'var(--text-primary)',
-  border: '1px solid var(--border-default)',
-  borderRadius: 'var(--radius-lg)',
-  padding: 'var(--space-2) var(--space-3)',
+  border: 'none',
+  padding: 'var(--space-2) 0',
   fontSize: 'var(--text-base)',
   fontFamily: 'inherit',
   outline: 'none',
+  lineHeight: 'var(--leading-normal)',
 };
 
 const sendBtnStyle: React.CSSProperties = {
   background: 'var(--color-primary)',
   color: 'var(--color-primary-on)',
   border: 'none',
-  borderRadius: 'var(--radius-md)',
-  padding: 'var(--space-2) var(--space-4)',
+  borderRadius: 'var(--radius-full)',
+  width: 38,
+  height: 38,
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
   cursor: 'pointer',
-  fontSize: 'var(--text-sm)',
-  fontWeight: 'var(--font-bold)' as any,
   transition: 'var(--transition-fast)',
+  flexShrink: 0,
+  boxShadow: 'var(--shadow-glow-sm)',
 };
