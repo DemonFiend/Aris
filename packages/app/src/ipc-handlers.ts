@@ -96,14 +96,11 @@ function validateProviderUrl(url: string): void {
   }
 
   const isLocalhost = ['localhost', '127.0.0.1', '::1', '0.0.0.0'].includes(parsed.hostname);
+  const isPrivateNetwork = /^(10\.|172\.(1[6-9]|2\d|3[01])\.|192\.168\.)/.test(parsed.hostname);
 
-  if (!isLocalhost && parsed.protocol !== 'https:') {
+  // Allow HTTP for localhost and private/LAN addresses (local AI runners like LM Studio, Ollama)
+  if (!isLocalhost && !isPrivateNetwork && parsed.protocol !== 'https:') {
     throw new Error('Custom provider URL must use HTTPS');
-  }
-
-  // Block RFC 1918 private ranges
-  if (/^(10\.|172\.(1[6-9]|2\d|3[01])\.|192\.168\.)/.test(parsed.hostname)) {
-    throw new Error('Custom provider URL must not target private network addresses');
   }
 }
 
