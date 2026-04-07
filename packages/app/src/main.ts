@@ -7,6 +7,7 @@ import { registerVoiceHandlers } from './voice-handlers';
 import { registerAvatarHandlers } from './avatar-handlers';
 import { registerCompanionHandlers } from './companion-handlers';
 import { captureEvents } from './capture-service';
+import { getPositionContext } from './position-context';
 import { getDb, closeDb } from './database';
 import { initAutoUpdater } from './auto-updater';
 import { pathToFileURL } from 'url';
@@ -57,6 +58,16 @@ function createWindow(): void {
       mainWindow?.hide();
     }
   });
+
+  // Push position context updates to the renderer on move/resize
+  const emitPositionContext = () => {
+    if (!mainWindow || mainWindow.isDestroyed()) return;
+    mainWindow.webContents.send('window:position-changed', getPositionContext(mainWindow));
+  };
+  mainWindow.on('move', emitPositionContext);
+  mainWindow.on('resize', emitPositionContext);
+  mainWindow.on('enter-full-screen', emitPositionContext);
+  mainWindow.on('leave-full-screen', emitPositionContext);
 
   mainWindow.on('closed', () => {
     mainWindow = null;
@@ -153,6 +164,11 @@ function registerWindowHandlers(): void {
 
   ipcMain.handle('window:get-overlay', async () => {
     return mainWindow?.isAlwaysOnTop() ?? false;
+  });
+
+  ipcMain.handle('window:get-position-context', async () => {
+    if (!mainWindow) return null;
+    return getPositionContext(mainWindow);
   });
 
   ipcMain.handle('window:minimize-to-tray', async () => {

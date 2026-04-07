@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import type { ChatChunk, StoredMessage } from '@aris/shared';
+import type { ChatChunk, StoredMessage, PositionContext } from '@aris/shared';
 import { VoiceControls } from './VoiceControls';
 
 interface Message {
@@ -11,11 +11,12 @@ interface Props {
   conversationId: string | null;
   onConversationCreated: (id: string) => void;
   onAssistantMessage?: (text: string) => void;
+  onStreamingChange?: (streaming: boolean) => void;
   expanded: boolean;
   onToggleExpand: () => void;
 }
 
-export function ChatPanel({ conversationId, onConversationCreated, onAssistantMessage, expanded, onToggleExpand }: Props) {
+export function ChatPanel({ conversationId, onConversationCreated, onAssistantMessage, onStreamingChange, expanded, onToggleExpand }: Props) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [streaming, setStreaming] = useState(false);
@@ -32,6 +33,11 @@ export function ChatPanel({ conversationId, onConversationCreated, onAssistantMe
   useEffect(() => {
     scrollToBottom();
   }, [messages, scrollToBottom]);
+
+  // Notify parent of streaming state changes
+  useEffect(() => {
+    onStreamingChange?.(streaming);
+  }, [streaming, onStreamingChange]);
 
   // Auto-expand history when streaming starts
   useEffect(() => {
@@ -123,9 +129,20 @@ export function ChatPanel({ conversationId, onConversationCreated, onAssistantMe
         content: m.content,
       }));
 
+      // Build system prompt with position context
+      let systemPrompt =
+        'You are Aris, a friendly and knowledgeable AI gaming companion. You help players with tips, strategies, lore, and conversation. Be concise and enthusiastic.';
+      try {
+        const posCtx = (await window.aris.invoke('window:get-position-context')) as PositionContext | null;
+        if (posCtx) {
+          systemPrompt += `\n\n[Position context: You are displayed in a ${posCtx.windowBounds.width}x${posCtx.windowBounds.height} window, docked ${posCtx.dockPosition} on the ${posCtx.screenQuadrant} of the screen${posCtx.overlayMode ? ', in overlay mode on top of other windows' : ''}. You can naturally reference your position when relevant, e.g. "I can see I'm tucked in the corner" or "I'm floating over your game right now".]`;
+        }
+      } catch {
+        // Position context unavailable — continue without it
+      }
+
       await window.aris.invoke('ai:stream-chat', chatMessages, {
-        systemPrompt:
-          'You are Aris, a friendly and knowledgeable AI gaming companion. You help players with tips, strategies, lore, and conversation. Be concise and enthusiastic.',
+        systemPrompt,
       });
     } catch {
       setMessages((prev) => {
