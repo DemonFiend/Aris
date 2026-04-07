@@ -6,6 +6,7 @@ import { CapturePanel } from './CapturePanel';
 import { VoiceSettings } from './VoiceSettings';
 import { SecuritySettings } from './SecuritySettings';
 import { PersonaSettings } from './PersonaSettings';
+import type { ScreenPositionMode, MonitorInfo, ScreenPositionState } from '@aris/shared';
 
 type Tab = 'providers' | 'persona' | 'avatar' | 'voice' | 'capture' | 'security' | 'general' | 'data';
 
@@ -25,19 +26,71 @@ export function SettingsPanel() {
   const [overlayMode, setOverlayMode] = useState(false);
   const [confirmWipe, setConfirmWipe] = useState(false);
   const [exportStatus, setExportStatus] = useState<'idle' | 'done'>('idle');
+  const [screenMode, setScreenMode] = useState<ScreenPositionMode>('disabled');
+  const [monitors, setMonitors] = useState<MonitorInfo[]>([]);
+  const [customPositions, setCustomPositions] = useState<Record<number, number | null>>({});
+  const [liveScreenState, setLiveScreenState] = useState<ScreenPositionState | null>(null);
+  const [pendingMode, setPendingMode] = useState<ScreenPositionMode | null>(null);
 
   const loadState = useCallback(async () => {
     const overlay = (await window.aris.invoke('window:get-overlay')) as boolean;
     setOverlayMode(overlay);
+    try {
+      const state = (await window.aris.invoke('screen:get-position-state')) as ScreenPositionState;
+      setScreenMode(state.mode);
+      setMonitors(state.monitors);
+      setCustomPositions(state.positions);
+      setLiveScreenState(state);
+    } catch {
+      // Screen position backend not yet available (ARI-133)
+    }
   }, []);
 
   useEffect(() => {
     loadState();
   }, [loadState]);
 
+  useEffect(() => {
+    return window.aris.on('screen:position-changed', (state: unknown) => {
+      setLiveScreenState(state as ScreenPositionState);
+    });
+  }, []);
+
   const toggleOverlay = async () => {
     const newState = (await window.aris.invoke('window:toggle-overlay')) as boolean;
     setOverlayMode(newState);
+  };
+
+  const handleScreenModeChange = (mode: ScreenPositionMode) => {
+    if (screenMode === 'disabled' && mode !== 'disabled') {
+      setPendingMode(mode);
+    } else {
+      void applyScreenMode(mode);
+    }
+  };
+
+  const applyScreenMode = async (mode: ScreenPositionMode) => {
+    try {
+      await window.aris.invoke('screen:set-mode', mode);
+      setScreenMode(mode);
+      if (mode === 'custom') {
+        const state = (await window.aris.invoke('screen:get-position-state')) as ScreenPositionState;
+        setMonitors(state.monitors);
+        setCustomPositions(state.positions);
+      }
+    } catch {
+      // ignore
+    }
+    setPendingMode(null);
+  };
+
+  const handleSetCustomPosition = async (monitorIndex: number, cell: number) => {
+    try {
+      await window.aris.invoke('screen:set-custom-position', monitorIndex, cell);
+      setCustomPositions(prev => ({ ...prev, [monitorIndex]: cell }));
+    } catch {
+      // ignore
+    }
   };
 
   const handleExport = async () => {
@@ -149,6 +202,72 @@ export function SettingsPanel() {
                   Minimize
                 </button>
               </SettingRow>
+
+              <div style={dividerStyle} />
+              <h3 style={{ ...sectionHeadingStyle, marginTop: 'var(--space-3)' }}>Screen Position</h3>
+
+              <SettingRow
+                label="Position awareness"
+                description="Let AI know where Aris is positioned on your screen"
+              >
+                <div style={segmentedControlStyle}>
+                  {(['disabled', 'auto', 'custom'] as ScreenPositionMode[]).map((mode) => (
+                    <button
+                      key={mode}
+                      onClick={() => handleScreenModeChange(mode)}
+                      style={{
+                        ...segmentBtnStyle,
+                        ...(screenMode === mode ? segmentBtnActiveStyle : {}),
+                      }}
+                    >
+                      {mode.charAt(0).toUpperCase() + mode.slice(1)}
+                    </button>
+                  ))}
+                </div>
+              </SettingRow>
+
+              {pendingMode !== null && (
+                <div style={warningBannerStyle}>
+                  <p style={{ margin: '0 0 var(--space-2)', fontSize: 'var(--text-sm)', color: 'var(--text-primary)' }}>
+                    Position tracking shares your screen layout information with the AI. This is off by default for privacy.
+                  </p>
+                  <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
+                    <button
+                      onClick={() => void applyScreenMode(pendingMode)}
+                      style={warningConfirmBtnStyle}
+                    >
+                      Enable
+                    </button>
+                    <button onClick={() => setPendingMode(null)} style={secondaryBtnStyle}>
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {screenMode === 'auto' && liveScreenState && liveScreenState.activeMonitorIndex !== null && (
+                <div style={autoIndicatorStyle}>
+                  <span style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)' }}>
+                    Currently on Monitor {liveScreenState.activeMonitorIndex + 1}
+                    {liveScreenState.activeGridCell !== null
+                      ? ` \u2014 ${CELL_LABEL[liveScreenState.activeGridCell]}`
+                      : ''}
+                  </span>
+                </div>
+              )}
+
+              {screenMode === 'custom' && monitors.length > 0 && (
+                <div style={monitorGridsRowStyle}>
+                  {monitors.map((monitor) => (
+                    <MonitorGrid
+                      key={monitor.index}
+                      monitor={monitor}
+                      selectedCell={customPositions[monitor.index] ?? null}
+                      onSelect={(cell) => void handleSetCustomPosition(monitor.index, cell)}
+                    />
+                  ))}
+                </div>
+              )}
             </div>
           </SettingsCard>
         )}
@@ -234,6 +353,43 @@ function ToggleButton({ on, onClick }: { on: boolean; onClick: () => void }) {
         <span style={toggleKnobStyle(on)} />
       </span>
     </button>
+  );
+}
+
+const CELL_LABEL: Record<number, string> = {
+  1: 'top-left', 2: 'top-center', 3: 'top-right',
+  4: 'middle-left', 5: 'center', 6: 'middle-right',
+  7: 'bottom-left', 8: 'bottom-center', 9: 'bottom-right',
+};
+
+function MonitorGrid({
+  monitor,
+  selectedCell,
+  onSelect,
+}: {
+  monitor: MonitorInfo;
+  selectedCell: number | null;
+  onSelect: (cell: number) => void;
+}) {
+  return (
+    <div style={monitorCardStyle}>
+      <div style={monitorCardLabelStyle}>
+        <span>{monitor.label}</span>
+        {monitor.isPrimary && <span style={primaryBadgeStyle}>Primary</span>}
+      </div>
+      <div style={gridContainerStyle}>
+        {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((cell) => (
+          <button
+            key={cell}
+            title={CELL_LABEL[cell]}
+            onClick={() => onSelect(cell)}
+            style={gridCellButtonStyle(selectedCell === cell)}
+          >
+            <span style={gridCellDotStyle(selectedCell === cell)} />
+          </button>
+        ))}
+      </div>
+    </div>
   );
 }
 
@@ -409,5 +565,127 @@ function toggleKnobStyle(on: boolean): React.CSSProperties {
     transition: 'var(--transition-normal)',
     transform: on ? 'translateX(16px)' : 'translateX(0)',
     boxShadow: 'var(--shadow-sm)',
+  };
+}
+
+const segmentedControlStyle: React.CSSProperties = {
+  display: 'flex',
+  background: 'var(--bg-elevated)',
+  border: '1px solid var(--border-default)',
+  borderRadius: 'var(--radius-md)',
+  overflow: 'hidden',
+};
+
+const segmentBtnStyle: React.CSSProperties = {
+  background: 'transparent',
+  border: 'none',
+  borderRight: '1px solid var(--border-subtle)',
+  padding: 'var(--space-1) var(--space-2)',
+  cursor: 'pointer',
+  fontSize: 'var(--text-xs)',
+  fontWeight: 'var(--font-medium)' as React.CSSProperties['fontWeight'],
+  color: 'var(--text-muted)',
+  whiteSpace: 'nowrap',
+  transition: 'var(--transition-fast)',
+};
+
+const segmentBtnActiveStyle: React.CSSProperties = {
+  background: 'var(--color-primary-subtle)',
+  color: 'var(--color-primary)',
+  fontWeight: 'var(--font-semibold)' as React.CSSProperties['fontWeight'],
+};
+
+const warningBannerStyle: React.CSSProperties = {
+  background: 'rgba(255, 180, 0, 0.08)',
+  border: '1px solid rgba(255, 180, 0, 0.3)',
+  borderRadius: 'var(--radius-md)',
+  padding: 'var(--space-3)',
+  marginTop: 'var(--space-2)',
+};
+
+const warningConfirmBtnStyle: React.CSSProperties = {
+  background: 'rgba(255, 180, 0, 0.15)',
+  color: 'var(--text-primary)',
+  border: '1px solid rgba(255, 180, 0, 0.4)',
+  borderRadius: 'var(--radius-md)',
+  padding: 'var(--space-1) var(--space-3)',
+  cursor: 'pointer',
+  fontSize: 'var(--text-sm)',
+  fontWeight: 'var(--font-medium)' as React.CSSProperties['fontWeight'],
+  transition: 'var(--transition-fast)',
+  whiteSpace: 'nowrap',
+};
+
+const autoIndicatorStyle: React.CSSProperties = {
+  background: 'var(--bg-elevated)',
+  border: '1px solid var(--border-subtle)',
+  borderRadius: 'var(--radius-md)',
+  padding: 'var(--space-2) var(--space-3)',
+  marginTop: 'var(--space-2)',
+};
+
+const monitorGridsRowStyle: React.CSSProperties = {
+  display: 'flex',
+  flexWrap: 'wrap',
+  gap: 'var(--space-3)',
+  paddingTop: 'var(--space-2)',
+};
+
+const monitorCardStyle: React.CSSProperties = {
+  background: 'var(--bg-elevated)',
+  border: '1px solid var(--border-default)',
+  borderRadius: 'var(--radius-md)',
+  padding: 'var(--space-2)',
+  minWidth: 96,
+};
+
+const monitorCardLabelStyle: React.CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: 'var(--space-1)',
+  marginBottom: 'var(--space-2)',
+  fontSize: 'var(--text-xs)',
+  fontWeight: 'var(--font-medium)' as React.CSSProperties['fontWeight'],
+  color: 'var(--text-secondary)',
+};
+
+const primaryBadgeStyle: React.CSSProperties = {
+  background: 'var(--color-primary-subtle)',
+  color: 'var(--color-primary)',
+  fontSize: '0.6rem',
+  fontWeight: 'var(--font-bold)' as React.CSSProperties['fontWeight'],
+  borderRadius: 'var(--radius-full)',
+  padding: '1px 5px',
+};
+
+const gridContainerStyle: React.CSSProperties = {
+  display: 'grid',
+  gridTemplateColumns: 'repeat(3, 1fr)',
+  gap: 3,
+};
+
+function gridCellButtonStyle(selected: boolean): React.CSSProperties {
+  return {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: 24,
+    height: 24,
+    background: selected ? 'var(--color-primary-subtle)' : 'var(--bg-overlay)',
+    border: `1px solid ${selected ? 'var(--color-primary)' : 'var(--border-subtle)'}`,
+    borderRadius: 'var(--radius-sm)',
+    cursor: 'pointer',
+    transition: 'var(--transition-fast)',
+    padding: 0,
+  };
+}
+
+function gridCellDotStyle(selected: boolean): React.CSSProperties {
+  return {
+    width: 8,
+    height: 8,
+    borderRadius: '50%',
+    background: selected ? 'var(--color-primary)' : 'var(--border-default)',
+    transition: 'var(--transition-fast)',
   };
 }

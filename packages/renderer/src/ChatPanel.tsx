@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import type { ChatChunk, StoredMessage, PositionContext, CompanionConfig } from '@aris/shared';
+import type { ChatChunk, StoredMessage, PositionContext, CompanionConfig, ScreenPositionState } from '@aris/shared';
 import { buildPersonaSystemPrompt } from '@aris/shared';
 import { VoiceControls } from './VoiceControls';
 
@@ -176,6 +176,26 @@ export function ChatPanel({ conversationId, onConversationCreated, onAssistantMe
         }
       } catch {
         // Position context unavailable — continue without it
+      }
+      try {
+        const screenState = (await window.aris.invoke('screen:get-position-state')) as ScreenPositionState | null;
+        if (screenState && screenState.mode !== 'disabled' && screenState.activeMonitorIndex !== null) {
+          const monitor = screenState.monitors.find((m) => m.index === screenState.activeMonitorIndex);
+          if (monitor) {
+            const cellDescriptions: Record<number, string> = {
+              1: 'top-left', 2: 'top-center', 3: 'top-right',
+              4: 'middle-left', 5: 'center', 6: 'middle-right',
+              7: 'bottom-left', 8: 'bottom-center', 9: 'bottom-right',
+            };
+            const cellDesc = cellDescriptions[screenState.activeGridCell ?? 5] ?? 'center';
+            const monitorN = screenState.activeMonitorIndex + 1;
+            const primaryLabel = monitor.isPrimary ? 'primary' : 'secondary';
+            const totalMonitors = screenState.monitors.length;
+            systemPrompt += `\n\n[Screen position: You are on Monitor ${monitorN} (${primaryLabel}), positioned in the ${cellDesc} area. ${totalMonitors} monitor${totalMonitors !== 1 ? 's' : ''} detected. Mention your screen position naturally when relevant.]`;
+          }
+        }
+      } catch {
+        // Screen position unavailable — continue without it
       }
 
       await window.aris.invoke('ai:stream-chat', chatMessages, {
