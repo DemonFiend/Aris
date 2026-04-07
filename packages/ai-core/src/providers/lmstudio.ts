@@ -70,6 +70,13 @@ export class LMStudioProvider implements AIProvider {
     this.defaultModel = defaultModel;
   }
 
+  private async throwOnError(res: Response): Promise<void> {
+    if (res.ok) return;
+    let detail = '';
+    try { detail = await res.text(); } catch { /* ignore */ }
+    throw new Error(`LM Studio error: ${res.status} ${res.statusText}${detail ? ` — ${detail}` : ''}`);
+  }
+
   private async resolveModel(requested?: string): Promise<string> {
     const model = requested ?? this.defaultModel;
     if (model) return model;
@@ -89,13 +96,13 @@ export class LMStudioProvider implements AIProvider {
       stream: false,
     };
 
-    const res = await fetch(`${this.baseUrl}/api/v1/chat`, {
+    const res = await fetch(`${this.baseUrl}/v1/chat/completions`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
     });
 
-    if (!res.ok) throw new Error(`LM Studio error: ${res.status} ${res.statusText}`);
+    await this.throwOnError(res);
     const data = (await res.json()) as LMStudioChatResponse;
 
     const choice = data.choices[0];
@@ -120,13 +127,13 @@ export class LMStudioProvider implements AIProvider {
       stream: true,
     };
 
-    const res = await fetch(`${this.baseUrl}/api/v1/chat`, {
+    const res = await fetch(`${this.baseUrl}/v1/chat/completions`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
     });
 
-    if (!res.ok) throw new Error(`LM Studio error: ${res.status} ${res.statusText}`);
+    await this.throwOnError(res);
     if (!res.body) throw new Error('LM Studio returned no stream body');
 
     const reader = res.body.getReader();
@@ -181,13 +188,13 @@ export class LMStudioProvider implements AIProvider {
       stream: false,
     };
 
-    const res = await fetch(`${this.baseUrl}/api/v1/chat`, {
+    const res = await fetch(`${this.baseUrl}/v1/chat/completions`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
     });
 
-    if (!res.ok) throw new Error(`LM Studio error: ${res.status} ${res.statusText}`);
+    await this.throwOnError(res);
     const data = (await res.json()) as LMStudioChatResponse;
 
     const choice = data.choices[0];
@@ -205,7 +212,7 @@ export class LMStudioProvider implements AIProvider {
 
   async testConnection(): Promise<boolean> {
     try {
-      const res = await fetch(`${this.baseUrl}/api/v1/models`);
+      const res = await fetch(`${this.baseUrl}/v1/models`);
       if (!res.ok) return false;
       const data = (await res.json()) as LMStudioModelsResponse;
       return Array.isArray(data.data) && data.data.length > 0;
@@ -216,7 +223,7 @@ export class LMStudioProvider implements AIProvider {
 
   async getModels(): Promise<ModelInfo[]> {
     try {
-      const res = await fetch(`${this.baseUrl}/api/v1/models`);
+      const res = await fetch(`${this.baseUrl}/v1/models`);
       if (!res.ok) return [];
       const data = (await res.json()) as LMStudioModelsResponse;
       return data.data.map((m) => ({

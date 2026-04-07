@@ -144,14 +144,16 @@ export function ChatPanel({ conversationId, onConversationCreated, onAssistantMe
       await window.aris.invoke('ai:stream-chat', chatMessages, {
         systemPrompt,
       });
-    } catch {
+    } catch (err) {
+      console.error('[ChatPanel] AI stream error:', err);
+      const detail = err instanceof Error ? err.message : String(err);
       setMessages((prev) => {
         const updated = [...prev];
         const last = updated[updated.length - 1];
         if (last?.role === 'assistant' && !last.content) {
           updated[updated.length - 1] = {
             ...last,
-            content: 'Failed to get a response. Check your AI provider settings.',
+            content: `Failed to get a response: ${detail}`,
           };
         }
         return updated;
