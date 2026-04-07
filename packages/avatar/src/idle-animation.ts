@@ -22,6 +22,8 @@ export class IdleAnimation {
   private blinkDuration = 0.15;
   private nextBlink = 3;
   private isBlinking = false;
+  private baseHeadY = 0;
+  private baseHipsX = 0;
   private config: IdleConfig = {
     enabled: true,
     breathingIntensity: 1,
@@ -32,6 +34,10 @@ export class IdleAnimation {
 
   setVRM(vrm: VRM): void {
     this.vrm = vrm;
+    const head = vrm.humanoid?.getNormalizedBoneNode('head');
+    if (head) this.baseHeadY = head.position.y;
+    const hips = vrm.humanoid?.getNormalizedBoneNode('hips');
+    if (hips) this.baseHipsX = hips.position.x;
   }
 
   setConfig(config: Partial<IdleConfig>): void {
@@ -47,7 +53,7 @@ export class IdleAnimation {
     const breathY = Math.sin(this.time * 1.5) * 0.003 * this.config.breathingIntensity;
     const head = this.vrm.humanoid?.getNormalizedBoneNode('head');
     if (head) {
-      head.position.y += breathY;
+      head.position.y = this.baseHeadY + breathY;
     }
 
     // Subtle head sway (scaled by config)
@@ -73,7 +79,7 @@ export class IdleAnimation {
     const hips = this.vrm.humanoid?.getNormalizedBoneNode('hips');
     if (hips) {
       hips.rotation.z = Math.sin(this.time * 0.2) * 0.015 * bi;
-      hips.position.x += Math.sin(this.time * 0.2) * 0.002 * bi;
+      hips.position.x = this.baseHipsX + Math.sin(this.time * 0.2) * 0.002 * bi;
     }
 
     // Torso rock — breathing-linked forward/back sway

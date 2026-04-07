@@ -6,7 +6,9 @@ interface VariationDef {
   minInterval: number; // seconds
   maxInterval: number;
   duration: number;
-  apply: (vrm: VRM, progress: number) => void;
+  /** Called each frame with the incremental ease delta (current - previous frame).
+   *  Using deltas ensures the total applied offset sums to zero over the full duration. */
+  apply: (vrm: VRM, deltaEase: number) => void;
 }
 
 /**
@@ -22,7 +24,7 @@ export class IdleVariationManager {
   private vrm: VRM | null = null;
   private frequencyScale = 1.0;
   private timers = new Map<IdleVariationType, number>();
-  private active: { type: IdleVariationType; elapsed: number; duration: number } | null = null;
+  private active: { type: IdleVariationType; elapsed: number; duration: number; lastEase: number } | null = null;
   /** Direction of the current glance: 1 = left, -1 = right */
   private glanceDirection = 1;
 
@@ -31,26 +33,24 @@ export class IdleVariationManager {
       minInterval: 120,
       maxInterval: 300,
       duration: 2.0,
-      apply: (vrm, progress) => {
-        const ease = Math.sin(progress * Math.PI);
+      apply: (vrm, deltaEase) => {
         const leftShoulder = vrm.humanoid?.getNormalizedBoneNode('leftShoulder');
         const rightShoulder = vrm.humanoid?.getNormalizedBoneNode('rightShoulder');
         const chest = vrm.humanoid?.getNormalizedBoneNode('chest');
-        if (leftShoulder) leftShoulder.rotation.z += ease * 0.05;
-        if (rightShoulder) rightShoulder.rotation.z -= ease * 0.05;
-        if (chest) chest.rotation.x -= ease * 0.03;
+        if (leftShoulder) leftShoulder.rotation.z += deltaEase * 0.05;
+        if (rightShoulder) rightShoulder.rotation.z -= deltaEase * 0.05;
+        if (chest) chest.rotation.x -= deltaEase * 0.03;
       },
     },
     glance: {
       minInterval: 30,
       maxInterval: 60,
       duration: 1.2,
-      apply: (vrm, progress) => {
-        const ease = Math.sin(progress * Math.PI);
+      apply: (vrm, deltaEase) => {
         const head = vrm.humanoid?.getNormalizedBoneNode('head');
         if (head) {
-          head.rotation.y += ease * 0.15 * this.glanceDirection;
-          head.rotation.x += ease * 0.02;
+          head.rotation.y += deltaEase * 0.15 * this.glanceDirection;
+          head.rotation.x += deltaEase * 0.02;
         }
       },
     },
@@ -58,15 +58,14 @@ export class IdleVariationManager {
       minInterval: 45,
       maxInterval: 90,
       duration: 1.5,
-      apply: (vrm, progress) => {
-        const ease = Math.sin(progress * Math.PI);
+      apply: (vrm, deltaEase) => {
         const hips = vrm.humanoid?.getNormalizedBoneNode('hips');
         const spine = vrm.humanoid?.getNormalizedBoneNode('spine');
         if (hips) {
-          hips.position.y -= ease * 0.005;
-          hips.rotation.z += ease * 0.02;
+          hips.position.y -= deltaEase * 0.005;
+          hips.rotation.z += deltaEase * 0.02;
         }
-        if (spine) spine.rotation.z -= ease * 0.01;
+        if (spine) spine.rotation.z -= deltaEase * 0.01;
       },
     },
   };
@@ -88,11 +87,14 @@ export class IdleVariationManager {
   update(delta: number): void {
     if (!this.vrm) return;
 
-    // If a variation is currently playing, apply it
+    // If a variation is currently playing, apply incremental ease delta
     if (this.active) {
       this.active.elapsed += delta;
       const progress = Math.min(this.active.elapsed / this.active.duration, 1);
-      this.variations[this.active.type].apply(this.vrm, progress);
+      const currentEase = Math.sin(progress * Math.PI);
+      const deltaEase = currentEase - this.active.lastEase;
+      this.active.lastEase = currentEase;
+      this.variations[this.active.type].apply(this.vrm, deltaEase);
       if (progress >= 1) {
         this.active = null;
       }
@@ -109,7 +111,7 @@ export class IdleVariationManager {
         if (type === 'glance') {
           this.glanceDirection = this.glanceDirection > 0 ? -1 : 1;
         }
-        this.active = { type, elapsed: 0, duration: def.duration };
+        this.active = { type, elapsed: 0, duration: def.duration, lastEase: 0 };
         this.timers.set(type, this.randomInterval(def));
         return;
       }
