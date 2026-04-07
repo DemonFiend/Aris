@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import type { ChatChunk, StoredMessage, PositionContext } from '@aris/shared';
+import type { ChatChunk, StoredMessage, PositionContext, CompanionConfig } from '@aris/shared';
+import { buildPersonaSystemPrompt } from '@aris/shared';
 import { VoiceControls } from './VoiceControls';
 
 interface Message {
@@ -144,9 +145,15 @@ export function ChatPanel({ conversationId, onConversationCreated, onAssistantMe
         content: m.content,
       }));
 
-      // Build system prompt with position context
-      let systemPrompt =
-        'You are Aris, a friendly and knowledgeable AI gaming companion. You help players with tips, strategies, lore, and conversation. Be concise and enthusiastic.';
+      // Build system prompt from persona config
+      let systemPrompt: string;
+      try {
+        const config = (await window.aris.invoke('companion:get-config')) as CompanionConfig;
+        systemPrompt = buildPersonaSystemPrompt(config.personality);
+      } catch {
+        systemPrompt =
+          'You are Aris, a friendly and knowledgeable AI gaming companion. You help players with tips, strategies, lore, and conversation. Be concise and enthusiastic.';
+      }
       try {
         const posCtx = (await window.aris.invoke('window:get-position-context')) as PositionContext | null;
         if (posCtx) {

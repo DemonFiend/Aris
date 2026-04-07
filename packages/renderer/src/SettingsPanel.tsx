@@ -5,11 +5,13 @@ import { IdleSettings } from './IdleSettings';
 import { CapturePanel } from './CapturePanel';
 import { VoiceSettings } from './VoiceSettings';
 import { SecuritySettings } from './SecuritySettings';
+import { PersonaSettings } from './PersonaSettings';
 
-type Tab = 'providers' | 'avatar' | 'voice' | 'capture' | 'security' | 'general' | 'data';
+type Tab = 'providers' | 'persona' | 'avatar' | 'voice' | 'capture' | 'security' | 'general' | 'data';
 
 const TABS: { key: Tab; label: string; icon: string }[] = [
   { key: 'providers', label: 'AI Providers', icon: '\u2728' },
+  { key: 'persona', label: 'Persona', icon: '\uD83C\uDFAD' },
   { key: 'avatar', label: 'Avatar', icon: '\uD83D\uDC64' },
   { key: 'voice', label: 'Voice', icon: '\uD83C\uDF99' },
   { key: 'capture', label: 'Capture', icon: '\uD83D\uDCF7' },
@@ -87,6 +89,12 @@ export function SettingsPanel() {
         {tab === 'providers' && (
           <SettingsCard>
             <ProviderSettings />
+          </SettingsCard>
+        )}
+
+        {tab === 'persona' && (
+          <SettingsCard>
+            <PersonaSettings />
           </SettingsCard>
         )}
 
