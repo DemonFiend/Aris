@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import type { ServiceDetectionResult, ModelInfo, ProviderConfig } from '@aris/shared';
+import type { ServiceDetectionResult, ModelInfo, ProviderConfig, ServiceName } from '@aris/shared';
 import { APP_NAME } from '@aris/shared';
 import { VoicePicker } from './VoicePicker';
 
@@ -532,6 +532,7 @@ function VoiceServicesStep({ kokoro, whisper, detecting }: VoiceServicesStepProp
           detecting={detecting}
           installHint="Install Kokoro-FastAPI to enable high-quality local voice synthesis. Run it on port 8880."
           installUrl="github.com/remsky/Kokoro-FastAPI"
+          serviceName="kokoro"
         />
         <VoiceServiceCard
           name="Whisper STT"
@@ -541,6 +542,7 @@ function VoiceServicesStep({ kokoro, whisper, detecting }: VoiceServicesStepProp
           detecting={detecting}
           installHint="Install whisper.cpp server to enable offline speech recognition. Run it on port 8001."
           installUrl="github.com/ggerganov/whisper.cpp"
+          serviceName="whisper"
         />
       </div>
 
@@ -560,6 +562,7 @@ interface VoiceServiceCardProps {
   detecting: boolean;
   installHint: string;
   installUrl: string;
+  serviceName: ServiceName;
 }
 
 function VoiceServiceCard({
@@ -570,9 +573,14 @@ function VoiceServiceCard({
   detecting,
   installHint,
   installUrl,
+  serviceName,
 }: VoiceServiceCardProps) {
   const isRunning = result?.running;
   const isInstalled = result?.installed;
+
+  const openDownload = () => {
+    void window.aris.invoke('install:open-download', serviceName);
+  };
 
   return (
     <div style={voiceCardStyle}>
@@ -598,14 +606,9 @@ function VoiceServiceCard({
         <div style={cardBodyStyle}>
           <p style={advisoryStyle}>
             {installHint}{' '}
-            <a
-              href={`https://${installUrl}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              style={linkStyle}
-            >
+            <button onClick={openDownload} style={linkStyle}>
               {installUrl}
-            </a>
+            </button>
           </p>
         </div>
       )}
@@ -1120,6 +1123,10 @@ const linkStyle: React.CSSProperties = {
   color: 'var(--color-primary)',
   textDecoration: 'underline',
   cursor: 'pointer',
+  background: 'none',
+  border: 'none',
+  padding: 0,
+  font: 'inherit',
 };
 
 const voiceCardStyle: React.CSSProperties = {

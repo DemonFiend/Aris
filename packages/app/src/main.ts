@@ -1,4 +1,4 @@
-import { app, BrowserWindow, Tray, Menu, nativeImage, ipcMain, protocol, net } from 'electron';
+import { app, BrowserWindow, Tray, Menu, nativeImage, ipcMain, protocol, net, shell } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs';
 import { APP_NAME } from '@aris/shared';
@@ -261,6 +261,27 @@ app.whenReady().then(() => {
   registerWindowHandlers();
   createTray();
   createWindow();
+
+  // Security: prevent external URLs from loading in a new Electron BrowserWindow.
+  // All window.open() / target=_blank navigation is routed to the system browser.
+  if (mainWindow) {
+    mainWindow.webContents.setWindowOpenHandler(({ url }) => {
+      void shell.openExternal(url);
+      return { action: 'deny' };
+    });
+
+    mainWindow.webContents.on('will-navigate', (event, url) => {
+      if (
+        !url.startsWith('file://') &&
+        !url.startsWith('http://localhost') &&
+        !url.startsWith('http://127.0.0.1')
+      ) {
+        event.preventDefault();
+        void shell.openExternal(url);
+      }
+    });
+  }
+
   initAutoUpdater();
 });
 
