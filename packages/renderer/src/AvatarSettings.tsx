@@ -26,11 +26,23 @@ export function AvatarSettings() {
   const [previewSuccess, setPreviewSuccess] = useState(false);
 
   useEffect(() => {
+    const canvas = previewCanvasRef.current;
+    if (!canvas) return;
+    let timeout: ReturnType<typeof setTimeout>;
+    const observer = new ResizeObserver(() => {
+      clearTimeout(timeout);
+      timeout = setTimeout(() => {
+        previewSceneRef.current?.resize(canvas.clientWidth, canvas.clientHeight);
+      }, 150);
+    });
+    observer.observe(canvas);
     return () => {
+      clearTimeout(timeout);
+      observer.disconnect();
       previewSceneRef.current?.dispose();
       previewSceneRef.current = null;
     };
-  }, []);
+  }, [previewAvatar]);
 
   const handlePreview = useCallback(async (filename: string) => {
     setPreviewAvatar(filename);
@@ -55,8 +67,8 @@ export function AvatarSettings() {
       previewSceneRef.current = scene;
       const avatarUrl = `avatar://${filename}`;
       await scene.loadVRM(avatarUrl);
-      scene.start();
       scene.resize(canvas.clientWidth, canvas.clientHeight);
+      scene.start();
       setPreviewSuccess(true);
     } catch (e) {
       setPreviewError(`Failed to load VRM: ${e instanceof Error ? e.message : String(e)}`);

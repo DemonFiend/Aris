@@ -64,7 +64,7 @@ export function ProviderSettings() {
       setExpanded(id);
       setSaveError(null);
       setApiKey('');
-      setBaseUrl(cfg?.baseUrl ?? def.defaultUrl ?? '');
+      setBaseUrl(cfg?.baseUrl || def.defaultUrl || '');
       const currentModel = cfg?.defaultModel ?? '';
       setSelectedModel(currentModel);
       setCustomModelInput('');

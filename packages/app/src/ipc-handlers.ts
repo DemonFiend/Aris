@@ -95,7 +95,7 @@ function validateProviderUrl(url: string): void {
     throw new Error(`Invalid provider URL: ${url}`);
   }
 
-  const isLocalhost = ['localhost', '127.0.0.1', '::1'].includes(parsed.hostname);
+  const isLocalhost = ['localhost', '127.0.0.1', '::1', '0.0.0.0'].includes(parsed.hostname);
 
   if (!isLocalhost && parsed.protocol !== 'https:') {
     throw new Error('Custom provider URL must use HTTPS');

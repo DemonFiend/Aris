@@ -133,9 +133,10 @@ export class AvatarScene {
   }
 
   resize(width: number, height: number): void {
+    if (width <= 0 || height <= 0) return;
     this.camera.aspect = width / height;
     this.camera.updateProjectionMatrix();
-    this.renderer.setSize(width, height);
+    this.renderer.setSize(width, height, false);
   }
 
   start(): void {
