@@ -36,24 +36,6 @@ function decryptString(encoded: string): string {
   return safeStorage.decryptString(Buffer.from(encoded, 'base64'));
 }
 
-/** Validate that a provider base URL is safe (HTTPS or localhost) */
-export function validateProviderUrl(url: string | undefined): void {
-  if (!url) return;
-  try {
-    const parsed = new URL(url);
-    const isLocal = parsed.hostname === 'localhost' || parsed.hostname === '127.0.0.1' || parsed.hostname === '::1';
-    if (parsed.protocol === 'http:' && !isLocal) {
-      throw new Error(
-        `Insecure HTTP URL rejected: ${parsed.hostname}. Use HTTPS for remote endpoints, or localhost for local servers.`,
-      );
-    }
-  } catch (e) {
-    if (e instanceof TypeError) {
-      throw new Error(`Invalid URL: ${url}`);
-    }
-    throw e;
-  }
-}
 
 interface StoredConfig {
   id: string;
@@ -84,7 +66,6 @@ export function loadProviderConfigs(): ProviderConfig[] {
 }
 
 export function saveProviderConfig(config: ProviderConfig): void {
-  validateProviderUrl(config.baseUrl);
   ensureDir();
   const configPath = getConfigPath();
   const configs = loadProviderConfigs();

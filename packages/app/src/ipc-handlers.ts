@@ -87,7 +87,7 @@ function validateString(value: unknown, name: string): asserts value is string {
   }
 }
 
-function validateProviderUrl(url: string, allowLocalOnly = false): void {
+function validateProviderUrl(url: string): void {
   let parsed: URL;
   try {
     parsed = new URL(url);
@@ -96,10 +96,6 @@ function validateProviderUrl(url: string, allowLocalOnly = false): void {
   }
 
   const isLocalhost = ['localhost', '127.0.0.1', '::1'].includes(parsed.hostname);
-
-  if (allowLocalOnly && !isLocalhost) {
-    throw new Error('This provider only supports localhost URLs');
-  }
 
   if (!isLocalhost && parsed.protocol !== 'https:') {
     throw new Error('Custom provider URL must use HTTPS');
@@ -128,7 +124,7 @@ function initProviderFromConfig(config: ProviderConfig): void {
       }
       break;
     case 'ollama':
-      if (config.baseUrl) validateProviderUrl(config.baseUrl, true);
+      if (config.baseUrl) validateProviderUrl(config.baseUrl);
       registry.register(new OllamaProvider(config.baseUrl, config.defaultModel));
       break;
     case 'custom-openai':
@@ -144,7 +140,7 @@ function initProviderFromConfig(config: ProviderConfig): void {
       }
       break;
     case 'lmstudio':
-      if (config.baseUrl) validateProviderUrl(config.baseUrl, true);
+      if (config.baseUrl) validateProviderUrl(config.baseUrl);
       registry.register(new LMStudioProvider(config.baseUrl, config.defaultModel));
       break;
   }
@@ -230,8 +226,7 @@ export function registerIpcHandlers(): void {
       throw new Error('Invalid provider config: id is required');
     }
     if (config.baseUrl) {
-      const localOnly = config.id === 'ollama' || config.id === 'lmstudio';
-      validateProviderUrl(config.baseUrl, localOnly);
+      validateProviderUrl(config.baseUrl);
     }
     try {
       saveProviderConfig(config);
