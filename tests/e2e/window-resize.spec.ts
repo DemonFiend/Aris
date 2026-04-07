@@ -7,7 +7,7 @@ const appPath = path.resolve(__dirname, '../../packages/app/dist/main.js');
 const rendererDist = path.resolve(__dirname, '../../packages/renderer/dist');
 
 test.describe('Window minimum size (ARI-137)', () => {
-  test('window enforces minimum size of 320x480', async () => {
+  test('window enforces minimum size of 480x560', async () => {
     const electronApp = await electron.launch({ args: [appPath] });
     const window = await electronApp.firstWindow();
     await window.waitForLoadState('domcontentloaded');
@@ -17,8 +17,8 @@ test.describe('Window minimum size (ARI-137)', () => {
       return win.getMinimumSize();
     });
 
-    expect(minSize[0]).toBe(320);
-    expect(minSize[1]).toBe(480);
+    expect(minSize[0]).toBe(480);
+    expect(minSize[1]).toBe(560);
 
     await electronApp.close();
   });

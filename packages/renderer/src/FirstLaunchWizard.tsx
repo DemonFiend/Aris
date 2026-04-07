@@ -260,7 +260,7 @@ export function FirstLaunchWizard({ onComplete }: Props) {
             )}
             {step !== 'complete' ? (
               <button onClick={next} style={nextBtnStyle} disabled={!canProceed()}>
-                {selectedProvider ? 'Next →' : 'Skip →'}
+                Next →
               </button>
             ) : (
               <button
@@ -586,9 +586,14 @@ function VoiceServiceCard({
       {!isRunning && !detecting && (
         <div style={cardBodyStyle}>
           <p style={advisoryStyle}>{installHint}</p>
-          <p style={advisoryStyle}>
-            See: <strong>{installUrl}</strong>
-          </p>
+          <a
+            href={`https://${installUrl}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={installBtnStyle}
+          >
+            Open Download Page →
+          </a>
         </div>
       )}
     </div>
@@ -1092,6 +1097,21 @@ const voiceServiceListStyle: React.CSSProperties = {
   display: 'flex',
   flexDirection: 'column',
   gap: 'var(--space-3)',
+};
+
+const installBtnStyle: React.CSSProperties = {
+  display: 'inline-block',
+  padding: 'var(--space-2) var(--space-4)',
+  background: 'var(--color-primary-subtle)',
+  border: '1px solid var(--border-strong)',
+  borderRadius: 'var(--radius-md)',
+  color: 'var(--color-primary)',
+  fontSize: 'var(--text-sm)',
+  fontWeight: 'var(--font-semibold)' as any,
+  textDecoration: 'none',
+  cursor: 'pointer',
+  transition: 'var(--transition-fast)',
+  textAlign: 'center',
 };
 
 const voiceCardStyle: React.CSSProperties = {

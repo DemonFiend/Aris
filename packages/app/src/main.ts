@@ -32,10 +32,10 @@ let isQuitting = false;
 
 function createWindow(): void {
   mainWindow = new BrowserWindow({
-    width: 400,
-    height: 600,
-    minWidth: 320,
-    minHeight: 480,
+    width: 900,
+    height: 680,
+    minWidth: 480,
+    minHeight: 560,
     title: APP_NAME,
     frame: true,
     transparent: false,
