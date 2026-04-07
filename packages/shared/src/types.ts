@@ -295,6 +295,8 @@ export type IpcChannel =
   | 'game-profiles:update'
   | 'game-profiles:delete'
   | 'data:export'
+  | 'data:export-encrypted'
+  | 'data:import-encrypted'
   | 'data:wipe'
   | 'avatar:set-expression'
   | 'avatar:set-speaking'

@@ -28,16 +28,11 @@ export function SettingsPanel() {
   };
 
   const handleExport = async () => {
-    const data = await window.aris.invoke('data:export');
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `aris-export-${new Date().toISOString().slice(0, 10)}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-    setExportStatus('done');
-    setTimeout(() => setExportStatus('idle'), 2000);
+    const filePath = await window.aris.invoke('data:export-encrypted');
+    if (filePath) {
+      setExportStatus('done');
+      setTimeout(() => setExportStatus('idle'), 2000);
+    }
   };
 
   const handleWipe = async () => {
@@ -116,11 +111,11 @@ export function SettingsPanel() {
           <div style={rowStyle}>
             <span>Export all data</span>
             <button onClick={handleExport} style={actionBtnStyle}>
-              {exportStatus === 'done' ? 'Exported!' : 'Export JSON'}
+              {exportStatus === 'done' ? 'Exported!' : 'Export Encrypted Backup'}
             </button>
           </div>
           <p style={hintStyle}>
-            Downloads all conversations, settings, and game profiles as JSON.
+            Saves an encrypted backup of all conversations, settings, and game profiles.
           </p>
 
           <div style={{ ...rowStyle, marginTop: '1.5rem' }}>

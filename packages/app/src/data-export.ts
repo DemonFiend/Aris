@@ -1,5 +1,8 @@
+import { dialog } from 'electron';
+import * as fs from 'fs';
 import { getDb, deleteDatabase } from './database';
 import { decryptField } from './db-crypto';
+import { encryptBuffer, decryptBuffer } from './file-crypto';
 
 export interface ExportData {
   version: 1;
@@ -105,6 +108,37 @@ export function exportAllData(): ExportData {
     conversations,
     gameProfiles,
   };
+}
+
+/** Export data to an encrypted file via save dialog. Returns the file path or null if cancelled. */
+export async function exportEncryptedFile(): Promise<string | null> {
+  const date = new Date().toISOString().slice(0, 10);
+  const result = await dialog.showSaveDialog({
+    title: 'Export Encrypted Backup',
+    defaultPath: `aris-export-${date}.aris`,
+    filters: [{ name: 'Aris Backup', extensions: ['aris'] }],
+  });
+  if (result.canceled || !result.filePath) return null;
+
+  const data = exportAllData();
+  const json = JSON.stringify(data);
+  const encrypted = encryptBuffer(Buffer.from(json, 'utf-8'));
+  fs.writeFileSync(result.filePath, encrypted);
+  return result.filePath;
+}
+
+/** Import data from an encrypted backup file via open dialog. Returns the parsed data or null. */
+export async function importEncryptedFile(): Promise<ExportData | null> {
+  const result = await dialog.showOpenDialog({
+    title: 'Import Encrypted Backup',
+    filters: [{ name: 'Aris Backup', extensions: ['aris'] }],
+    properties: ['openFile'],
+  });
+  if (result.canceled || result.filePaths.length === 0) return null;
+
+  const encrypted = fs.readFileSync(result.filePaths[0]);
+  const decrypted = decryptBuffer(encrypted);
+  return JSON.parse(decrypted.toString('utf-8')) as ExportData;
 }
 
 export function wipeAllData(): void {

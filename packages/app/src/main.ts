@@ -6,6 +6,7 @@ import { registerIpcHandlers, initProviders } from './ipc-handlers';
 import { registerVoiceHandlers } from './voice-handlers';
 import { registerAvatarHandlers } from './avatar-handlers';
 import { registerCompanionHandlers } from './companion-handlers';
+import { captureEvents } from './capture-service';
 import { getDb, closeDb } from './database';
 import { initAutoUpdater } from './auto-updater';
 import { pathToFileURL } from 'url';
@@ -63,13 +64,18 @@ function createWindow(): void {
   });
 }
 
-function createTray(): void {
-  // Create a simple 16x16 tray icon
-  const icon = nativeImage.createEmpty();
-  tray = new Tray(icon);
-  tray.setToolTip(APP_NAME);
+function buildTrayMenu(captureActive = false, sourceName?: string): Menu {
+  const items: Electron.MenuItemConstructorOptions[] = [];
 
-  const contextMenu = Menu.buildFromTemplate([
+  if (captureActive) {
+    items.push({
+      label: `Capturing${sourceName ? `: ${sourceName}` : ''}`,
+      enabled: false,
+    });
+    items.push({ type: 'separator' });
+  }
+
+  items.push(
     {
       label: 'Show Aris',
       click: () => {
@@ -85,13 +91,30 @@ function createTray(): void {
         app.quit();
       },
     },
-  ]);
+  );
 
-  tray.setContextMenu(contextMenu);
+  return Menu.buildFromTemplate(items);
+}
+
+function updateTrayForCapture(state: { active: boolean; sourceName?: string }): void {
+  if (!tray) return;
+  tray.setToolTip(state.active ? `${APP_NAME} — Capturing` : APP_NAME);
+  tray.setContextMenu(buildTrayMenu(state.active, state.sourceName));
+}
+
+function createTray(): void {
+  // Create a simple 16x16 tray icon
+  const icon = nativeImage.createEmpty();
+  tray = new Tray(icon);
+  tray.setToolTip(APP_NAME);
+  tray.setContextMenu(buildTrayMenu());
   tray.on('double-click', () => {
     mainWindow?.show();
     mainWindow?.focus();
   });
+
+  // Update tray when capture state changes (privacy indicator)
+  captureEvents.on('state-changed', updateTrayForCapture);
 }
 
 function registerWindowHandlers(): void {

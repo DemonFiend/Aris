@@ -1,4 +1,5 @@
 import { desktopCapturer, nativeImage, BrowserWindow } from 'electron';
+import { EventEmitter } from 'events';
 import type { CaptureSource, CaptureConfig, CaptureStatus } from '@aris/shared';
 import {
   CAPTURE_FPS_DEFAULT,
@@ -8,6 +9,9 @@ import {
 } from '@aris/shared';
 import { detectGameFromTitle } from '@aris/vision';
 import { loadCaptureSettings, saveScreenshot, pruneScreenshots } from './screenshot-store';
+
+/** Emits 'state-changed' with { active: boolean, sourceName?: string } */
+export const captureEvents = new EventEmitter();
 
 let captureInterval: ReturnType<typeof setInterval> | null = null;
 let heartbeatInterval: ReturnType<typeof setInterval> | null = null;
@@ -73,6 +77,8 @@ export function startCapture(config: Partial<CaptureConfig> & { sourceId: string
       // Frame capture can fail transiently (e.g. source minimized); skip silently
     }
   }, intervalMs);
+
+  captureEvents.emit('state-changed', { active: true, sourceName: currentSourceName });
 }
 
 export function stopCapture(): void {
@@ -87,6 +93,7 @@ export function stopCapture(): void {
   latestFrameBuffer = null;
   frameCount = 0;
   savedScreenshotCount = 0;
+  captureEvents.emit('state-changed', { active: false });
 }
 
 export function getStatus(): CaptureStatus {

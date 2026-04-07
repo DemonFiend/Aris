@@ -27,7 +27,7 @@ import {
   updateGameProfile,
   deleteGameProfile,
 } from './game-profile-store';
-import { exportAllData, wipeAllData } from './data-export';
+import { exportAllData, exportEncryptedFile, importEncryptedFile, wipeAllData } from './data-export';
 import {
   getPasswordConfig,
   setPassword,
@@ -295,6 +295,14 @@ export function registerIpcHandlers(): void {
   // Data management handlers
   ipcMain.handle('data:export', async () => {
     return exportAllData();
+  });
+
+  ipcMain.handle('data:export-encrypted', async () => {
+    return exportEncryptedFile();
+  });
+
+  ipcMain.handle('data:import-encrypted', async () => {
+    return importEncryptedFile();
   });
 
   ipcMain.handle('data:wipe', async () => {
