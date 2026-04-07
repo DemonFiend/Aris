@@ -29,6 +29,7 @@ import {
 } from './game-profile-store';
 import { exportAllData, exportEncryptedFile, importEncryptedFile, wipeAllData } from './data-export';
 import { detectAllServices, detectService } from './service-detector';
+import { getInstallInfo, getAllInstallInfo, openDownloadPage, verifyInstall } from './install-orchestrator';
 import type { ServiceName } from '@aris/shared';
 import {
   getPasswordConfig,
@@ -557,6 +558,18 @@ export function registerIpcHandlers(): void {
   ipcMain.handle('services:detect-all', async () => detectAllServices());
 
   ipcMain.handle('services:detect', async (_event, name: ServiceName) => detectService(name));
+
+  // Install orchestrator handlers
+  ipcMain.handle('install:get-info', async (_event, name: ServiceName) => getInstallInfo(name));
+
+  ipcMain.handle('install:get-all-info', async () => getAllInstallInfo());
+
+  ipcMain.handle('install:open-download', async (_event, name: ServiceName) => {
+    await openDownloadPage(name);
+    return true;
+  });
+
+  ipcMain.handle('install:verify', async (_event, name: ServiceName) => verifyInstall(name));
 
   // First-launch setup state
   ipcMain.handle('setup:is-complete', async () => getSetting('hasCompletedSetup') === 'true');

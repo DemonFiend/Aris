@@ -356,6 +356,19 @@ export const DEFAULT_VIRTUAL_SPACE_CONFIG: VirtualSpaceConfig = {
 /** Identifiers for locally-hosted AI services */
 export type ServiceName = 'lmstudio' | 'kokoro' | 'whisper' | 'ollama';
 
+/** Platform-specific install guidance for a local service */
+export interface ServiceInstallInfo {
+  name: ServiceName;
+  displayName: string;
+  description: string;
+  /** Official download URL — always a pre-validated static value */
+  downloadUrl: string;
+  /** Ordered install steps shown to the user */
+  installSteps: string[];
+  /** Extra advisory shown after install (e.g. model download reminder), or null */
+  modelNote: string | null;
+}
+
 /** Detection result for a single local service */
 export interface ServiceDetectionResult {
   name: ServiceName;
@@ -458,5 +471,9 @@ export type IpcChannel =
   | 'screen:set-custom-position'
   | 'services:detect-all'
   | 'services:detect'
+  | 'install:get-info'
+  | 'install:get-all-info'
+  | 'install:open-download'
+  | 'install:verify'
   | 'setup:is-complete'
   | 'setup:mark-complete';
