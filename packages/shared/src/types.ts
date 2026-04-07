@@ -354,7 +354,7 @@ export const DEFAULT_VIRTUAL_SPACE_CONFIG: VirtualSpaceConfig = {
 };
 
 /** Identifiers for locally-hosted AI services */
-export type ServiceName = 'lmstudio' | 'kokoro' | 'whisper';
+export type ServiceName = 'lmstudio' | 'kokoro' | 'whisper' | 'ollama';
 
 /** Detection result for a single local service */
 export interface ServiceDetectionResult {
@@ -457,4 +457,6 @@ export type IpcChannel =
   | 'screen:set-mode'
   | 'screen:set-custom-position'
   | 'services:detect-all'
-  | 'services:detect';
+  | 'services:detect'
+  | 'setup:is-complete'
+  | 'setup:mark-complete';

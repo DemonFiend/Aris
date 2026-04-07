@@ -24,12 +24,13 @@ test.describe('Service detector IPC', () => {
     );
 
     expect(Array.isArray(results)).toBe(true);
-    expect((results as unknown[]).length).toBe(3);
+    expect((results as unknown[]).length).toBe(4);
 
     const names = new Set((results as Array<{ name: string }>).map((r) => r.name));
     expect(names.has('lmstudio')).toBe(true);
     expect(names.has('kokoro')).toBe(true);
     expect(names.has('whisper')).toBe(true);
+    expect(names.has('ollama')).toBe(true);
 
     for (const result of results as Array<Record<string, unknown>>) {
       expect(typeof result['name']).toBe('string');
@@ -81,5 +82,19 @@ test.describe('Service detector IPC', () => {
     const r = result as Record<string, unknown>;
     expect(r['name']).toBe('whisper');
     expect(typeof r['running']).toBe('boolean');
+  });
+
+  test('services:detect returns correct shape for ollama', async () => {
+    const page = await electronApp.firstWindow();
+
+    const result = await page.evaluate(() =>
+      window.aris.invoke('services:detect', 'ollama'),
+    );
+
+    const r = result as Record<string, unknown>;
+    expect(r['name']).toBe('ollama');
+    expect(typeof r['running']).toBe('boolean');
+    expect(r['version'] === null || typeof r['version'] === 'string').toBe(true);
+    expect(r['endpoint'] === null || typeof r['endpoint'] === 'string').toBe(true);
   });
 });

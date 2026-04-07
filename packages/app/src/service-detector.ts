@@ -212,6 +212,56 @@ async function detectWhisper(): Promise<ServiceDetectionResult> {
 }
 
 // ---------------------------------------------------------------------------
+// Ollama
+// ---------------------------------------------------------------------------
+
+const OLLAMA_BASE = 'http://127.0.0.1:11434';
+const OLLAMA_VERSION_URL = `${OLLAMA_BASE}/api/version`;
+
+function ollamaInstallPaths(): string[] {
+  const home = homedir();
+  switch (OS) {
+    case 'win32':
+      return [
+        `${process.env['LOCALAPPDATA'] ?? ''}\\Programs\\Ollama\\ollama.exe`,
+        `${process.env['PROGRAMFILES'] ?? ''}\\Ollama\\ollama.exe`,
+        `${process.env['LOCALAPPDATA'] ?? ''}\\Ollama\\ollama.exe`,
+      ];
+    case 'darwin':
+      return ['/Applications/Ollama.app', `${home}/.ollama/ollama`];
+    default:
+      return [
+        '/usr/bin/ollama',
+        '/usr/local/bin/ollama',
+        `${home}/.local/bin/ollama`,
+        '/opt/ollama/ollama',
+      ];
+  }
+}
+
+async function detectOllama(): Promise<ServiceDetectionResult> {
+  const probe = await probeUrl(OLLAMA_VERSION_URL);
+
+  let version: string | null = null;
+  if (probe.ok && probe.body != null) {
+    const body = probe.body as Record<string, unknown>;
+    if (typeof body['version'] === 'string') version = body['version'];
+  }
+
+  const installPath = await firstExisting(ollamaInstallPaths());
+
+  return {
+    name: 'ollama',
+    installed: installPath !== null,
+    running: probe.ok,
+    version,
+    path: installPath,
+    endpoint: probe.ok ? OLLAMA_BASE : null,
+    error: null,
+  };
+}
+
+// ---------------------------------------------------------------------------
 // Public API
 // ---------------------------------------------------------------------------
 
@@ -219,6 +269,7 @@ const DETECTORS: Record<ServiceName, () => Promise<ServiceDetectionResult>> = {
   lmstudio: detectLMStudio,
   kokoro: detectKokoro,
   whisper: detectWhisper,
+  ollama: detectOllama,
 };
 
 export async function detectService(name: ServiceName): Promise<ServiceDetectionResult> {
