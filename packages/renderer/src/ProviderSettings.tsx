@@ -29,6 +29,7 @@ export function ProviderSettings() {
   const [testStatus, setTestStatus] = useState<Record<string, 'idle' | 'testing' | 'ok' | 'fail'>>({});
   const [models, setModels] = useState<Record<string, ModelInfo[]>>({});
   const [loadingModels, setLoadingModels] = useState<Record<string, boolean>>({});
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   const loadConfigs = useCallback(async () => {
     const cfgs = (await window.aris.invoke('ai:get-provider-configs')) as ProviderConfig[] | undefined;
@@ -61,6 +62,7 @@ export function ProviderSettings() {
       const def = PROVIDER_DEFS.find((d) => d.id === id)!;
       const cfg = configs.find((c) => c.id === id);
       setExpanded(id);
+      setSaveError(null);
       setApiKey('');
       setBaseUrl(cfg?.baseUrl ?? def.defaultUrl ?? '');
       const currentModel = cfg?.defaultModel ?? '';
@@ -90,13 +92,19 @@ export function ProviderSettings() {
       ...(def.needsUrl ? { baseUrl } : {}),
       ...(model ? { defaultModel: model } : {}),
     };
-    await window.aris.invoke('ai:save-provider-config', config);
-    setExpanded(null);
-    setApiKey('');
-    setSelectedModel('');
-    setCustomModelInput('');
-    setUseCustomModel(false);
-    await loadConfigs();
+    try {
+      setSaveError(null);
+      await window.aris.invoke('ai:save-provider-config', config);
+      setExpanded(null);
+      setApiKey('');
+      setSelectedModel('');
+      setCustomModelInput('');
+      setUseCustomModel(false);
+      await loadConfigs();
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Failed to save provider config';
+      setSaveError(msg.replace(/^Error invoking remote method '[^']+': /, ''));
+    }
   };
 
   const testConnection = async (id: string) => {
@@ -269,6 +277,11 @@ export function ProviderSettings() {
                     Save
                   </button>
                 </div>
+                {saveError && (
+                  <div style={{ color: 'var(--color-error, #ef4444)', fontSize: 'var(--font-xs, 12px)', marginTop: 'var(--space-1, 4px)' }}>
+                    {saveError}
+                  </div>
+                )}
               </div>
             )}
           </div>
