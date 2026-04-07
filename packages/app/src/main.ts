@@ -176,9 +176,10 @@ app.whenReady().then(() => {
     const scriptSrc = isDev ? "script-src 'self' 'unsafe-inline'" : "script-src 'self'";
     const styleSrc = isDev ? "style-src 'self' 'unsafe-inline'" : "style-src 'self'";
     // In dev, allow all HTTP/WS for local servers. In prod, HTTPS only + localhost for local LLMs.
+    // blob: needed for Three.js/VRM model loading via fetch on blob URLs
     const connectSrc = isDev
-      ? "connect-src 'self' ws: wss: http: https: avatar:"
-      : "connect-src 'self' https: wss: http://localhost:* http://127.0.0.1:* avatar:";
+      ? "connect-src 'self' blob: ws: wss: http: https: avatar:"
+      : "connect-src 'self' blob: https: wss: http://localhost:* http://127.0.0.1:* avatar:";
     const csp = [
       "default-src 'self' avatar:",
       scriptSrc,
