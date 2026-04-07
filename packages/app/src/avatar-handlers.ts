@@ -42,6 +42,33 @@ function listAvatarFiles(): AvatarInfo[] {
     }));
 }
 
+const DEFAULT_VRM_FILENAME = 'default-avatar.vrm';
+
+function getBundledVrmPath(): string {
+  if (app.isPackaged) {
+    return path.join(process.resourcesPath, DEFAULT_VRM_FILENAME);
+  }
+  // In dev/test mode __dirname is packages/app/dist, so go up one level to resources
+  return path.join(__dirname, '..', 'resources', DEFAULT_VRM_FILENAME);
+}
+
+function seedDefaultAvatar(): void {
+  const dir = ensureAvatarDirectory();
+  const hasVrm = fs.readdirSync(dir).some((f) => f.toLowerCase().endsWith('.vrm'));
+  if (hasVrm) return;
+
+  const bundledPath = getBundledVrmPath();
+  if (!fs.existsSync(bundledPath)) return;
+
+  const dest = path.join(dir, DEFAULT_VRM_FILENAME);
+  fs.copyFileSync(bundledPath, dest);
+
+  // Set as default if none is configured yet
+  if (!getSetting(DEFAULT_AVATAR_KEY)) {
+    setSetting(DEFAULT_AVATAR_KEY, DEFAULT_VRM_FILENAME);
+  }
+}
+
 export function getDefaultAvatarPath(): string | null {
   const defaultFile = getSetting(DEFAULT_AVATAR_KEY);
   if (!defaultFile) return null;
@@ -54,6 +81,8 @@ export function getDefaultAvatarPath(): string | null {
 }
 
 export function registerAvatarHandlers(): void {
+  seedDefaultAvatar();
+
   ipcMain.handle('avatar:list-available', async () => {
     return listAvatarFiles();
   });

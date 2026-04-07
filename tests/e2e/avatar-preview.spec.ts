@@ -1,6 +1,7 @@
 import { test, expect, _electron as electron } from '@playwright/test';
 import path from 'path';
 import fs from 'fs';
+import os from 'os';
 import { createMinimalVRM } from '../fixtures/create-test-vrm';
 
 const appPath = path.resolve(__dirname, '../../packages/app/dist/main.js');
@@ -107,5 +108,30 @@ test.describe('Avatar preview rendering', () => {
     // Clean up
     fs.unlinkSync(path.join(avatarsDir, 'test-avatar.vrm'));
     await electronApp.close();
+  });
+
+  test('should auto-seed default VRM on fresh startup with empty avatars directory', async () => {
+    // Use an isolated userData dir so no pre-existing avatars exist
+    const tmpUserData = fs.mkdtempSync(path.join(os.tmpdir(), 'aris-test-'));
+    try {
+      const electronApp = await electron.launch({
+        args: [appPath, `--user-data-dir=${tmpUserData}`],
+      });
+      const window = await electronApp.firstWindow();
+      await window.waitForLoadState('domcontentloaded');
+
+      // avatar:list-available should return at least the seeded default VRM
+      const avatars = await window.evaluate(async () => {
+        return (window as any).aris.invoke('avatar:list-available');
+      });
+
+      expect(Array.isArray(avatars)).toBe(true);
+      expect((avatars as unknown[]).length).toBeGreaterThan(0);
+      expect((avatars as Array<{ filename: string }>)[0].filename).toBe('default-avatar.vrm');
+
+      await electronApp.close();
+    } finally {
+      fs.rmSync(tmpUserData, { recursive: true, force: true });
+    }
   });
 });
