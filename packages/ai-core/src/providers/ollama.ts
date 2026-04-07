@@ -105,7 +105,10 @@ export class OllamaProvider implements AIProvider {
         if (chunk.message?.content) {
           yield { text: chunk.message.content, done: chunk.done };
         }
-        if (chunk.done) return;
+        if (chunk.done) {
+          yield { text: '', done: true };
+          return;
+        }
       }
     }
 

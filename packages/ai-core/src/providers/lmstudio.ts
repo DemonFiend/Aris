@@ -152,13 +152,19 @@ export class LMStudioProvider implements AIProvider {
         const trimmed = line.trim();
         if (!trimmed || !trimmed.startsWith('data: ')) continue;
         const payload = trimmed.slice(6);
-        if (payload === '[DONE]') return;
+        if (payload === '[DONE]') {
+          yield { text: '', done: true };
+          return;
+        }
         const chunk = JSON.parse(payload) as LMStudioStreamChunk;
         const delta = chunk.choices[0]?.delta?.content;
         if (delta) {
           yield { text: delta, done: false };
         }
-        if (chunk.choices[0]?.finish_reason != null) return;
+        if (chunk.choices[0]?.finish_reason != null) {
+          yield { text: '', done: true };
+          return;
+        }
       }
     }
 
