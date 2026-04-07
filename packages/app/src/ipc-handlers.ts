@@ -1,4 +1,4 @@
-import { ipcMain, Notification } from 'electron';
+import { ipcMain, BrowserWindow, Notification } from 'electron';
 import {
   ProviderRegistry,
   ClaudeProvider,
@@ -30,7 +30,8 @@ import {
 import { exportAllData, exportEncryptedFile, importEncryptedFile, wipeAllData } from './data-export';
 import { detectAllServices, detectService } from './service-detector';
 import { getInstallInfo, getAllInstallInfo, openDownloadPage, verifyInstall } from './install-orchestrator';
-import type { ServiceName } from '@aris/shared';
+import { getUninstallTargets, performUninstall } from './uninstall-orchestrator';
+import type { ServiceName, UninstallTargetId } from '@aris/shared';
 import {
   getPasswordConfig,
   setPassword,
@@ -570,6 +571,20 @@ export function registerIpcHandlers(): void {
   });
 
   ipcMain.handle('install:verify', async (_event, name: ServiceName) => verifyInstall(name));
+
+  // Uninstall flow handlers
+  ipcMain.handle('uninstall:scan', async () => getUninstallTargets());
+
+  ipcMain.handle('uninstall:execute', async (_event, ids: unknown) => {
+    if (!Array.isArray(ids)) throw new Error('ids must be an array');
+    const validIds = ids as UninstallTargetId[];
+
+    return performUninstall(validIds, (progress) => {
+      for (const win of BrowserWindow.getAllWindows()) {
+        win.webContents.send('uninstall:progress', progress);
+      }
+    });
+  });
 
   // First-launch setup state
   ipcMain.handle('setup:is-complete', async () => getSetting('hasCompletedSetup') === 'true');

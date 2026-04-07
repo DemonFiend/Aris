@@ -386,6 +386,35 @@ export interface ServiceDetectionResult {
   error: string | null;
 }
 
+/** Identifier for an uninstall target — a service or Aris's own data */
+export type UninstallTargetId = ServiceName | 'aris-data';
+
+/** A component that can be selected for removal in the uninstall flow */
+export interface UninstallTarget {
+  id: UninstallTargetId;
+  displayName: string;
+  description: string;
+  /** Detected filesystem path if found, or null */
+  detectedPath: string | null;
+  /** True if an installation/data was detected on this machine */
+  isInstalled: boolean;
+}
+
+/** Result of removing a single uninstall target */
+export interface UninstallResult {
+  id: UninstallTargetId;
+  status: 'removed' | 'skipped' | 'failed' | 'not-found';
+  message: string;
+}
+
+/** Progress event emitted during uninstall execution */
+export interface UninstallProgress {
+  id: UninstallTargetId;
+  displayName: string;
+  status: 'pending' | 'removing' | 'done' | 'failed';
+  message?: string;
+}
+
 /** IPC channel names for main <-> renderer communication */
 export type IpcChannel =
   | 'ai:chat'
@@ -476,4 +505,6 @@ export type IpcChannel =
   | 'install:open-download'
   | 'install:verify'
   | 'setup:is-complete'
-  | 'setup:mark-complete';
+  | 'setup:mark-complete'
+  | 'uninstall:scan'
+  | 'uninstall:execute';

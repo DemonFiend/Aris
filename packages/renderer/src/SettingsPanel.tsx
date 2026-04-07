@@ -7,6 +7,7 @@ import { VoiceSettings } from './VoiceSettings';
 import { SecuritySettings } from './SecuritySettings';
 import { PersonaSettings } from './PersonaSettings';
 import { RepairPanel } from './RepairPanel';
+import { UninstallPanel } from './UninstallPanel';
 import type { ScreenPositionMode, MonitorInfo, ScreenPositionState, VirtualSpaceConfig } from '@aris/shared';
 
 type Tab = 'providers' | 'persona' | 'avatar' | 'voice' | 'capture' | 'security' | 'general' | 'data' | 'services';
@@ -343,9 +344,14 @@ export function SettingsPanel() {
         )}
 
         {tab === 'services' && (
-          <SettingsCard>
-            <RepairPanel />
-          </SettingsCard>
+          <>
+            <SettingsCard>
+              <RepairPanel />
+            </SettingsCard>
+            <SettingsCard>
+              <UninstallPanel />
+            </SettingsCard>
+          </>
         )}
       </div>
     </div>
