@@ -1,5 +1,6 @@
 import { randomUUID } from 'crypto';
 import { getDb } from './database';
+import { encryptField, decryptField } from './db-crypto';
 import type { GameProfile } from '@aris/shared';
 
 interface GameProfileRow {
@@ -17,7 +18,7 @@ function toGameProfile(row: GameProfileRow): GameProfile {
     id: row.id,
     name: row.name,
     executablePath: row.executable_path ?? undefined,
-    systemPrompt: row.system_prompt ?? undefined,
+    systemPrompt: row.system_prompt ? decryptField(row.system_prompt) : undefined,
     captureEnabled: row.capture_enabled === 1,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -44,6 +45,7 @@ export function createGameProfile(
 ): GameProfile {
   const id = randomUUID();
   const now = new Date().toISOString();
+  const encPrompt = opts?.systemPrompt ? encryptField(opts.systemPrompt) : null;
   getDb()
     .prepare(
       'INSERT INTO game_profiles (id, name, executable_path, system_prompt, capture_enabled, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
@@ -52,7 +54,7 @@ export function createGameProfile(
       id,
       name,
       opts?.executablePath ?? null,
-      opts?.systemPrompt ?? null,
+      encPrompt,
       opts?.captureEnabled ? 1 : 0,
       now,
       now,
@@ -81,11 +83,12 @@ export function updateGameProfile(
   const systemPrompt = updates.systemPrompt ?? existing.systemPrompt;
   const captureEnabled = updates.captureEnabled ?? existing.captureEnabled;
 
+  const encPrompt = systemPrompt ? encryptField(systemPrompt) : null;
   getDb()
     .prepare(
       'UPDATE game_profiles SET name = ?, executable_path = ?, system_prompt = ?, capture_enabled = ?, updated_at = ? WHERE id = ?',
     )
-    .run(name, executablePath ?? null, systemPrompt ?? null, captureEnabled ? 1 : 0, now, id);
+    .run(name, executablePath ?? null, encPrompt, captureEnabled ? 1 : 0, now, id);
 
   return { id, name, executablePath, systemPrompt, captureEnabled, createdAt: existing.createdAt, updatedAt: now };
 }

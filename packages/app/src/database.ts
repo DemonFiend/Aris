@@ -3,6 +3,7 @@ import Database from 'better-sqlite3';
 import * as path from 'path';
 import * as fs from 'fs';
 import { DATA_DIR, DB_FILENAME } from '@aris/shared';
+import { encryptField, isEncrypted } from './db-crypto';
 
 let db: Database.Database | null = null;
 
@@ -69,6 +70,43 @@ const migrations: Array<{ version: number; up: (db: Database.Database) => void }
       `);
     },
   },
+  {
+    version: 2,
+    up: (db) => {
+      // Remove FTS triggers and table — encrypted content cannot be indexed in plaintext
+      db.exec(`
+        DROP TRIGGER IF EXISTS messages_ai;
+        DROP TRIGGER IF EXISTS messages_ad;
+        DROP TRIGGER IF EXISTS messages_au;
+        DROP TABLE IF EXISTS messages_fts;
+      `);
+
+      // Encrypt existing plaintext message content
+      const messages = db.prepare('SELECT id, content FROM messages').all() as Array<{
+        id: string;
+        content: string;
+      }>;
+      const updateMsg = db.prepare('UPDATE messages SET content = ? WHERE id = ?');
+      for (const msg of messages) {
+        if (!isEncrypted(msg.content)) {
+          updateMsg.run(encryptField(msg.content), msg.id);
+        }
+      }
+
+      // Encrypt existing plaintext game profile system prompts
+      const profiles = db
+        .prepare('SELECT id, system_prompt FROM game_profiles WHERE system_prompt IS NOT NULL')
+        .all() as Array<{ id: string; system_prompt: string }>;
+      const updateProfile = db.prepare(
+        'UPDATE game_profiles SET system_prompt = ? WHERE id = ?',
+      );
+      for (const profile of profiles) {
+        if (!isEncrypted(profile.system_prompt)) {
+          updateProfile.run(encryptField(profile.system_prompt), profile.id);
+        }
+      }
+    },
+  },
 ];
 
 function runMigrations(db: Database.Database): void {
@@ -104,6 +142,9 @@ export function getDb(): Database.Database {
     db.pragma('journal_mode = WAL');
     db.pragma('foreign_keys = ON');
     runMigrations(db);
+
+    // Checkpoint WAL to flush pending writes and clean up crash-leftover files
+    db.pragma('wal_checkpoint(TRUNCATE)');
   }
   return db;
 }

@@ -1,4 +1,5 @@
 import { getDb, deleteDatabase } from './database';
+import { decryptField } from './db-crypto';
 
 export interface ExportData {
   version: 1;
@@ -67,7 +68,7 @@ export function exportAllData(): ExportData {
       updatedAt: c.updated_at,
       messages: msgRows.map((m) => ({
         role: m.role,
-        content: m.content,
+        content: decryptField(m.content),
         model: m.model,
         tokenCount: m.token_count,
         createdAt: m.created_at,
@@ -91,7 +92,7 @@ export function exportAllData(): ExportData {
     id: p.id,
     name: p.name,
     executablePath: p.executable_path,
-    systemPrompt: p.system_prompt,
+    systemPrompt: p.system_prompt ? decryptField(p.system_prompt) : null,
     captureEnabled: p.capture_enabled === 1,
     createdAt: p.created_at,
     updatedAt: p.updated_at,

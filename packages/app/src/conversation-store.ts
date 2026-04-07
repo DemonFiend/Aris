@@ -1,5 +1,6 @@
 import { randomUUID } from 'crypto';
 import { getDb } from './database';
+import { encryptField, decryptField } from './db-crypto';
 import type { Conversation, StoredMessage } from '@aris/shared';
 
 interface ConversationRow {
@@ -35,7 +36,7 @@ function toMessage(row: MessageRow): StoredMessage {
     id: row.id,
     conversationId: row.conversation_id,
     role: row.role,
-    content: row.content,
+    content: decryptField(row.content),
     model: row.model ?? undefined,
     tokenCount: row.token_count ?? undefined,
     createdAt: row.created_at,
@@ -74,26 +75,38 @@ export function deleteConversation(id: string): boolean {
 
 export function searchConversations(query: string, limit = 20): Conversation[] {
   const db = getDb();
-  const messageHits = db
-    .prepare(
-      `SELECT DISTINCT m.conversation_id
-       FROM messages_fts fts
-       JOIN messages m ON m.rowid = fts.rowid
-       WHERE messages_fts MATCH ?
-       LIMIT ?`,
-    )
-    .all(query, limit) as Array<{ conversation_id: string }>;
+  const lowerQuery = query.toLowerCase();
 
-  if (messageHits.length === 0) return [];
+  // Search conversation titles first (fast, unencrypted)
+  const titleMatches = db
+    .prepare('SELECT * FROM conversations WHERE title LIKE ? ORDER BY updated_at DESC LIMIT ?')
+    .all(`%${query}%`, limit) as ConversationRow[];
 
-  const ids = messageHits.map((r) => r.conversation_id);
-  const placeholders = ids.map(() => '?').join(',');
-  const rows = db
-    .prepare(
-      `SELECT * FROM conversations WHERE id IN (${placeholders}) ORDER BY updated_at DESC`,
-    )
-    .all(...ids) as ConversationRow[];
-  return rows.map(toConversation);
+  const foundIds = new Set(titleMatches.map((r) => r.id));
+  const results = [...titleMatches];
+
+  // Search message content (decrypt and match in memory)
+  if (results.length < limit) {
+    const convs = db
+      .prepare('SELECT * FROM conversations ORDER BY updated_at DESC LIMIT 200')
+      .all() as ConversationRow[];
+
+    for (const conv of convs) {
+      if (results.length >= limit) break;
+      if (foundIds.has(conv.id)) continue;
+
+      const msgs = db
+        .prepare('SELECT content FROM messages WHERE conversation_id = ? LIMIT 50')
+        .all(conv.id) as Array<{ content: string }>;
+
+      if (msgs.some((m) => decryptField(m.content).toLowerCase().includes(lowerQuery))) {
+        results.push(conv);
+        foundIds.add(conv.id);
+      }
+    }
+  }
+
+  return results.map(toConversation);
 }
 
 export function listMessages(conversationId: string): StoredMessage[] {
@@ -114,10 +127,12 @@ export function addMessage(
   const now = new Date().toISOString();
   const db = getDb();
 
+  const encryptedContent = encryptField(content);
+
   db.transaction(() => {
     db.prepare(
       'INSERT INTO messages (id, conversation_id, role, content, model, token_count, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
-    ).run(id, conversationId, role, content, model ?? null, tokenCount ?? null, now);
+    ).run(id, conversationId, role, encryptedContent, model ?? null, tokenCount ?? null, now);
 
     db.prepare('UPDATE conversations SET updated_at = ? WHERE id = ?').run(now, conversationId);
   })();
