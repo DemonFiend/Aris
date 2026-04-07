@@ -34,6 +34,11 @@
     "typescript": "^5.7.0",
     "vitest": "^3.0.0"
   },
+  "pnpm": {
+    "overrides": {
+      "vite": ">=6.4.2"
+    }
+  },
   "packageManager": "pnpm@9.15.0",
   "engines": {
     "node": ">=20.0.0"
