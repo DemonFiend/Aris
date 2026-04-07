@@ -197,7 +197,12 @@ export function registerIpcHandlers(): void {
     if (!config || typeof config.id !== 'string') {
       throw new Error('Invalid provider config: id is required');
     }
-    saveProviderConfig(config);
+    try {
+      saveProviderConfig(config);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to save provider config';
+      throw new Error(message);
+    }
     initProviderFromConfig(config);
     return { saved: true, encryptionAvailable: isEncryptionAvailable() };
   });

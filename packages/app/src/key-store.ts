@@ -23,12 +23,10 @@ export function isEncryptionAvailable(): boolean {
 }
 
 function encryptString(value: string): string {
-  if (safeStorage.isEncryptionAvailable()) {
-    return safeStorage.encryptString(value).toString('base64');
+  if (!safeStorage.isEncryptionAvailable()) {
+    throw new Error('System keychain unavailable — cannot safely store API keys.');
   }
-  // Fallback: base64 is NOT encryption — caller should warn the user
-  console.warn('[key-store] safeStorage unavailable — API keys stored with base64 encoding only');
-  return Buffer.from(value).toString('base64');
+  return safeStorage.encryptString(value).toString('base64');
 }
 
 function decryptString(encoded: string): string {
