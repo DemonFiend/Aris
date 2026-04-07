@@ -173,8 +173,14 @@ export function registerIpcHandlers(): void {
       validateMessages(messages);
       const provider = registry.getActive();
       const sender = event.sender;
-      for await (const chunk of provider.streamChat(messages, options)) {
-        sender.send('ai:stream-chunk', chunk);
+      try {
+        for await (const chunk of provider.streamChat(messages, options)) {
+          sender.send('ai:stream-chunk', chunk);
+        }
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        console.error('[ai:stream-chat] Error:', msg);
+        throw err;
       }
     },
   );
