@@ -151,7 +151,7 @@ export class GestureController {
 
       const bone = this.vrm.humanoid?.getNormalizedBoneNode(prev.bone as any);
       if (bone) {
-        bone.rotation[prev.axis] = value;
+        bone.rotation[prev.axis] += value;
       }
     }
   }
