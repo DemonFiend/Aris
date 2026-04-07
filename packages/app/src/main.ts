@@ -216,7 +216,11 @@ app.whenReady().then(() => {
   });
 
   getDb(); // Initialize database and run migrations
-  initProviders();
+  try {
+    initProviders();
+  } catch (err) {
+    console.error('[main] Failed to initialize providers:', err);
+  }
   registerIpcHandlers();
   registerVoiceHandlers();
   registerAvatarHandlers();
