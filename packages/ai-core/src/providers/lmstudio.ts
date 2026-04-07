@@ -63,22 +63,33 @@ export class LMStudioProvider implements AIProvider {
 
   private baseUrl: string;
   private defaultModel: string;
+  private resolvedModel: string | null = null;
 
   constructor(baseUrl = 'http://127.0.0.1:1234', defaultModel = '') {
     this.baseUrl = baseUrl.replace(/\/$/, '');
     this.defaultModel = defaultModel;
   }
 
+  private async resolveModel(requested?: string): Promise<string> {
+    const model = requested ?? this.defaultModel;
+    if (model) return model;
+    if (this.resolvedModel) return this.resolvedModel;
+    const models = await this.getModels();
+    if (models.length === 0) throw new Error('No models loaded in LM Studio. Load a model first.');
+    this.resolvedModel = models[0].id;
+    return this.resolvedModel;
+  }
+
   async chat(messages: ChatMessage[], options?: ChatOptions): Promise<ChatResponse> {
     const body = {
-      model: options?.model ?? this.defaultModel,
+      model: await this.resolveModel(options?.model),
       messages: this.prepareMessages(messages, options?.systemPrompt),
       max_tokens: options?.maxTokens ?? DEFAULT_MAX_TOKENS,
       temperature: options?.temperature ?? DEFAULT_TEMPERATURE,
       stream: false,
     };
 
-    const res = await fetch(`${this.baseUrl}/v1/chat/completions`, {
+    const res = await fetch(`${this.baseUrl}/api/v1/chat`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
@@ -102,14 +113,14 @@ export class LMStudioProvider implements AIProvider {
 
   async *streamChat(messages: ChatMessage[], options?: ChatOptions): AsyncIterable<ChatChunk> {
     const body = {
-      model: options?.model ?? this.defaultModel,
+      model: await this.resolveModel(options?.model),
       messages: this.prepareMessages(messages, options?.systemPrompt),
       max_tokens: options?.maxTokens ?? DEFAULT_MAX_TOKENS,
       temperature: options?.temperature ?? DEFAULT_TEMPERATURE,
       stream: true,
     };
 
-    const res = await fetch(`${this.baseUrl}/v1/chat/completions`, {
+    const res = await fetch(`${this.baseUrl}/api/v1/chat`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
@@ -152,7 +163,7 @@ export class LMStudioProvider implements AIProvider {
     const mediaType = this.detectMediaType(image);
 
     const body = {
-      model: options?.model ?? this.defaultModel,
+      model: await this.resolveModel(options?.model),
       messages: [
         {
           role: 'user',
@@ -170,7 +181,7 @@ export class LMStudioProvider implements AIProvider {
       stream: false,
     };
 
-    const res = await fetch(`${this.baseUrl}/v1/chat/completions`, {
+    const res = await fetch(`${this.baseUrl}/api/v1/chat`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
@@ -194,7 +205,7 @@ export class LMStudioProvider implements AIProvider {
 
   async testConnection(): Promise<boolean> {
     try {
-      const res = await fetch(`${this.baseUrl}/v1/models`);
+      const res = await fetch(`${this.baseUrl}/api/v1/models`);
       if (!res.ok) return false;
       const data = (await res.json()) as LMStudioModelsResponse;
       return Array.isArray(data.data) && data.data.length > 0;
@@ -205,7 +216,7 @@ export class LMStudioProvider implements AIProvider {
 
   async getModels(): Promise<ModelInfo[]> {
     try {
-      const res = await fetch(`${this.baseUrl}/v1/models`);
+      const res = await fetch(`${this.baseUrl}/api/v1/models`);
       if (!res.ok) return [];
       const data = (await res.json()) as LMStudioModelsResponse;
       return data.data.map((m) => ({
