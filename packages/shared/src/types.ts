@@ -142,6 +142,9 @@ export interface CaptureSettings {
   heartbeatEnabled: boolean;
   heartbeatIntervalSeconds: number;
 
+  // Privacy consent
+  screenCaptureConsented: boolean;
+
   // Video options
   videoEnabled: boolean;
   videoMaxDurationSeconds: number;
@@ -278,6 +281,8 @@ export type IpcChannel =
   | 'vision:prune-screenshots'
   | 'vision:open-screenshot-folder'
   | 'vision:pick-screenshot-folder'
+  | 'vision:get-capture-consent'
+  | 'vision:set-capture-consent'
   | 'settings:get'
   | 'settings:set'
   | 'settings:delete'

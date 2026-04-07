@@ -40,6 +40,7 @@ export function getDefaultCaptureSettings(): CaptureSettings {
     folderSizeLimitMb: SCREENSHOTS_FOLDER_SIZE_LIMIT_MB,
     heartbeatEnabled: HEARTBEAT_ENABLED_DEFAULT,
     heartbeatIntervalSeconds: HEARTBEAT_INTERVAL_SECONDS,
+    screenCaptureConsented: false,
     videoEnabled: false,
     videoMaxDurationSeconds: 300,
     videoFps: 15,

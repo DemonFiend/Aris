@@ -134,7 +134,34 @@ export function CapturePanel() {
     }
   };
 
+  const grantConsent = async () => {
+    if (!settings) return;
+    const updated = { ...settings, screenCaptureConsented: true };
+    setSettings(updated);
+    try {
+      await window.aris.invoke('vision:set-capture-settings', updated);
+    } catch {
+      // ignore
+    }
+  };
+
+  const revokeConsent = async () => {
+    if (!settings) return;
+    if (isActive) {
+      await window.aris.invoke('vision:stop-capture');
+      await loadStatus();
+    }
+    const updated = { ...settings, screenCaptureConsented: false, heartbeatEnabled: false };
+    setSettings(updated);
+    try {
+      await window.aris.invoke('vision:set-capture-settings', updated);
+    } catch {
+      // ignore
+    }
+  };
+
   const isActive = status?.active ?? false;
+  const hasConsented = settings?.screenCaptureConsented ?? false;
 
   const filteredSources = settings
     ? sources.filter((s) =>
@@ -143,6 +170,34 @@ export function CapturePanel() {
     : sources;
 
   if (!settings) return <div style={sectionStyle}>Loading settings...</div>;
+
+  // Gate all capture controls behind explicit consent
+  if (!hasConsented) {
+    return (
+      <div style={sectionStyle}>
+        <h3 style={headingStyle}>Screen Capture</h3>
+        <div style={consentBoxStyle}>
+          <p style={{ margin: '0 0 0.5rem', fontWeight: 'var(--font-semibold)' as any, fontSize: 'var(--text-sm)' }}>
+            Privacy Notice
+          </p>
+          <p style={{ margin: '0 0 0.5rem', fontSize: 'var(--text-xs)', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+            Screen capture records the content of your selected monitor or application window. Captured images are stored
+            locally on your device with AES-256 encryption and are never transmitted to external servers. Captures may
+            include sensitive content visible on screen (passwords, messages, documents).
+          </p>
+          <ul style={{ margin: '0 0 var(--space-2)', paddingLeft: 'var(--space-4)', fontSize: 'var(--text-xs)', color: 'var(--text-secondary)', lineHeight: 1.7 }}>
+            <li>Screenshots are saved only to your local disk — never uploaded</li>
+            <li>Captures may include content from any visible application</li>
+            <li>All stored screenshots are encrypted at rest</li>
+            <li>You can revoke consent and delete captures at any time</li>
+          </ul>
+          <button onClick={grantConsent} style={consentBtnStyle}>
+            I Understand — Enable Capture Features
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div style={sectionStyle}>
@@ -498,7 +553,10 @@ export function CapturePanel() {
       </div>
 
       {/* Save button */}
-      <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '0.75rem' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.75rem' }}>
+        <button onClick={revokeConsent} style={{ ...smallBtnStyle, color: 'var(--text-muted)' }}>
+          Revoke Capture Consent
+        </button>
         <button onClick={saveSettings} disabled={saving} style={saveBtnStyle}>
           {saving ? 'Saving...' : 'Save Settings'}
         </button>
@@ -654,6 +712,26 @@ const hintStyle: React.CSSProperties = {
   fontSize: 'var(--text-xs)',
   color: 'var(--text-muted)',
   margin: 'var(--space-1) 0 0',
+};
+
+const consentBoxStyle: React.CSSProperties = {
+  background: 'var(--bg-elevated)',
+  border: '1px solid var(--border-default)',
+  borderRadius: 'var(--radius-md)',
+  padding: 'var(--space-3)',
+  marginBottom: 'var(--space-3)',
+};
+
+const consentBtnStyle: React.CSSProperties = {
+  background: 'var(--color-primary)',
+  color: 'var(--color-primary-on)',
+  border: 'none',
+  borderRadius: 'var(--radius-sm)',
+  padding: 'var(--space-1) var(--space-3)',
+  cursor: 'pointer',
+  fontSize: 'var(--text-sm)',
+  fontWeight: 'var(--font-semibold)' as any,
+  transition: 'var(--transition-fast)',
 };
 
 const dividerStyle: React.CSSProperties = {

@@ -1,4 +1,4 @@
-import { ipcMain } from 'electron';
+import { ipcMain, Notification } from 'electron';
 import {
   ProviderRegistry,
   ClaudeProvider,
@@ -57,6 +57,20 @@ import type { CaptureConfig, CaptureSettings } from '@aris/shared';
 const registry = new ProviderRegistry();
 
 const VALID_ROLES = new Set(['system', 'user', 'assistant']);
+
+/** Track whether we've already sent a capture notification this session */
+let captureNotifiedThisSession = false;
+
+function notifyCaptureStarted(): void {
+  if (captureNotifiedThisSession) return;
+  captureNotifiedThisSession = true;
+  if (Notification.isSupported()) {
+    new Notification({
+      title: 'Aris — Screen Capture Active',
+      body: 'Screen capture is now running. Your screen content is being captured and stored locally.',
+    }).show();
+  }
+}
 
 function validateMessages(messages: unknown): asserts messages is ChatMessage[] {
   if (!Array.isArray(messages)) throw new Error('messages must be an array');
@@ -318,7 +332,12 @@ export function registerIpcHandlers(): void {
   ipcMain.handle(
     'vision:start-capture',
     async (_event, config: Partial<CaptureConfig> & { sourceId: string }) => {
+      const settings = loadCaptureSettings();
+      if (!settings.screenCaptureConsented) {
+        throw new Error('Screen capture requires user consent. Please acknowledge the privacy notice before enabling capture.');
+      }
       startCapture(config);
+      notifyCaptureStarted();
       return getStatus();
     },
   );
@@ -346,9 +365,10 @@ export function registerIpcHandlers(): void {
 
   ipcMain.handle('vision:set-capture-settings', async (_event, settings: CaptureSettings) => {
     saveCaptureSettings(settings);
-    // Restart heartbeat if settings changed
-    if (settings.heartbeatEnabled) {
+    // Restart heartbeat if settings changed and consent was given
+    if (settings.heartbeatEnabled && settings.screenCaptureConsented) {
       startHeartbeat();
+      notifyCaptureStarted();
     }
     return true;
   });
@@ -374,6 +394,19 @@ export function registerIpcHandlers(): void {
     });
     if (result.canceled || result.filePaths.length === 0) return null;
     return result.filePaths[0];
+  });
+
+  // Capture consent handlers
+  ipcMain.handle('vision:get-capture-consent', async () => {
+    const settings = loadCaptureSettings();
+    return settings.screenCaptureConsented;
+  });
+
+  ipcMain.handle('vision:set-capture-consent', async (_event, consented: boolean) => {
+    const settings = loadCaptureSettings();
+    settings.screenCaptureConsented = consented;
+    saveCaptureSettings(settings);
+    return true;
   });
 
   // Password lock handlers
@@ -423,7 +456,7 @@ export function registerIpcHandlers(): void {
   // Initialize prune schedule and heartbeat on startup
   startPruneSchedule();
   const captureSettings = loadCaptureSettings();
-  if (captureSettings.heartbeatEnabled) {
+  if (captureSettings.heartbeatEnabled && captureSettings.screenCaptureConsented) {
     startHeartbeat();
   }
 }

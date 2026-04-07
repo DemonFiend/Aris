@@ -96,9 +96,31 @@ function buildTrayMenu(captureActive = false, sourceName?: string): Menu {
   return Menu.buildFromTemplate(items);
 }
 
+/** Create a 16x16 icon with a red recording dot for the tray */
+function createRecordingIcon(): Electron.NativeImage {
+  // 16x16 RGBA bitmap: transparent background with a centered red circle
+  const size = 16;
+  const buf = Buffer.alloc(size * size * 4, 0);
+  const cx = 8, cy = 8, r = 5;
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      const dx = x - cx, dy = y - cy;
+      if (dx * dx + dy * dy <= r * r) {
+        const offset = (y * size + x) * 4;
+        buf[offset] = 0xef;     // R
+        buf[offset + 1] = 0x44; // G
+        buf[offset + 2] = 0x44; // B
+        buf[offset + 3] = 0xff; // A
+      }
+    }
+  }
+  return nativeImage.createFromBuffer(buf, { width: size, height: size });
+}
+
 function updateTrayForCapture(state: { active: boolean; sourceName?: string }): void {
   if (!tray) return;
-  tray.setToolTip(state.active ? `${APP_NAME} — Capturing` : APP_NAME);
+  tray.setToolTip(state.active ? `${APP_NAME} — Screen Capture Active` : APP_NAME);
+  tray.setImage(state.active ? createRecordingIcon() : nativeImage.createEmpty());
   tray.setContextMenu(buildTrayMenu(state.active, state.sourceName));
 }
 
