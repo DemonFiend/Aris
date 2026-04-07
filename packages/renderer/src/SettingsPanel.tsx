@@ -6,9 +6,10 @@ import { CapturePanel } from './CapturePanel';
 import { VoiceSettings } from './VoiceSettings';
 import { SecuritySettings } from './SecuritySettings';
 import { PersonaSettings } from './PersonaSettings';
+import { RepairPanel } from './RepairPanel';
 import type { ScreenPositionMode, MonitorInfo, ScreenPositionState, VirtualSpaceConfig } from '@aris/shared';
 
-type Tab = 'providers' | 'persona' | 'avatar' | 'voice' | 'capture' | 'security' | 'general' | 'data';
+type Tab = 'providers' | 'persona' | 'avatar' | 'voice' | 'capture' | 'security' | 'general' | 'data' | 'services';
 
 const TABS: { key: Tab; label: string; icon: string }[] = [
   { key: 'providers', label: 'AI Providers', icon: '\u2728' },
@@ -19,6 +20,7 @@ const TABS: { key: Tab; label: string; icon: string }[] = [
   { key: 'security', label: 'Security', icon: '\uD83D\uDD12' },
   { key: 'general', label: 'General', icon: '\u2699' },
   { key: 'data', label: 'Data', icon: '\uD83D\uDCBE' },
+  { key: 'services', label: 'Services', icon: '\uD83D\uDD27' },
 ];
 
 export function SettingsPanel() {
@@ -337,6 +339,12 @@ export function SettingsPanel() {
                 )}
               </SettingRow>
             </div>
+          </SettingsCard>
+        )}
+
+        {tab === 'services' && (
+          <SettingsCard>
+            <RepairPanel />
           </SettingsCard>
         )}
       </div>

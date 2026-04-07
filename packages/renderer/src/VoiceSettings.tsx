@@ -1,13 +1,24 @@
 import { useState, useEffect, useCallback } from 'react';
-import type { VoiceConfig } from '@aris/shared';
+import type { VoiceConfig, CompanionConfig, ServiceDetectionResult } from '@aris/shared';
+import { VoicePicker } from './VoicePicker';
 
 export function VoiceSettings() {
   const [config, setConfig] = useState<VoiceConfig | null>(null);
   const [saving, setSaving] = useState(false);
+  const [selectedVoice, setSelectedVoice] = useState<string | null>(null);
+  const [kokoroEndpoint, setKokoroEndpoint] = useState<string | null>(null);
 
   const loadConfig = useCallback(async () => {
     const cfg = (await window.aris.invoke('voice:get-config')) as VoiceConfig;
     setConfig(cfg);
+    const companion = (await window.aris.invoke('companion:get-config')) as CompanionConfig;
+    setSelectedVoice(companion.ttsVoice);
+    try {
+      const result = (await window.aris.invoke('services:detect', 'kokoro')) as ServiceDetectionResult;
+      setKokoroEndpoint(result.endpoint);
+    } catch {
+      // Kokoro not available
+    }
   }, []);
 
   useEffect(() => {
@@ -21,10 +32,24 @@ export function VoiceSettings() {
     setSaving(false);
   };
 
+  const handleVoiceSelect = async (voiceId: string | null) => {
+    setSelectedVoice(voiceId);
+    await window.aris.invoke('companion:set-config', { ttsVoice: voiceId });
+  };
+
   if (!config) return <div style={{ color: 'var(--text-muted)', padding: 'var(--space-4)' }}>Loading...</div>;
 
   return (
     <div style={containerStyle}>
+      <h3 style={headingStyle}>Kokoro TTS Voice</h3>
+      <VoicePicker
+        kokoroEndpoint={kokoroEndpoint}
+        selectedVoice={selectedVoice}
+        onSelect={(id) => void handleVoiceSelect(id)}
+      />
+
+      <div style={dividerStyle} />
+
       <h3 style={headingStyle}>Voice Settings</h3>
 
       <div style={rowStyle}>

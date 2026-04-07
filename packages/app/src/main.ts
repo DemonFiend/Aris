@@ -217,6 +217,7 @@ app.whenReady().then(() => {
       styleSrc,
       "img-src 'self' data: blob: avatar:",
       connectSrc,
+      "media-src 'self' blob:",
       "worker-src 'self' blob:",
     ].join('; ');
     callback({

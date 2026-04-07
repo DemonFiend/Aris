@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import type { ServiceDetectionResult, ModelInfo, ProviderConfig } from '@aris/shared';
 import { APP_NAME } from '@aris/shared';
+import { VoicePicker } from './VoicePicker';
 
 interface Props {
   onComplete: () => void;
@@ -67,6 +68,7 @@ export function FirstLaunchWizard({ onComplete }: Props) {
   const [completing, setCompleting] = useState(false);
   const [models, setModels] = useState<ModelInfo[]>([]);
   const [loadingModels, setLoadingModels] = useState(false);
+  const [selectedVoice, setSelectedVoice] = useState<string | null>(null);
 
   const stepIndex = STEPS.indexOf(step);
   const progress = (stepIndex / (STEPS.length - 1)) * 100;
@@ -155,12 +157,15 @@ export function FirstLaunchWizard({ onComplete }: Props) {
         await window.aris.invoke('ai:save-provider-config', config);
         await window.aris.invoke('ai:set-provider', selectedProvider);
       }
+      if (selectedVoice !== null) {
+        await window.aris.invoke('companion:set-config', { ttsVoice: selectedVoice });
+      }
       await window.aris.invoke('setup:mark-complete');
       onComplete();
     } catch {
       setCompleting(false);
     }
-  }, [selectedProvider, apiKey, baseUrl, onComplete]);
+  }, [selectedProvider, apiKey, baseUrl, selectedVoice, onComplete]);
 
   const canProceed = useCallback((): boolean => {
     if (step === 'provider') {
@@ -240,7 +245,13 @@ export function FirstLaunchWizard({ onComplete }: Props) {
               detecting={detectingServices}
             />
           )}
-          {step === 'voice-picker' && <VoicePickerStep />}
+          {step === 'voice-picker' && (
+            <VoicePickerStep
+              kokoroEndpoint={kokoroResult?.endpoint ?? null}
+              selectedVoice={selectedVoice}
+              onSelect={setSelectedVoice}
+            />
+          )}
           {step === 'complete' && (
             <CompleteStep
               selectedProvider={selectedProvider}
@@ -602,22 +613,26 @@ function VoiceServiceCard({
   );
 }
 
-function VoicePickerStep() {
+interface VoicePickerStepProps {
+  kokoroEndpoint: string | null;
+  selectedVoice: string | null;
+  onSelect: (voiceId: string | null) => void;
+}
+
+function VoicePickerStep({ kokoroEndpoint, selectedVoice, onSelect }: VoicePickerStepProps) {
   return (
     <div style={stepContentStyle}>
       <div style={welcomeIconStyle}>🎙️</div>
       <h1 style={stepTitleStyle}>Voice Picker</h1>
       <p style={stepDescStyle}>
-        Browse and preview Kokoro TTS voices to find the perfect voice for {APP_NAME}.
+        Choose a Kokoro TTS voice for {APP_NAME}. You can change this later in{' '}
+        <strong>Settings → Voice</strong>.
       </p>
-      <div style={placeholderBoxStyle}>
-        <p style={{ margin: 0, color: 'var(--text-muted)' }}>
-          Voice browsing and preview will be available in the next update (ARI-147).
-        </p>
-        <p style={{ margin: '0.5rem 0 0', color: 'var(--text-muted)', fontSize: 'var(--text-sm)' }}>
-          You can select a voice anytime in <strong>Settings → Voice</strong>.
-        </p>
-      </div>
+      <VoicePicker
+        kokoroEndpoint={kokoroEndpoint}
+        selectedVoice={selectedVoice}
+        onSelect={onSelect}
+      />
     </div>
   );
 }
@@ -1115,18 +1130,6 @@ const voiceCardStyle: React.CSSProperties = {
   display: 'flex',
   flexDirection: 'column',
   gap: 'var(--space-3)',
-};
-
-const placeholderBoxStyle: React.CSSProperties = {
-  background: 'var(--bg-surface)',
-  border: '1px dashed var(--border-default)',
-  borderRadius: 'var(--radius-lg)',
-  padding: 'var(--space-8)',
-  textAlign: 'center',
-  display: 'flex',
-  flexDirection: 'column',
-  gap: 'var(--space-2)',
-  alignItems: 'center',
 };
 
 const summaryListStyle: React.CSSProperties = {
