@@ -174,7 +174,8 @@ app.whenReady().then(() => {
   const session = mainWindow?.webContents?.session ?? require('electron').session.defaultSession;
   session.webRequest.onHeadersReceived((details: Electron.OnHeadersReceivedListenerDetails, callback: (response: Electron.HeadersReceivedResponse) => void) => {
     const scriptSrc = isDev ? "script-src 'self' 'unsafe-inline'" : "script-src 'self'";
-    const styleSrc = isDev ? "style-src 'self' 'unsafe-inline'" : "style-src 'self'";
+    // unsafe-inline required for style-src in both modes: React uses inline style attributes
+    const styleSrc = "style-src 'self' 'unsafe-inline'";
     // In dev, allow all HTTP/WS for local servers. In prod, HTTPS only + localhost for local LLMs.
     // blob: needed for Three.js/VRM model loading via fetch on blob URLs
     const connectSrc = isDev
