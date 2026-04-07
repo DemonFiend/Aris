@@ -140,19 +140,14 @@ export function AvatarDisplay({ lastAssistantMessage, streaming }: Props) {
     // Immediate resize to match current container dimensions
     sceneRef.current?.resize(canvas.clientWidth, canvas.clientHeight);
 
-    let timeout: ReturnType<typeof setTimeout>;
     const handleResize = () => {
-      clearTimeout(timeout);
-      timeout = setTimeout(() => {
-        sceneRef.current?.resize(canvas.clientWidth, canvas.clientHeight);
-      }, 150);
+      sceneRef.current?.resize(canvas.clientWidth, canvas.clientHeight);
     };
 
     const observer = new ResizeObserver(handleResize);
     observer.observe(canvas);
     window.addEventListener('resize', handleResize);
     return () => {
-      clearTimeout(timeout);
       observer.disconnect();
       window.removeEventListener('resize', handleResize);
     };

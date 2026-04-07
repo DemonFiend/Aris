@@ -34,6 +34,8 @@ function createWindow(): void {
   mainWindow = new BrowserWindow({
     width: 400,
     height: 600,
+    minWidth: 320,
+    minHeight: 480,
     title: APP_NAME,
     frame: true,
     transparent: false,
