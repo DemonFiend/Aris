@@ -353,6 +353,26 @@ export const DEFAULT_VIRTUAL_SPACE_CONFIG: VirtualSpaceConfig = {
   backgroundColor: '#0a0a1a',
 };
 
+/** Identifiers for locally-hosted AI services */
+export type ServiceName = 'lmstudio' | 'kokoro' | 'whisper';
+
+/** Detection result for a single local service */
+export interface ServiceDetectionResult {
+  name: ServiceName;
+  /** True if an install was found on the filesystem */
+  installed: boolean;
+  /** True if the service is currently accepting connections */
+  running: boolean;
+  /** Version string if reported by the service API, otherwise null */
+  version: string | null;
+  /** Filesystem path of the executable / app bundle if found */
+  path: string | null;
+  /** Base URL to reach the service if running */
+  endpoint: string | null;
+  /** Human-readable error from the last detection attempt if any */
+  error: string | null;
+}
+
 /** IPC channel names for main <-> renderer communication */
 export type IpcChannel =
   | 'ai:chat'
@@ -435,4 +455,6 @@ export type IpcChannel =
   | 'screen:get-monitors'
   | 'screen:get-position-state'
   | 'screen:set-mode'
-  | 'screen:set-custom-position';
+  | 'screen:set-custom-position'
+  | 'services:detect-all'
+  | 'services:detect';

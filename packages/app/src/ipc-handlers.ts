@@ -28,6 +28,8 @@ import {
   deleteGameProfile,
 } from './game-profile-store';
 import { exportAllData, exportEncryptedFile, importEncryptedFile, wipeAllData } from './data-export';
+import { detectAllServices, detectService } from './service-detector';
+import type { ServiceName } from '@aris/shared';
 import {
   getPasswordConfig,
   setPassword,
@@ -550,6 +552,11 @@ export function registerIpcHandlers(): void {
       return true;
     },
   );
+
+  // Service detection handlers
+  ipcMain.handle('services:detect-all', async () => detectAllServices());
+
+  ipcMain.handle('services:detect', async (_event, name: ServiceName) => detectService(name));
 
   // Initialize prune schedule and heartbeat on startup
   startPruneSchedule();
