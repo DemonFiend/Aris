@@ -238,6 +238,16 @@ export const DEFAULT_COMPANION_CONFIG: CompanionConfig = {
   wakeWord: null,
 };
 
+/** Password lock configuration */
+export interface PasswordConfig {
+  enabled: boolean;
+  hasPassword: boolean;
+  onEnable: boolean;
+  onStart: boolean;
+  useSamePassword: boolean;
+  hasStartupPassword: boolean;
+}
+
 /** IPC channel names for main <-> renderer communication */
 export type IpcChannel =
   | 'ai:chat'
@@ -296,6 +306,13 @@ export type IpcChannel =
   | 'avatar:delete'
   | 'companion:get-config'
   | 'companion:set-config'
+  | 'password:get-config'
+  | 'password:set-password'
+  | 'password:set-startup-password'
+  | 'password:verify'
+  | 'password:set-config'
+  | 'password:remove'
   | 'window:toggle-overlay'
   | 'window:get-overlay'
-  | 'window:minimize-to-tray';
+  | 'window:minimize-to-tray'
+  | 'window:quit';

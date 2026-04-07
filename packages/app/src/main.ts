@@ -115,6 +115,11 @@ function registerWindowHandlers(): void {
     mainWindow?.hide();
     return true;
   });
+
+  ipcMain.handle('window:quit', async () => {
+    isQuitting = true;
+    app.quit();
+  });
 }
 
 app.whenReady().then(() => {

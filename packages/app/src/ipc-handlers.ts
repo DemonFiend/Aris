@@ -29,6 +29,14 @@ import {
 } from './game-profile-store';
 import { exportAllData, wipeAllData } from './data-export';
 import {
+  getPasswordConfig,
+  setPassword,
+  setStartupPassword,
+  verifyPassword,
+  setPasswordConfig,
+  removePassword,
+} from './password-store';
+import {
   getSources,
   startCapture,
   stopCapture,
@@ -358,6 +366,50 @@ export function registerIpcHandlers(): void {
     });
     if (result.canceled || result.filePaths.length === 0) return null;
     return result.filePaths[0];
+  });
+
+  // Password lock handlers
+  ipcMain.handle('password:get-config', async () => {
+    return getPasswordConfig();
+  });
+
+  ipcMain.handle('password:set-password', async (_event, password: string) => {
+    validateString(password, 'password');
+    await setPassword(password);
+    return getPasswordConfig();
+  });
+
+  ipcMain.handle('password:set-startup-password', async (_event, password: string) => {
+    validateString(password, 'password');
+    await setStartupPassword(password);
+    return getPasswordConfig();
+  });
+
+  ipcMain.handle(
+    'password:verify',
+    async (_event, password: string, purpose: 'enable' | 'startup') => {
+      validateString(password, 'password');
+      if (purpose !== 'enable' && purpose !== 'startup') {
+        throw new Error('purpose must be "enable" or "startup"');
+      }
+      return verifyPassword(password, purpose);
+    },
+  );
+
+  ipcMain.handle('password:set-config', async (_event, updates: Record<string, unknown>) => {
+    const safe: Record<string, boolean> = {};
+    for (const key of ['enabled', 'onEnable', 'onStart', 'useSamePassword'] as const) {
+      if (typeof updates[key] === 'boolean') {
+        safe[key] = updates[key] as boolean;
+      }
+    }
+    setPasswordConfig(safe);
+    return getPasswordConfig();
+  });
+
+  ipcMain.handle('password:remove', async () => {
+    removePassword();
+    return getPasswordConfig();
   });
 
   // Initialize prune schedule and heartbeat on startup

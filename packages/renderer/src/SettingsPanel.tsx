@@ -3,8 +3,9 @@ import { ProviderSettings } from './ProviderSettings';
 import { AvatarSettings } from './AvatarSettings';
 import { CapturePanel } from './CapturePanel';
 import { VoiceSettings } from './VoiceSettings';
+import { SecuritySettings } from './SecuritySettings';
 
-type Tab = 'providers' | 'avatar' | 'voice' | 'capture' | 'general' | 'data';
+type Tab = 'providers' | 'avatar' | 'voice' | 'capture' | 'security' | 'general' | 'data';
 
 export function SettingsPanel() {
   const [tab, setTab] = useState<Tab>('providers');
@@ -50,6 +51,7 @@ export function SettingsPanel() {
     { key: 'avatar', label: 'Avatar' },
     { key: 'voice', label: 'Voice' },
     { key: 'capture', label: 'Capture' },
+    { key: 'security', label: 'Security' },
     { key: 'general', label: 'General' },
     { key: 'data', label: 'Data' },
   ];
@@ -79,6 +81,8 @@ export function SettingsPanel() {
       {tab === 'voice' && <VoiceSettings />}
 
       {tab === 'capture' && <CapturePanel />}
+
+      {tab === 'security' && <SecuritySettings />}
 
       {tab === 'general' && (
         <div style={sectionStyle}>
@@ -130,7 +134,7 @@ export function SettingsPanel() {
               </button>
             ) : (
               <div style={{ display: 'flex', gap: 'var(--space-1)' }}>
-                <button onClick={handleWipe} style={{ ...actionBtnStyle, background: 'var(--color-error)', color: '#fff' }}>
+                <button onClick={handleWipe} style={{ ...actionBtnStyle, background: 'var(--color-error)', color: 'var(--text-primary)' }}>
                   Confirm Delete
                 </button>
                 <button onClick={() => setConfirmWipe(false)} style={actionBtnStyle}>
