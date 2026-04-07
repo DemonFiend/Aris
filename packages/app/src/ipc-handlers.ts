@@ -558,6 +558,11 @@ export function registerIpcHandlers(): void {
 
   ipcMain.handle('services:detect', async (_event, name: ServiceName) => detectService(name));
 
+  // First-launch setup state
+  ipcMain.handle('setup:is-complete', async () => getSetting('hasCompletedSetup') === 'true');
+
+  ipcMain.handle('setup:mark-complete', async () => setSetting('hasCompletedSetup', 'true'));
+
   // Initialize prune schedule and heartbeat on startup
   startPruneSchedule();
   const captureSettings = loadCaptureSettings();

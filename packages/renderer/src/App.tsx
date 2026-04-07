@@ -6,6 +6,7 @@ import { ChatPanel } from './ChatPanel';
 import { ConversationSidebar } from './ConversationSidebar';
 import { AvatarDisplay } from './AvatarDisplay';
 import { LockScreen } from './LockScreen';
+import { FirstLaunchWizard } from './FirstLaunchWizard';
 
 type View = 'chat' | 'settings';
 
@@ -18,12 +19,27 @@ export function App() {
   const [chatExpanded, setChatExpanded] = useState(false);
   const [aiStreaming, setAiStreaming] = useState(false);
 
+  // First-launch wizard state
+  const [setupDone, setSetupDone] = useState<boolean | null>(null);
+
   // Password lock state
   const [lockState, setLockState] = useState<'loading' | 'locked-startup' | 'locked-enable' | 'unlocked'>('loading');
   const [arisActive, setArisActive] = useState(true);
   const [passwordConfig, setPasswordConfig] = useState<PasswordConfig | null>(null);
 
   useEffect(() => {
+    (async () => {
+      try {
+        const complete = (await window.aris.invoke('setup:is-complete')) as boolean;
+        setSetupDone(complete);
+      } catch {
+        setSetupDone(true); // fail open — don't block if IPC fails
+      }
+    })();
+  }, []);
+
+  useEffect(() => {
+    if (setupDone !== true) return; // don't check password until setup is confirmed done
     (async () => {
       try {
         const config = (await window.aris.invoke('password:get-config')) as PasswordConfig | undefined;
@@ -41,7 +57,7 @@ export function App() {
         setLockState('unlocked');
       }
     })();
-  }, []);
+  }, [setupDone]);
 
   const handleNewChat = useCallback(() => {
     setActiveConversation(null);
@@ -84,6 +100,18 @@ export function App() {
       setArisActive(true);
     }
   }, [arisActive]);
+
+  // Show wizard on first launch (before any lock/auth check)
+  if (setupDone === null) {
+    return (
+      <div style={{ ...rootStyle, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <span style={{ color: 'var(--text-muted)' }}>Loading...</span>
+      </div>
+    );
+  }
+  if (setupDone === false) {
+    return <FirstLaunchWizard onComplete={() => setSetupDone(true)} />;
+  }
 
   if (lockState === 'loading') {
     return (

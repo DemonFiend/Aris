@@ -10,6 +10,17 @@ test.describe('Chat message persistence', () => {
     await window.waitForLoadState('domcontentloaded');
     await window.waitForSelector('#root > *', { timeout: 10_000 });
 
+    // Dismiss first-launch wizard if it appears (fresh test DB has no setup flag)
+    const isWizard = await window.locator('text=Welcome to Aris').isVisible().catch(() => false);
+    if (isWizard) {
+      // Click through all non-complete steps (skip 4×), then finish
+      for (let i = 0; i < 4; i++) {
+        await window.click('button:has-text("Skip")');
+      }
+      await window.click('button:has-text("Start chatting")');
+      await window.waitForSelector('button[title="Chat history"]', { timeout: 10_000 });
+    }
+
     // Seed a conversation with messages directly via IPC
     const { convId } = await window.evaluate(async () => {
       const conv = await (window as any).aris.invoke('conversations:create', 'Test persistence chat');
