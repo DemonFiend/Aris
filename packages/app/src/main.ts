@@ -8,6 +8,8 @@ import { registerAvatarHandlers } from './avatar-handlers';
 import { registerCompanionHandlers } from './companion-handlers';
 import { captureEvents } from './capture-service';
 import { getPositionContext } from './position-context';
+import { getScreenPositionState } from './screen-position';
+import { getSetting } from './settings-store';
 import { getDb, closeDb } from './database';
 import { initAutoUpdater } from './auto-updater';
 import { pathToFileURL } from 'url';
@@ -63,6 +65,11 @@ function createWindow(): void {
   const emitPositionContext = () => {
     if (!mainWindow || mainWindow.isDestroyed()) return;
     mainWindow.webContents.send('window:position-changed', getPositionContext(mainWindow));
+    // In auto mode, also emit the full screen position state
+    const mode = getSetting('screenPosition.mode') ?? 'disabled';
+    if (mode === 'auto') {
+      mainWindow.webContents.send('screen:position-changed', getScreenPositionState(mainWindow));
+    }
   };
   mainWindow.on('move', emitPositionContext);
   mainWindow.on('resize', emitPositionContext);
@@ -179,6 +186,11 @@ function registerWindowHandlers(): void {
   ipcMain.handle('window:quit', async () => {
     isQuitting = true;
     app.quit();
+  });
+
+  ipcMain.handle('screen:get-position-state', async () => {
+    if (!mainWindow) return null;
+    return getScreenPositionState(mainWindow);
   });
 }
 

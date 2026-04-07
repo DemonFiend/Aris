@@ -282,6 +282,28 @@ export const DEFAULT_COMPANION_CONFIG: CompanionConfig = {
   wakeWord: null,
 };
 
+/** Screen position awareness mode */
+export type ScreenPositionMode = 'disabled' | 'auto' | 'custom';
+
+/** Info about a connected monitor */
+export interface MonitorInfo {
+  id: number;
+  label: string;
+  index: number;
+  bounds: { x: number; y: number; width: number; height: number };
+  isPrimary: boolean;
+}
+
+/** Full screen position state */
+export interface ScreenPositionState {
+  mode: ScreenPositionMode;
+  monitors: MonitorInfo[];
+  positions: Record<number, number | null>;
+  activeMonitorIndex: number | null;
+  activeGridCell: number | null;
+  globalPosition: number | null;
+}
+
 /** Dock position of the app window relative to screen edges */
 export type DockPosition = 'top' | 'bottom' | 'left' | 'right' | 'floating' | 'fullscreen';
 
@@ -384,4 +406,8 @@ export type IpcChannel =
   | 'window:get-overlay'
   | 'window:get-position-context'
   | 'window:minimize-to-tray'
-  | 'window:quit';
+  | 'window:quit'
+  | 'screen:get-monitors'
+  | 'screen:get-position-state'
+  | 'screen:set-mode'
+  | 'screen:set-custom-position';

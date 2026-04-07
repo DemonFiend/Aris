@@ -52,7 +52,8 @@ import {
   openScreenshotFolder,
   startPruneSchedule,
 } from './screenshot-store';
-import type { CaptureConfig, CaptureSettings } from '@aris/shared';
+import type { CaptureConfig, CaptureSettings, ScreenPositionMode } from '@aris/shared';
+import { getMonitorInfo, getScreenPositionState } from './screen-position';
 
 const registry = new ProviderRegistry();
 
@@ -510,6 +511,41 @@ export function registerIpcHandlers(): void {
     removePassword();
     return getPasswordConfig();
   });
+
+  // Screen position handlers (screen:get-position-state is registered in main.ts — needs window ref)
+  ipcMain.handle('screen:get-monitors', async () => {
+    return getMonitorInfo();
+  });
+
+  ipcMain.handle('screen:set-mode', async (_event, mode: ScreenPositionMode) => {
+    if (!['disabled', 'auto', 'custom'].includes(mode)) {
+      throw new Error(`Invalid screen position mode: ${mode}`);
+    }
+    setSetting('screenPosition.mode', mode);
+    return true;
+  });
+
+  ipcMain.handle(
+    'screen:set-custom-position',
+    async (_event, monitorIndex: number, cell: number) => {
+      if (typeof monitorIndex !== 'number' || typeof cell !== 'number') {
+        throw new Error('monitorIndex and cell must be numbers');
+      }
+      if (cell < 1 || cell > 9) {
+        throw new Error('cell must be between 1 and 9');
+      }
+      let positions: Record<number, number | null> = {};
+      try {
+        const raw = getSetting('screenPosition.customPositions');
+        if (raw) positions = JSON.parse(raw);
+      } catch {
+        positions = {};
+      }
+      positions[monitorIndex] = cell;
+      setSetting('screenPosition.customPositions', JSON.stringify(positions));
+      return true;
+    },
+  );
 
   // Initialize prune schedule and heartbeat on startup
   startPruneSchedule();
