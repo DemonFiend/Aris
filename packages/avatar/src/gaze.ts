@@ -25,8 +25,14 @@ export class GazeController {
   private currentYaw = 0;
   private currentPitch = 0;
 
+  // Last applied values — used to compute delta so rotations don't accumulate
+  private lastAppliedYaw = 0;
+  private lastAppliedPitch = 0;
+
   setVRM(vrm: VRM): void {
     this.vrm = vrm;
+    this.lastAppliedYaw = 0;
+    this.lastAppliedPitch = 0;
   }
 
   setMode(mode: GazeMode): void {
@@ -84,11 +90,16 @@ export class GazeController {
     this.currentYaw += (targetYaw - this.currentYaw) * lerpFactor;
     this.currentPitch += (targetPitch - this.currentPitch) * lerpFactor;
 
-    // Apply additively to head bone
+    // Apply additively to head bone using delta to prevent accumulation
     const head = this.vrm.humanoid?.getNormalizedBoneNode('head');
     if (head) {
-      head.rotation.y += this.currentYaw;
-      head.rotation.x += this.currentPitch;
+      head.rotation.y += this.currentYaw - this.lastAppliedYaw;
+      head.rotation.x += this.currentPitch - this.lastAppliedPitch;
+      this.lastAppliedYaw = this.currentYaw;
+      this.lastAppliedPitch = this.currentPitch;
+      // Clamp to safe ranges to prevent extreme poses
+      head.rotation.y = Math.max(-0.5, Math.min(0.5, head.rotation.y));
+      head.rotation.x = Math.max(-0.3, Math.min(0.3, head.rotation.x));
     }
   }
 
