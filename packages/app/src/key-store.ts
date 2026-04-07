@@ -17,10 +17,17 @@ function ensureDir(): void {
   }
 }
 
+/** Whether the OS keychain is available for real encryption */
+export function isEncryptionAvailable(): boolean {
+  return safeStorage.isEncryptionAvailable();
+}
+
 function encryptString(value: string): string {
   if (safeStorage.isEncryptionAvailable()) {
     return safeStorage.encryptString(value).toString('base64');
   }
+  // Fallback: base64 is NOT encryption — caller should warn the user
+  console.warn('[key-store] safeStorage unavailable — API keys stored with base64 encoding only');
   return Buffer.from(value).toString('base64');
 }
 
@@ -29,6 +36,25 @@ function decryptString(encoded: string): string {
     return safeStorage.decryptString(Buffer.from(encoded, 'base64'));
   }
   return Buffer.from(encoded, 'base64').toString();
+}
+
+/** Validate that a provider base URL is safe (HTTPS or localhost) */
+export function validateProviderUrl(url: string | undefined): void {
+  if (!url) return;
+  try {
+    const parsed = new URL(url);
+    const isLocal = parsed.hostname === 'localhost' || parsed.hostname === '127.0.0.1' || parsed.hostname === '::1';
+    if (parsed.protocol === 'http:' && !isLocal) {
+      throw new Error(
+        `Insecure HTTP URL rejected: ${parsed.hostname}. Use HTTPS for remote endpoints, or localhost for local servers.`,
+      );
+    }
+  } catch (e) {
+    if (e instanceof TypeError) {
+      throw new Error(`Invalid URL: ${url}`);
+    }
+    throw e;
+  }
 }
 
 interface StoredConfig {
@@ -60,6 +86,7 @@ export function loadProviderConfigs(): ProviderConfig[] {
 }
 
 export function saveProviderConfig(config: ProviderConfig): void {
+  validateProviderUrl(config.baseUrl);
   ensureDir();
   const configPath = getConfigPath();
   const configs = loadProviderConfigs();

@@ -9,7 +9,7 @@ import {
   LMStudioProvider,
 } from '@aris/ai-core';
 import type { ChatMessage, ChatOptions, ProviderConfig } from '@aris/shared';
-import { loadProviderConfigs, saveProviderConfig } from './key-store';
+import { loadProviderConfigs, saveProviderConfig, isEncryptionAvailable } from './key-store';
 import { getSetting, setSetting, deleteSetting, getAllSettings } from './settings-store';
 import {
   listConversations,
@@ -47,6 +47,23 @@ import {
 import type { CaptureConfig, CaptureSettings } from '@aris/shared';
 
 const registry = new ProviderRegistry();
+
+const VALID_ROLES = new Set(['system', 'user', 'assistant']);
+
+function validateMessages(messages: unknown): asserts messages is ChatMessage[] {
+  if (!Array.isArray(messages)) throw new Error('messages must be an array');
+  for (const msg of messages) {
+    if (!msg || typeof msg !== 'object') throw new Error('Each message must be an object');
+    if (typeof msg.content !== 'string') throw new Error('Message content must be a string');
+    if (!VALID_ROLES.has(msg.role)) throw new Error(`Invalid message role: ${msg.role}`);
+  }
+}
+
+function validateString(value: unknown, name: string): asserts value is string {
+  if (typeof value !== 'string' || value.length === 0) {
+    throw new Error(`${name} must be a non-empty string`);
+  }
+}
 
 function initProviderFromConfig(config: ProviderConfig): void {
   if (!config.enabled) return;
@@ -92,6 +109,7 @@ export function initProviders(): void {
 
 export function registerIpcHandlers(): void {
   ipcMain.handle('ai:chat', async (_event, messages: ChatMessage[], options?: ChatOptions) => {
+    validateMessages(messages);
     const provider = registry.getActive();
     return provider.chat(messages, options);
   });
@@ -99,6 +117,7 @@ export function registerIpcHandlers(): void {
   ipcMain.handle(
     'ai:stream-chat',
     async (event, messages: ChatMessage[], options?: ChatOptions) => {
+      validateMessages(messages);
       const provider = registry.getActive();
       const sender = event.sender;
       for await (const chunk of provider.streamChat(messages, options)) {
@@ -110,6 +129,8 @@ export function registerIpcHandlers(): void {
   ipcMain.handle(
     'ai:vision',
     async (_event, imageBase64: string, prompt: string, options?: ChatOptions) => {
+      validateString(imageBase64, 'imageBase64');
+      validateString(prompt, 'prompt');
       const provider = registry.getActive();
       const image = Buffer.from(imageBase64, 'base64');
       return provider.vision(image, prompt, options);
@@ -151,9 +172,12 @@ export function registerIpcHandlers(): void {
   });
 
   ipcMain.handle('ai:save-provider-config', async (_event, config: ProviderConfig) => {
+    if (!config || typeof config.id !== 'string') {
+      throw new Error('Invalid provider config: id is required');
+    }
     saveProviderConfig(config);
     initProviderFromConfig(config);
-    return true;
+    return { saved: true, encryptionAvailable: isEncryptionAvailable() };
   });
 
   // Settings handlers
@@ -213,6 +237,9 @@ export function registerIpcHandlers(): void {
       model?: string,
       tokenCount?: number,
     ) => {
+      validateString(conversationId, 'conversationId');
+      if (!VALID_ROLES.has(role)) throw new Error(`Invalid role: ${role}`);
+      if (typeof content !== 'string') throw new Error('content must be a string');
       return addMessage(conversationId, role, content, model, tokenCount);
     },
   );
