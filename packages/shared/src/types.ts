@@ -332,6 +332,27 @@ export interface PasswordConfig {
   hasStartupPassword: boolean;
 }
 
+/** Virtual space configuration — ground plane, shadows, and scene environment */
+export interface VirtualSpaceConfig {
+  enabled: boolean;
+  groundSize: [number, number];
+  groundMaterial: 'grid' | 'solid' | 'textured';
+  groundColor: string;
+  fogEnabled: boolean;
+  backgroundMode: 'transparent' | 'solid' | 'gradient';
+  backgroundColor: string;
+}
+
+export const DEFAULT_VIRTUAL_SPACE_CONFIG: VirtualSpaceConfig = {
+  enabled: false,
+  groundSize: [5, 5],
+  groundMaterial: 'grid',
+  groundColor: '#1a1a2e',
+  fogEnabled: false,
+  backgroundMode: 'transparent',
+  backgroundColor: '#0a0a1a',
+};
+
 /** IPC channel names for main <-> renderer communication */
 export type IpcChannel =
   | 'ai:chat'
@@ -394,6 +415,8 @@ export type IpcChannel =
   | 'avatar:open-folder'
   | 'avatar:import'
   | 'avatar:delete'
+  | 'avatar:get-space-config'
+  | 'avatar:set-space-config'
   | 'companion:get-config'
   | 'companion:set-config'
   | 'password:get-config'

@@ -1,8 +1,22 @@
 import { ipcMain, app, dialog, shell, BrowserWindow } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs';
-import type { AvatarInfo } from '@aris/shared';
+import type { AvatarInfo, VirtualSpaceConfig } from '@aris/shared';
+import { DEFAULT_VIRTUAL_SPACE_CONFIG } from '@aris/shared';
 import { getSetting, setSetting } from './settings-store';
+
+const SPACE_CONFIG_KEY = 'avatar-space-config';
+
+function getSpaceConfig(): VirtualSpaceConfig {
+  const raw = getSetting(SPACE_CONFIG_KEY);
+  if (!raw) return { ...DEFAULT_VIRTUAL_SPACE_CONFIG };
+  try {
+    const saved = JSON.parse(raw) as Partial<VirtualSpaceConfig>;
+    return { ...DEFAULT_VIRTUAL_SPACE_CONFIG, ...saved };
+  } catch {
+    return { ...DEFAULT_VIRTUAL_SPACE_CONFIG };
+  }
+}
 
 const AVATAR_DIR_NAME = 'avatars';
 const DEFAULT_AVATAR_KEY = 'avatar-default';
@@ -129,6 +143,23 @@ export function registerAvatarHandlers(): void {
       setSetting(DEFAULT_AVATAR_KEY, '');
     }
     return true;
+  });
+
+  ipcMain.handle('avatar:get-space-config', async () => {
+    return getSpaceConfig();
+  });
+
+  ipcMain.handle('avatar:set-space-config', async (_event, config: Partial<VirtualSpaceConfig>) => {
+    const current = getSpaceConfig();
+    const merged: VirtualSpaceConfig = { ...current, ...config };
+    setSetting(SPACE_CONFIG_KEY, JSON.stringify(merged));
+    // Broadcast the updated config to all renderer windows
+    for (const win of BrowserWindow.getAllWindows()) {
+      if (!win.isDestroyed()) {
+        win.webContents.send('avatar:space-config-changed', merged);
+      }
+    }
+    return merged;
   });
 
   ipcMain.handle('avatar:import', async (event) => {

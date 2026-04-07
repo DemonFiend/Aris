@@ -6,7 +6,7 @@ import { CapturePanel } from './CapturePanel';
 import { VoiceSettings } from './VoiceSettings';
 import { SecuritySettings } from './SecuritySettings';
 import { PersonaSettings } from './PersonaSettings';
-import type { ScreenPositionMode, MonitorInfo, ScreenPositionState } from '@aris/shared';
+import type { ScreenPositionMode, MonitorInfo, ScreenPositionState, VirtualSpaceConfig } from '@aris/shared';
 
 type Tab = 'providers' | 'persona' | 'avatar' | 'voice' | 'capture' | 'security' | 'general' | 'data';
 
@@ -31,6 +31,7 @@ export function SettingsPanel() {
   const [customPositions, setCustomPositions] = useState<Record<number, number | null>>({});
   const [liveScreenState, setLiveScreenState] = useState<ScreenPositionState | null>(null);
   const [pendingMode, setPendingMode] = useState<ScreenPositionMode | null>(null);
+  const [spaceConfig, setSpaceConfig] = useState<VirtualSpaceConfig | null>(null);
 
   const loadState = useCallback(async () => {
     const overlay = (await window.aris.invoke('window:get-overlay')) as boolean;
@@ -43,6 +44,12 @@ export function SettingsPanel() {
       setLiveScreenState(state);
     } catch {
       // Screen position backend not yet available (ARI-133)
+    }
+    try {
+      const cfg = (await window.aris.invoke('avatar:get-space-config')) as VirtualSpaceConfig;
+      setSpaceConfig(cfg);
+    } catch {
+      // ignore
     }
   }, []);
 
@@ -91,6 +98,12 @@ export function SettingsPanel() {
     } catch {
       // ignore
     }
+  };
+
+  const toggleVirtualSpace = async () => {
+    const next = { ...(spaceConfig ?? {}), enabled: !(spaceConfig?.enabled ?? false) };
+    const updated = (await window.aris.invoke('avatar:set-space-config', next)) as VirtualSpaceConfig;
+    setSpaceConfig(updated);
   };
 
   const handleExport = async () => {
@@ -159,6 +172,19 @@ export function SettingsPanel() {
             <div style={{ marginTop: 'var(--space-3)' }}>
               <SettingsCard>
                 <IdleSettings />
+              </SettingsCard>
+            </div>
+            <div style={{ marginTop: 'var(--space-3)' }}>
+              <SettingsCard>
+                <div style={cardInnerStyle}>
+                  <h3 style={sectionHeadingStyle}>Virtual Space</h3>
+                  <SettingRow
+                    label="Ground plane"
+                    description="Show a virtual floor with grid, shadows, and optional background"
+                  >
+                    <ToggleButton on={spaceConfig?.enabled ?? false} onClick={() => void toggleVirtualSpace()} />
+                  </SettingRow>
+                </div>
               </SettingsCard>
             </div>
           </>

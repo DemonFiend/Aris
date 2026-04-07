@@ -1,7 +1,7 @@
 import { useRef, useEffect, useState, useCallback } from 'react';
 import { AvatarScene, IdleAnimation, IdleVariationManager, ExpressionController, GestureController, GazeController, sentimentToExpression } from '@aris/avatar';
 import type { Expression, GestureType, DockHint } from '@aris/avatar';
-import type { AvatarInfo, CompanionConfig, PositionContext } from '@aris/shared';
+import type { AvatarInfo, CompanionConfig, PositionContext, VirtualSpaceConfig } from '@aris/shared';
 
 interface Props {
   /** Text of latest assistant message — used to drive expressions */
@@ -102,6 +102,13 @@ export function AvatarDisplay({ lastAssistantMessage, streaming }: Props) {
         scene.loadGhostFallback();
       }
 
+      // Apply virtual space config (only when VRM is loaded — skip ghost mode)
+      if (vrmLoaded) {
+        window.aris.invoke('avatar:get-space-config').then((cfg) => {
+          if (cfg) scene.applySpaceConfig(cfg as VirtualSpaceConfig);
+        });
+      }
+
       scene.start();
       setLoaded(true);
     } catch (e) {
@@ -179,6 +186,16 @@ export function AvatarDisplay({ lastAssistantMessage, streaming }: Props) {
     const expression = sentimentToExpression(lastAssistantMessage);
     exprRef.current.setExpression(expression as Expression);
   }, [lastAssistantMessage]);
+
+  // Apply live space config updates (only when VRM is loaded)
+  useEffect(() => {
+    const cleanup = window.aris.on?.('avatar:space-config-changed', (cfg: unknown) => {
+      if (cfg && sceneRef.current && loaded) {
+        sceneRef.current.applySpaceConfig(cfg as VirtualSpaceConfig);
+      }
+    });
+    return cleanup;
+  }, [loaded]);
 
   return (
     <div style={wrapperStyle}>

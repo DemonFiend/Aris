@@ -1,7 +1,7 @@
 import { contextBridge, ipcRenderer } from 'electron';
 import type { IpcChannel } from '@aris/shared';
 
-type EventChannel = 'ai:stream-chunk' | 'vision:frame' | 'voice:command' | 'voice:push-to-talk' | 'avatar:gesture' | 'window:position-changed' | 'screen:position-changed';
+type EventChannel = 'ai:stream-chunk' | 'vision:frame' | 'voice:command' | 'voice:push-to-talk' | 'avatar:gesture' | 'window:position-changed' | 'screen:position-changed' | 'avatar:space-config-changed';
 
 /**
  * Expose a typed IPC bridge to the renderer process.
