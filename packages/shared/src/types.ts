@@ -284,6 +284,8 @@ export type IpcChannel =
   | 'ai:vision'
   | 'ai:get-providers'
   | 'ai:set-provider'
+  | 'ai:get-active-provider'
+  | 'ai:clear-provider'
   | 'ai:test-connection'
   | 'ai:get-models'
   | 'ai:get-provider-configs'

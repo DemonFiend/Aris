@@ -20,6 +20,7 @@ const PROVIDER_DEFS = [
 export function ProviderSettings() {
   const [configs, setConfigs] = useState<ProviderConfig[]>([]);
   const [providers, setProviders] = useState<ProviderInfo[]>([]);
+  const [activeProviderId, setActiveProviderId] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<string | null>(null);
   const [apiKey, setApiKey] = useState('');
   const [baseUrl, setBaseUrl] = useState('http://127.0.0.1:11434');
@@ -36,6 +37,8 @@ export function ProviderSettings() {
     setConfigs(cfgs ?? []);
     const provs = (await window.aris.invoke('ai:get-providers')) as ProviderInfo[] | undefined;
     setProviders(provs ?? []);
+    const active = (await window.aris.invoke('ai:get-active-provider')) as string | null;
+    setActiveProviderId(active);
   }, []);
 
   useEffect(() => {
@@ -125,6 +128,11 @@ export function ProviderSettings() {
     await loadConfigs();
   };
 
+  const clearActive = async () => {
+    await window.aris.invoke('ai:clear-provider');
+    await loadConfigs();
+  };
+
   const isRegistered = (id: string) => providers.some((p) => p.id === id);
   const isConfigured = (id: string) => configs.some((c) => c.id === id && c.enabled);
   const getConfig = (id: string) => configs.find((c) => c.id === id);
@@ -152,7 +160,8 @@ export function ProviderSettings() {
                 </div>
               </div>
               <div style={cardHeaderRightStyle}>
-                {configured && <span style={statusDotStyle(true)} />}
+                {configured && <span style={statusDotStyle(activeProviderId === def.id)} />}
+                {activeProviderId === def.id && <span style={activeLabelStyle}>Active</span>}
                 <span style={chevronStyle(isExpanded)}>{'\u276F'}</span>
               </div>
             </button>
@@ -166,12 +175,21 @@ export function ProviderSettings() {
                 >
                   {test === 'testing' ? 'Testing...' : test === 'ok' ? 'Connected' : test === 'fail' ? 'Failed' : 'Test'}
                 </button>
-                <button
-                  onClick={(e) => { e.stopPropagation(); setActive(def.id); }}
-                  style={chipBtnStyle('primary')}
-                >
-                  Activate
-                </button>
+                {activeProviderId === def.id ? (
+                  <button
+                    onClick={(e) => { e.stopPropagation(); clearActive(); }}
+                    style={chipBtnStyle('success')}
+                  >
+                    Active
+                  </button>
+                ) : (
+                  <button
+                    onClick={(e) => { e.stopPropagation(); setActive(def.id); }}
+                    style={chipBtnStyle('primary')}
+                  >
+                    Activate
+                  </button>
+                )}
               </div>
             )}
 
@@ -267,9 +285,15 @@ export function ProviderSettings() {
                       >
                         {test === 'testing' ? 'Testing...' : test === 'ok' ? 'Connected' : test === 'fail' ? 'Failed' : 'Test Connection'}
                       </button>
-                      <button onClick={() => setActive(def.id)} style={chipBtnStyle('default')}>
-                        Activate
-                      </button>
+                      {activeProviderId === def.id ? (
+                        <button onClick={() => clearActive()} style={chipBtnStyle('success')}>
+                          Active
+                        </button>
+                      ) : (
+                        <button onClick={() => setActive(def.id)} style={chipBtnStyle('default')}>
+                          Activate
+                        </button>
+                      )}
                     </>
                   )}
                   <div style={{ flex: 1 }} />
@@ -357,6 +381,14 @@ function statusDotStyle(active: boolean): React.CSSProperties {
     boxShadow: active ? '0 0 6px var(--color-success)' : 'none',
   };
 }
+
+const activeLabelStyle: React.CSSProperties = {
+  fontSize: 'var(--text-xs)',
+  fontWeight: 'var(--font-semibold)' as any,
+  color: 'var(--color-success)',
+  textTransform: 'uppercase',
+  letterSpacing: '0.04em',
+};
 
 function chevronStyle(open: boolean): React.CSSProperties {
   return {
