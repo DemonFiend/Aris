@@ -25,7 +25,6 @@ export function AvatarSettings() {
   const [previewError, setPreviewError] = useState<string | null>(null);
   const [previewSuccess, setPreviewSuccess] = useState(false);
 
-  // Initialize / tear down preview scene
   useEffect(() => {
     return () => {
       previewSceneRef.current?.dispose();
@@ -39,7 +38,6 @@ export function AvatarSettings() {
     setPreviewError(null);
     setPreviewSuccess(false);
 
-    // Wait a tick for the canvas to mount
     await new Promise((r) => setTimeout(r, 50));
 
     const canvas = previewCanvasRef.current;
@@ -49,27 +47,19 @@ export function AvatarSettings() {
       return;
     }
 
-    // Dispose previous scene
     previewSceneRef.current?.dispose();
     previewSceneRef.current = null;
 
     try {
       const scene = new AvatarScene(canvas);
       previewSceneRef.current = scene;
-
       const avatarUrl = `avatar://${filename}`;
       await scene.loadVRM(avatarUrl);
       scene.start();
-
-      // Force a resize to match the canvas container
       scene.resize(canvas.clientWidth, canvas.clientHeight);
-
       setPreviewSuccess(true);
     } catch (e) {
-      setPreviewError(
-        `Failed to load VRM: ${e instanceof Error ? e.message : String(e)}`,
-      );
-      // Clean up the broken scene
+      setPreviewError(`Failed to load VRM: ${e instanceof Error ? e.message : String(e)}`);
       previewSceneRef.current?.dispose();
       previewSceneRef.current = null;
     }
@@ -91,10 +81,7 @@ export function AvatarSettings() {
     try {
       await window.aris.invoke('avatar:delete', filename);
       setStatus(`Deleted ${filename}`);
-      // If we were previewing this avatar, close the preview
-      if (previewAvatar === filename) {
-        handleClosePreview();
-      }
+      if (previewAvatar === filename) handleClosePreview();
       await loadAvatars();
     } catch (e) {
       setError(`Delete failed: ${e instanceof Error ? e.message : e}`);
@@ -132,13 +119,10 @@ export function AvatarSettings() {
   const handleImport = async () => {
     setError(null);
     setStatus(null);
-
     if (!isElectron) {
-      // Browser fallback: open a native file picker via hidden input
       fileInputRef.current?.click();
       return;
     }
-
     try {
       const imported = (await window.aris.invoke('avatar:import')) as string[] | undefined;
       if (imported && imported.length > 0) {
@@ -153,32 +137,24 @@ export function AvatarSettings() {
   const handleFileInputChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
-
-    // In browser mode we can't write to the filesystem directly.
-    // Show an informative message with the file names so the user knows what to do.
     const names = Array.from(files).map((f) => f.name);
     setError(
       `Browser mode cannot copy files to disk. Please run the Electron desktop app, ` +
       `or manually place these files in the avatars folder: ${names.join(', ')}`,
     );
-    // Reset so the same file can be re-selected
     e.target.value = '';
   };
 
   const handleOpenFolder = async () => {
     setError(null);
     setStatus(null);
-
     if (!isElectron) {
-      setError('Open Folder requires the Electron desktop app. Run "pnpm dev" and use the Electron window.');
+      setError('Open Folder requires the Electron desktop app.');
       return;
     }
-
     try {
       const dir = (await window.aris.invoke('avatar:open-folder')) as string | undefined;
-      if (dir) {
-        setStatus(`Opened: ${dir}`);
-      }
+      if (dir) setStatus(`Opened: ${dir}`);
     } catch (e) {
       setError(`Could not open folder: ${e instanceof Error ? e.message : e}`);
     }
@@ -187,34 +163,24 @@ export function AvatarSettings() {
   const currentDefault = avatars.find((a) => a.isDefault);
 
   if (loading) {
-    return <div style={sectionStyle}><p style={hintStyle}>Loading avatars...</p></div>;
+    return <div style={containerStyle}><p style={hintStyle}>Loading avatars...</p></div>;
   }
 
   const feedback = (
     <>
-      {error && <p style={errorStyle}>{error}</p>}
-      {status && <p style={statusStyle}>{status}</p>}
-      {/* Hidden file input for browser-mode fallback */}
-      <input
-        ref={fileInputRef}
-        type="file"
-        accept=".vrm"
-        multiple
-        style={{ display: 'none' }}
-        onChange={handleFileInputChange}
-      />
+      {error && <div style={errorBannerStyle}>{error}</div>}
+      {status && <div style={successBannerStyle}>{status}</div>}
+      <input ref={fileInputRef} type="file" accept=".vrm" multiple style={{ display: 'none' }} onChange={handleFileInputChange} />
     </>
   );
 
   if (avatars.length === 0) {
     return (
-      <div style={sectionStyle}>
+      <div style={containerStyle}>
         <h3 style={headingStyle}>Avatars</h3>
-        <p style={hintStyle}>
-          No .vrm files found. Import avatar models or open the avatars folder.
-        </p>
-        <div style={buttonRowStyle}>
-          <button onClick={handleImport} style={actionBtnStyle}>Import .vrm</button>
+        <p style={hintStyle}>No .vrm files found. Import avatar models or open the avatars folder.</p>
+        <div style={btnRowStyle}>
+          <button onClick={handleImport} style={primaryBtnStyle}>Import .vrm</button>
           <button onClick={handleOpenFolder} style={secondaryBtnStyle}>Open Folder</button>
         </div>
         {feedback}
@@ -228,7 +194,7 @@ export function AvatarSettings() {
         <span style={{ fontSize: 'var(--text-sm)', fontWeight: 'var(--font-semibold)' as any }}>
           Preview: {avatars.find((a) => a.filename === previewAvatar)?.name ?? previewAvatar}
         </span>
-        <button onClick={handleClosePreview} style={closeBtnStyle}>Close</button>
+        <button onClick={handleClosePreview} style={secondaryBtnSmStyle}>Close</button>
       </div>
       <div style={previewCanvasWrapStyle}>
         <canvas ref={previewCanvasRef} style={previewCanvasStyle} />
@@ -246,7 +212,9 @@ export function AvatarSettings() {
         )}
         {previewSuccess && !previewLoading && (
           <div style={previewBadgeStyle}>
-            <span style={{ color: 'var(--color-success)', fontSize: 'var(--text-xs)', fontWeight: 'var(--font-semibold)' as any }}>Model OK</span>
+            <span style={{ color: 'var(--color-success)', fontSize: 'var(--text-xs)', fontWeight: 'var(--font-semibold)' as any }}>
+              Model OK
+            </span>
           </div>
         )}
       </div>
@@ -254,22 +222,21 @@ export function AvatarSettings() {
   );
 
   return (
-    <div style={sectionStyle}>
+    <div style={containerStyle}>
       <h3 style={headingStyle}>Avatars</h3>
-      <p style={hintStyle}>
-        Select a default avatar model. The active avatar will load on startup.
-      </p>
-      <div style={buttonRowStyle}>
-        <button onClick={handleImport} style={actionBtnStyle}>Import .vrm</button>
+      <p style={hintStyle}>Select a default avatar model. The active avatar will load on startup.</p>
+
+      <div style={btnRowStyle}>
+        <button onClick={handleImport} style={primaryBtnStyle}>Import .vrm</button>
         <button onClick={handleOpenFolder} style={secondaryBtnStyle}>Open Folder</button>
       </div>
-      {feedback}
 
+      {feedback}
       {previewPanel}
 
       {currentDefault && (
-        <div style={currentStyle}>
-          Current: <strong>{currentDefault.name}</strong>
+        <div style={currentBadgeStyle}>
+          Active: <strong>{currentDefault.name}</strong>
         </div>
       )}
 
@@ -278,12 +245,12 @@ export function AvatarSettings() {
           <div key={avatar.filename} style={avatarRowStyle}>
             <div style={avatarInfoStyle}>
               <span style={avatarNameStyle}>{avatar.name}</span>
-              <span style={hintStyle}>{avatar.filename}</span>
+              <span style={fileHintStyle}>{avatar.filename}</span>
             </div>
             <div style={avatarActionsStyle}>
               <button
                 onClick={() => handlePreview(avatar.filename)}
-                style={previewBtnStyle}
+                style={chipBtnStyle}
                 disabled={previewLoading}
               >
                 Preview
@@ -295,14 +262,11 @@ export function AvatarSettings() {
                   <button
                     onClick={() => handleSetDefault(avatar.filename)}
                     disabled={saving}
-                    style={selectBtnStyle}
+                    style={chipBtnStyle}
                   >
                     {saving ? '...' : 'Set Default'}
                   </button>
-                  <button
-                    onClick={() => handleDelete(avatar.filename)}
-                    style={deleteBtnStyle}
-                  >
+                  <button onClick={() => handleDelete(avatar.filename)} style={dangerChipStyle}>
                     Delete
                   </button>
                 </>
@@ -315,42 +279,90 @@ export function AvatarSettings() {
   );
 }
 
-const sectionStyle: React.CSSProperties = {
-  padding: 'var(--space-2) 0',
+/* ── Styles ── */
+
+const containerStyle: React.CSSProperties = {
+  padding: 'var(--space-4)',
 };
 
 const headingStyle: React.CSSProperties = {
-  margin: '0 0 var(--space-3)',
+  margin: '0 0 var(--space-1)',
   fontSize: 'var(--text-md)',
   fontWeight: 'var(--font-semibold)' as any,
+  color: 'var(--text-primary)',
 };
 
 const hintStyle: React.CSSProperties = {
   fontSize: 'var(--text-xs)',
   color: 'var(--text-muted)',
-  margin: 'var(--space-1) 0 0',
+  margin: '0 0 var(--space-1)',
+  lineHeight: 'var(--leading-normal)',
 };
 
-const errorStyle: React.CSSProperties = {
+const btnRowStyle: React.CSSProperties = {
+  display: 'flex',
+  gap: 'var(--space-2)',
+  marginTop: 'var(--space-3)',
+};
+
+const primaryBtnStyle: React.CSSProperties = {
+  background: 'var(--color-primary)',
+  color: 'var(--color-primary-on)',
+  border: 'none',
+  borderRadius: 'var(--radius-md)',
+  padding: 'var(--space-2) var(--space-3)',
+  cursor: 'pointer',
+  fontSize: 'var(--text-sm)',
+  fontWeight: 'var(--font-semibold)' as any,
+  transition: 'var(--transition-fast)',
+};
+
+const secondaryBtnStyle: React.CSSProperties = {
+  background: 'var(--bg-elevated)',
+  color: 'var(--text-primary)',
+  border: '1px solid var(--border-default)',
+  borderRadius: 'var(--radius-md)',
+  padding: 'var(--space-2) var(--space-3)',
+  cursor: 'pointer',
+  fontSize: 'var(--text-sm)',
+  transition: 'var(--transition-fast)',
+};
+
+const secondaryBtnSmStyle: React.CSSProperties = {
+  background: 'var(--bg-elevated)',
+  color: 'var(--text-primary)',
+  border: '1px solid var(--border-default)',
+  borderRadius: 'var(--radius-sm)',
+  padding: 'var(--space-1) var(--space-2)',
+  cursor: 'pointer',
+  fontSize: 'var(--text-xs)',
+};
+
+const errorBannerStyle: React.CSSProperties = {
   fontSize: 'var(--text-xs)',
   color: 'var(--color-error)',
   background: 'var(--color-error-bg)',
   border: '1px solid rgba(255,83,112,0.3)',
-  borderRadius: 'var(--radius-sm)',
-  padding: 'var(--space-1) var(--space-2)',
+  borderRadius: 'var(--radius-md)',
+  padding: 'var(--space-2) var(--space-3)',
   marginTop: 'var(--space-2)',
 };
 
-const statusStyle: React.CSSProperties = {
+const successBannerStyle: React.CSSProperties = {
   fontSize: 'var(--text-xs)',
   color: 'var(--color-success)',
+  background: 'var(--color-success-bg)',
+  border: '1px solid rgba(0,230,118,0.3)',
+  borderRadius: 'var(--radius-md)',
+  padding: 'var(--space-2) var(--space-3)',
   marginTop: 'var(--space-2)',
 };
 
-const currentStyle: React.CSSProperties = {
+const currentBadgeStyle: React.CSSProperties = {
   fontSize: 'var(--text-sm)',
   color: 'var(--text-secondary)',
-  marginBottom: 'var(--space-3)',
+  marginTop: 'var(--space-3)',
+  marginBottom: 'var(--space-1)',
 };
 
 const listStyle: React.CSSProperties = {
@@ -365,19 +377,58 @@ const avatarRowStyle: React.CSSProperties = {
   justifyContent: 'space-between',
   alignItems: 'center',
   padding: 'var(--space-2) var(--space-3)',
-  background: 'var(--bg-surface)',
-  borderRadius: 'var(--radius-md)',
-  border: '1px solid var(--border-default)',
+  background: 'var(--bg-elevated)',
+  borderRadius: 'var(--radius-lg)',
+  border: '1px solid var(--border-subtle)',
 };
 
 const avatarInfoStyle: React.CSSProperties = {
   display: 'flex',
   flexDirection: 'column',
-  gap: 'var(--space-1)',
+  gap: 2,
+  minWidth: 0,
 };
 
 const avatarNameStyle: React.CSSProperties = {
   fontSize: 'var(--text-base)',
+  fontWeight: 'var(--font-medium)' as any,
+};
+
+const fileHintStyle: React.CSSProperties = {
+  fontSize: 'var(--text-xs)',
+  color: 'var(--text-muted)',
+  overflow: 'hidden',
+  textOverflow: 'ellipsis',
+  whiteSpace: 'nowrap',
+};
+
+const avatarActionsStyle: React.CSSProperties = {
+  display: 'flex',
+  gap: 'var(--space-1)',
+  alignItems: 'center',
+  flexShrink: 0,
+};
+
+const chipBtnStyle: React.CSSProperties = {
+  background: 'var(--bg-surface)',
+  color: 'var(--text-secondary)',
+  border: 'none',
+  borderRadius: 'var(--radius-full)',
+  padding: 'var(--space-1) var(--space-2)',
+  cursor: 'pointer',
+  fontSize: 'var(--text-xs)',
+  fontWeight: 'var(--font-medium)' as any,
+  transition: 'var(--transition-fast)',
+};
+
+const dangerChipStyle: React.CSSProperties = {
+  background: 'var(--color-error-bg)',
+  color: 'var(--color-error)',
+  border: 'none',
+  borderRadius: 'var(--radius-full)',
+  padding: 'var(--space-1) var(--space-2)',
+  cursor: 'pointer',
+  fontSize: 'var(--text-xs)',
   fontWeight: 'var(--font-medium)' as any,
 };
 
@@ -386,75 +437,8 @@ const activeBadgeStyle: React.CSSProperties = {
   color: 'var(--color-success)',
   background: 'var(--color-success-bg)',
   padding: 'var(--space-1) var(--space-2)',
-  borderRadius: 'var(--radius-sm)',
+  borderRadius: 'var(--radius-full)',
   fontWeight: 'var(--font-semibold)' as any,
-};
-
-const selectBtnStyle: React.CSSProperties = {
-  background: 'var(--bg-surface)',
-  color: 'var(--text-primary)',
-  border: '1px solid var(--border-default)',
-  borderRadius: 'var(--radius-sm)',
-  padding: 'var(--space-1) var(--space-3)',
-  cursor: 'pointer',
-  fontSize: 'var(--text-sm)',
-};
-
-const buttonRowStyle: React.CSSProperties = {
-  display: 'flex',
-  gap: 'var(--space-2)',
-  marginTop: 'var(--space-3)',
-};
-
-const actionBtnStyle: React.CSSProperties = {
-  background: 'var(--color-primary)',
-  color: 'var(--color-primary-on)',
-  border: 'none',
-  borderRadius: 'var(--radius-md)',
-  padding: 'var(--space-2) var(--space-3)',
-  cursor: 'pointer',
-  fontSize: 'var(--text-sm)',
-  fontWeight: 'var(--font-semibold)' as any,
-  transition: 'var(--transition-fast)',
-};
-
-const secondaryBtnStyle: React.CSSProperties = {
-  background: 'var(--bg-surface)',
-  color: 'var(--text-primary)',
-  border: '1px solid var(--border-default)',
-  borderRadius: 'var(--radius-md)',
-  padding: 'var(--space-2) var(--space-3)',
-  cursor: 'pointer',
-  fontSize: 'var(--text-sm)',
-  transition: 'var(--transition-fast)',
-};
-
-const avatarActionsStyle: React.CSSProperties = {
-  display: 'flex',
-  gap: 'var(--space-1)',
-  alignItems: 'center',
-};
-
-const previewBtnStyle: React.CSSProperties = {
-  background: 'var(--bg-interactive)',
-  color: 'var(--color-info)',
-  border: '1px solid var(--border-default)',
-  borderRadius: 'var(--radius-sm)',
-  padding: 'var(--space-1) var(--space-2)',
-  cursor: 'pointer',
-  fontSize: 'var(--text-xs)',
-  fontWeight: 'var(--font-medium)' as any,
-};
-
-const deleteBtnStyle: React.CSSProperties = {
-  background: 'var(--color-error-bg)',
-  color: 'var(--color-error)',
-  border: '1px solid rgba(255,83,112,0.3)',
-  borderRadius: 'var(--radius-sm)',
-  padding: 'var(--space-1) var(--space-2)',
-  cursor: 'pointer',
-  fontSize: 'var(--text-xs)',
-  fontWeight: 'var(--font-medium)' as any,
 };
 
 const previewContainerStyle: React.CSSProperties = {
@@ -469,19 +453,9 @@ const previewHeaderStyle: React.CSSProperties = {
   display: 'flex',
   justifyContent: 'space-between',
   alignItems: 'center',
-  padding: 'var(--space-1) var(--space-3)',
-  background: 'var(--bg-surface)',
+  padding: 'var(--space-2) var(--space-3)',
+  background: 'var(--bg-elevated)',
   borderBottom: '1px solid var(--border-subtle)',
-};
-
-const closeBtnStyle: React.CSSProperties = {
-  background: 'var(--bg-surface)',
-  color: 'var(--text-primary)',
-  border: '1px solid var(--border-default)',
-  borderRadius: 'var(--radius-sm)',
-  padding: 'var(--space-1) var(--space-2)',
-  cursor: 'pointer',
-  fontSize: 'var(--text-xs)',
 };
 
 const previewCanvasWrapStyle: React.CSSProperties = {
@@ -512,5 +486,5 @@ const previewBadgeStyle: React.CSSProperties = {
   right: 8,
   background: 'var(--color-success-bg)',
   padding: 'var(--space-1) var(--space-2)',
-  borderRadius: 'var(--radius-sm)',
+  borderRadius: 'var(--radius-full)',
 };
