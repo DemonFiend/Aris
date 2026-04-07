@@ -1,5 +1,5 @@
 import { useRef, useEffect, useState, useCallback } from 'react';
-import { AvatarScene, IdleAnimation, IdleVariationManager, ExpressionController, GestureController, GazeController, BasePose, sentimentToExpression } from '@aris/avatar';
+import { AvatarScene, IdleAnimation, IdleVariationManager, ExpressionController, GestureController, GazeController, BasePose, NonHumanoidAnimator, sentimentToExpression } from '@aris/avatar';
 import type { Expression, GestureType, DockHint } from '@aris/avatar';
 import type { AvatarInfo, CompanionConfig, PositionContext, VirtualSpaceConfig } from '@aris/shared';
 
@@ -42,59 +42,80 @@ export function AvatarDisplay({ lastAssistantMessage, streaming }: Props) {
 
           const companionConfig = (await window.aris.invoke('companion:get-config')) as CompanionConfig | null;
 
-          const idle = new IdleAnimation();
-          idle.setVRM(vrm);
-          if (companionConfig?.idle) {
-            idle.setConfig(companionConfig.idle);
-          }
-          idleRef.current = idle;
-
-          const variations = new IdleVariationManager();
-          variations.setVRM(vrm);
-          if (companionConfig?.idle) {
-            if (companionConfig.idle.variationFrequency != null) {
-              variations.setFrequencyScale(companionConfig.idle.variationFrequency);
+          if (scene.isHumanoid) {
+            // --- Humanoid pipeline: full bone-animation stack ---
+            const idle = new IdleAnimation();
+            idle.setVRM(vrm);
+            if (companionConfig?.idle) {
+              idle.setConfig(companionConfig.idle);
             }
-            if (companionConfig.idle.enabled === false) {
-              variations.setFrequencyScale(0);
+            idleRef.current = idle;
+
+            const variations = new IdleVariationManager();
+            variations.setVRM(vrm);
+            if (companionConfig?.idle) {
+              if (companionConfig.idle.variationFrequency != null) {
+                variations.setFrequencyScale(companionConfig.idle.variationFrequency);
+              }
+              if (companionConfig.idle.enabled === false) {
+                variations.setFrequencyScale(0);
+              }
             }
-          }
-          variationsRef.current = variations;
+            variationsRef.current = variations;
 
-          const expr = new ExpressionController();
-          expr.setVRM(vrm);
-          if (companionConfig?.personality?.defaultExpression) {
-            expr.setExpression(companionConfig.personality.defaultExpression as Expression);
-          }
-          exprRef.current = expr;
-
-          const gesture = new GestureController();
-          gesture.setVRM(vrm);
-          gestureRef.current = gesture;
-
-          const gaze = new GazeController();
-          gaze.setVRM(vrm);
-          gazeRef.current = gaze;
-
-          const basePose = new BasePose();
-          basePose.setVRM(vrm);
-
-          // Fetch initial position context for gaze awareness
-          window.aris.invoke('window:get-position-context').then((ctx) => {
-            if (ctx) {
-              gaze.setDockHint((ctx as PositionContext).dockPosition as DockHint);
+            const expr = new ExpressionController();
+            expr.setVRM(vrm);
+            if (companionConfig?.personality?.defaultExpression) {
+              expr.setExpression(companionConfig.personality.defaultExpression as Expression);
             }
-          });
+            exprRef.current = expr;
 
-          scene.onFrame((delta: number) => {
-            idle.resetBones();
-            basePose.apply();
-            idle.update(delta);
-            variations.update(delta);
-            expr.update(delta);
-            gesture.update(delta);
-            gaze.update(delta);
-          });
+            const gesture = new GestureController();
+            gesture.setVRM(vrm);
+            gestureRef.current = gesture;
+
+            const gaze = new GazeController();
+            gaze.setVRM(vrm);
+            gazeRef.current = gaze;
+
+            const basePose = new BasePose();
+            basePose.setVRM(vrm);
+
+            // Fetch initial position context for gaze awareness
+            window.aris.invoke('window:get-position-context').then((ctx) => {
+              if (ctx) {
+                gaze.setDockHint((ctx as PositionContext).dockPosition as DockHint);
+              }
+            });
+
+            scene.onFrame((delta: number) => {
+              idle.resetBones();
+              basePose.apply();
+              idle.update(delta);
+              variations.update(delta);
+              expr.update(delta);
+              gesture.update(delta);
+              gaze.update(delta);
+            });
+          } else {
+            // --- Non-humanoid pipeline: mesh-level animation + optional expressions ---
+            const nhAnimator = new NonHumanoidAnimator();
+            nhAnimator.setMesh(vrm.scene);
+
+            // ExpressionController self-guards if expressionManager is absent,
+            // so it's safe to wire up for non-humanoid VRMs that have blend shapes.
+            const expr = new ExpressionController();
+            expr.setVRM(vrm);
+            if (companionConfig?.personality?.defaultExpression) {
+              expr.setExpression(companionConfig.personality.defaultExpression as Expression);
+            }
+            exprRef.current = expr;
+
+            scene.onFrame((delta: number) => {
+              nhAnimator.update(delta);
+              expr.update(delta);
+            });
+          }
           vrmLoaded = true;
         } catch {
           // VRM load failed — fall through to ghost fallback
