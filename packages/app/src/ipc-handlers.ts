@@ -128,19 +128,23 @@ function initProviderFromConfig(config: ProviderConfig): void {
       }
       break;
     case 'ollama':
+      if (config.baseUrl) validateProviderUrl(config.baseUrl, true);
       registry.register(new OllamaProvider(config.baseUrl, config.defaultModel));
       break;
     case 'custom-openai':
       if (config.baseUrl) {
+        validateProviderUrl(config.baseUrl);
         registry.register(new CustomOpenAIProvider(config.baseUrl, config.apiKey, config.defaultModel));
       }
       break;
     case 'custom-anthropic':
       if (config.baseUrl) {
+        validateProviderUrl(config.baseUrl);
         registry.register(new CustomAnthropicProvider(config.baseUrl, config.apiKey, config.defaultModel));
       }
       break;
     case 'lmstudio':
+      if (config.baseUrl) validateProviderUrl(config.baseUrl, true);
       registry.register(new LMStudioProvider(config.baseUrl, config.defaultModel));
       break;
   }
@@ -220,6 +224,10 @@ export function registerIpcHandlers(): void {
   ipcMain.handle('ai:save-provider-config', async (_event, config: ProviderConfig) => {
     if (!config || typeof config.id !== 'string') {
       throw new Error('Invalid provider config: id is required');
+    }
+    if (config.baseUrl) {
+      const localOnly = config.id === 'ollama' || config.id === 'lmstudio';
+      validateProviderUrl(config.baseUrl, localOnly);
     }
     try {
       saveProviderConfig(config);
