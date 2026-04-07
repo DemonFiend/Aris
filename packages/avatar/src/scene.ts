@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
-import { VRMLoaderPlugin, VRM, VRMUtils } from '@pixiv/three-vrm';
+import { VRMLoaderPlugin, VRM, VRMUtils, VRMHumanBoneName } from '@pixiv/three-vrm';
 import type { VirtualSpaceConfig } from '@aris/shared';
 import { CameraController } from './camera-controller';
 import type { CameraMode } from './camera-controller';
@@ -13,6 +13,7 @@ export class AvatarScene {
   private clock = new THREE.Clock();
   private animationId: number | null = null;
   private vrm: VRM | null = null;
+  private _isHumanoid = false;
   private onFrameCallbacks: Array<(delta: number) => void> = [];
   private directionalLight: THREE.DirectionalLight;
   private groundGroup: THREE.Group | null = null;
@@ -88,6 +89,7 @@ export class AvatarScene {
           });
 
           this.vrm = vrm;
+          this._isHumanoid = this.detectHumanoid(vrm);
           this.scene.add(vrm.scene);
 
           // Rotate model to face camera
@@ -111,8 +113,25 @@ export class AvatarScene {
     return this.vrm;
   }
 
+  get isHumanoid(): boolean {
+    return this._isHumanoid;
+  }
+
+  private detectHumanoid(vrm: VRM): boolean {
+    const coreBones: VRMHumanBoneName[] = [
+      VRMHumanBoneName.Hips,
+      VRMHumanBoneName.Spine,
+      VRMHumanBoneName.Head,
+    ];
+    const presentCount = coreBones.filter(
+      (bone) => vrm.humanoid.getRawBoneNode(bone) !== null,
+    ).length;
+    return presentCount >= 3;
+  }
+
   /** Render a simple procedural ghost when no VRM is available */
   loadGhostFallback(): void {
+    this._isHumanoid = false;
     // Ghost body — rounded capsule shape
     const bodyGeo = new THREE.CapsuleGeometry(0.2, 0.35, 8, 16);
     const bodyMat = new THREE.MeshStandardMaterial({
