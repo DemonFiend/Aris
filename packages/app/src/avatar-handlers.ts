@@ -7,6 +7,9 @@ import { getSetting, setSetting } from './settings-store';
 
 const SPACE_CONFIG_KEY = 'avatar-space-config';
 
+type CameraMode = 'portrait' | 'fullbody';
+let currentCameraMode: CameraMode = 'portrait';
+
 function getSpaceConfig(): VirtualSpaceConfig {
   const raw = getSetting(SPACE_CONFIG_KEY);
   if (!raw) return { ...DEFAULT_VIRTUAL_SPACE_CONFIG };
@@ -160,6 +163,23 @@ export function registerAvatarHandlers(): void {
       }
     }
     return merged;
+  });
+
+  ipcMain.handle('avatar:get-camera-mode', async () => {
+    return currentCameraMode;
+  });
+
+  ipcMain.handle('avatar:set-camera-mode', async (_event, mode: CameraMode) => {
+    if (mode !== 'portrait' && mode !== 'fullbody') {
+      throw new Error(`Invalid camera mode: ${mode}`);
+    }
+    currentCameraMode = mode;
+    for (const win of BrowserWindow.getAllWindows()) {
+      if (!win.isDestroyed()) {
+        win.webContents.send('avatar:camera-mode-changed', mode);
+      }
+    }
+    return mode;
   });
 
   ipcMain.handle('avatar:import', async (event) => {

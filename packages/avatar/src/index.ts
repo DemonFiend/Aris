@@ -1,4 +1,6 @@
 export { AvatarScene } from './scene';
+export { CameraController } from './camera-controller';
+export type { CameraMode } from './camera-controller';
 export { ExpressionController, sentimentToExpression } from './expressions';
 export type { Expression } from './expressions';
 export { LipSync } from './lip-sync';

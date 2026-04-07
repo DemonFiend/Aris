@@ -197,6 +197,16 @@ export function AvatarDisplay({ lastAssistantMessage, streaming }: Props) {
     return cleanup;
   }, [loaded]);
 
+  // Apply explicit camera mode changes
+  useEffect(() => {
+    const cleanup = window.aris.on?.('avatar:camera-mode-changed', (mode: unknown) => {
+      if ((mode === 'portrait' || mode === 'fullbody') && sceneRef.current) {
+        sceneRef.current.setCameraMode(mode);
+      }
+    });
+    return cleanup;
+  }, []);
+
   return (
     <div style={wrapperStyle}>
       <canvas ref={canvasRef} style={canvasStyle} />

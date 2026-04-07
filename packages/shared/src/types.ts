@@ -417,6 +417,8 @@ export type IpcChannel =
   | 'avatar:delete'
   | 'avatar:get-space-config'
   | 'avatar:set-space-config'
+  | 'avatar:set-camera-mode'
+  | 'avatar:get-camera-mode'
   | 'companion:get-config'
   | 'companion:set-config'
   | 'password:get-config'

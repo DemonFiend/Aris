@@ -2,6 +2,8 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { VRMLoaderPlugin, VRM, VRMUtils } from '@pixiv/three-vrm';
 import type { VirtualSpaceConfig } from '@aris/shared';
+import { CameraController } from './camera-controller';
+import type { CameraMode } from './camera-controller';
 
 export class AvatarScene {
   readonly renderer: THREE.WebGLRenderer;
@@ -15,6 +17,7 @@ export class AvatarScene {
   private directionalLight: THREE.DirectionalLight;
   private groundGroup: THREE.Group | null = null;
   private spaceEnabled = false;
+  private cameraController: CameraController;
 
   constructor(canvas: HTMLCanvasElement) {
     // Renderer
@@ -29,10 +32,9 @@ export class AvatarScene {
     // Scene
     this.scene = new THREE.Scene();
 
-    // Camera — portrait framing for bust/head shot
+    // Camera — managed by CameraController (default: portrait framing)
     this.camera = new THREE.PerspectiveCamera(30, 1, 0.1, 20);
-    this.camera.position.set(0, 1.4, 1.5);
-    this.camera.lookAt(0, 1.3, 0);
+    this.cameraController = new CameraController(this.camera);
 
     // Lighting
     const ambient = new THREE.AmbientLight(0xffffff, 0.7);
@@ -166,6 +168,9 @@ export class AvatarScene {
       this.groundGroup = null;
     }
 
+    // Switch camera mode to match space state
+    this.cameraController.setMode(config.enabled ? 'fullbody' : 'portrait');
+
     if (!config.enabled) {
       this.scene.background = null;
       this.scene.fog = null;
@@ -239,6 +244,14 @@ export class AvatarScene {
     }
   }
 
+  setCameraMode(mode: CameraMode): void {
+    this.cameraController.setMode(mode);
+  }
+
+  getCameraMode(): CameraMode {
+    return this.cameraController.getMode();
+  }
+
   onFrame(callback: (delta: number) => void): () => void {
     this.onFrameCallbacks.push(callback);
     return () => {
@@ -259,6 +272,9 @@ export class AvatarScene {
     const animate = () => {
       this.animationId = requestAnimationFrame(animate);
       const delta = this.clock.getDelta();
+
+      // Update camera controller (smooth transitions)
+      this.cameraController.update(delta);
 
       // Update VRM
       if (this.vrm) {
