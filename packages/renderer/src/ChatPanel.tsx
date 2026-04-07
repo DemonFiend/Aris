@@ -25,6 +25,7 @@ export function ChatPanel({ conversationId, onConversationCreated, onAssistantMe
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const streamBufferRef = useRef('');
   const activeConvRef = useRef<string | null>(conversationId);
+  const savedRef = useRef(false);
 
   const scrollToBottom = useCallback(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -53,6 +54,7 @@ export function ChatPanel({ conversationId, onConversationCreated, onAssistantMe
       setMessages([]);
       return;
     }
+    if (streaming) return; // Don't overwrite in-progress streaming messages
     (async () => {
       const stored = (await window.aris.invoke('messages:list', conversationId)) as StoredMessage[] | undefined;
       if (activeConvRef.current === conversationId) {
@@ -63,7 +65,7 @@ export function ChatPanel({ conversationId, onConversationCreated, onAssistantMe
         );
       }
     })();
-  }, [conversationId]);
+  }, [conversationId]); // eslint-disable-line react-hooks/exhaustive-deps -- streaming intentionally excluded: we only reload on conversation change, not on every streaming state toggle
 
   useEffect(() => {
     const cleanup = window.aris.on('ai:stream-chunk', (chunk: unknown) => {
@@ -84,6 +86,7 @@ export function ChatPanel({ conversationId, onConversationCreated, onAssistantMe
         const finalContent = streamBufferRef.current;
         const convId = activeConvRef.current;
         if (convId && finalContent) {
+          savedRef.current = true;
           window.aris.invoke('messages:add', convId, 'assistant', finalContent);
           onAssistantMessage?.(finalContent);
         }
@@ -91,6 +94,17 @@ export function ChatPanel({ conversationId, onConversationCreated, onAssistantMe
       }
     });
     return cleanup;
+  }, []);
+
+  // Save partial assistant response if component unmounts during streaming
+  useEffect(() => {
+    return () => {
+      const buffer = streamBufferRef.current;
+      const convId = activeConvRef.current;
+      if (buffer && convId && !savedRef.current) {
+        window.aris.invoke('messages:add', convId, 'assistant', buffer);
+      }
+    };
   }, []);
 
   const sendMessage = async () => {
@@ -105,6 +119,7 @@ export function ChatPanel({ conversationId, onConversationCreated, onAssistantMe
     setStreaming(true);
     if (!expanded) onToggleExpand();
     streamBufferRef.current = '';
+    savedRef.current = false;
 
     let convId = activeConvRef.current;
     if (!convId) {
@@ -144,6 +159,19 @@ export function ChatPanel({ conversationId, onConversationCreated, onAssistantMe
       await window.aris.invoke('ai:stream-chat', chatMessages, {
         systemPrompt,
       });
+
+      // Fallback: if the done signal was already handled by the stream listener,
+      // streamBufferRef will be empty. Otherwise save the accumulated response.
+      if (streamBufferRef.current) {
+        const finalContent = streamBufferRef.current;
+        const cid = activeConvRef.current;
+        if (cid && finalContent) {
+          window.aris.invoke('messages:add', cid, 'assistant', finalContent);
+          onAssistantMessage?.(finalContent);
+        }
+        streamBufferRef.current = '';
+        setStreaming(false);
+      }
     } catch (err) {
       console.error('[ChatPanel] AI stream error:', err);
       const detail = err instanceof Error ? err.message : String(err);
