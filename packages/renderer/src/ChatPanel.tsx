@@ -11,13 +11,14 @@ interface Props {
   conversationId: string | null;
   onConversationCreated: (id: string) => void;
   onAssistantMessage?: (text: string) => void;
+  expanded: boolean;
+  onToggleExpand: () => void;
 }
 
-export function ChatPanel({ conversationId, onConversationCreated, onAssistantMessage }: Props) {
+export function ChatPanel({ conversationId, onConversationCreated, onAssistantMessage, expanded, onToggleExpand }: Props) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [streaming, setStreaming] = useState(false);
-  const [historyExpanded, setHistoryExpanded] = useState(false);
   const [inputFocused, setInputFocused] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -32,12 +33,12 @@ export function ChatPanel({ conversationId, onConversationCreated, onAssistantMe
     scrollToBottom();
   }, [messages, scrollToBottom]);
 
-  // Auto-expand history when messages arrive
+  // Auto-expand history when streaming starts
   useEffect(() => {
-    if (messages.length > 0 && streaming) {
-      setHistoryExpanded(true);
+    if (messages.length > 0 && streaming && !expanded) {
+      onToggleExpand();
     }
-  }, [messages.length, streaming]);
+  }, [messages.length, streaming, expanded, onToggleExpand]);
 
   // Load messages when conversation changes
   useEffect(() => {
@@ -96,7 +97,7 @@ export function ChatPanel({ conversationId, onConversationCreated, onAssistantMe
     setInput('');
     setMessages((prev) => [...prev, userMsg, assistantMsg]);
     setStreaming(true);
-    setHistoryExpanded(true);
+    if (!expanded) onToggleExpand();
     streamBufferRef.current = '';
 
     let convId = activeConvRef.current;
@@ -160,7 +161,7 @@ export function ChatPanel({ conversationId, onConversationCreated, onAssistantMe
     <div style={containerStyle}>
       {/* ── Collapsible Message History Toggle ─── */}
       <button
-        onClick={() => setHistoryExpanded(!historyExpanded)}
+        onClick={onToggleExpand}
         style={historyToggleStyle}
       >
         <span style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
@@ -168,7 +169,7 @@ export function ChatPanel({ conversationId, onConversationCreated, onAssistantMe
             width="12" height="12" viewBox="0 0 24 24" fill="none"
             stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
             style={{
-              transform: historyExpanded ? 'rotate(180deg)' : 'rotate(0deg)',
+              transform: expanded ? 'rotate(180deg)' : 'rotate(0deg)',
               transition: 'var(--transition-normal)',
             }}
           >
@@ -180,7 +181,7 @@ export function ChatPanel({ conversationId, onConversationCreated, onAssistantMe
           )}
         </span>
         <span style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)' }}>
-          {historyExpanded ? 'Collapse' : 'Expand'}
+          {expanded ? 'Collapse' : 'Expand'}
         </span>
       </button>
 
@@ -188,7 +189,7 @@ export function ChatPanel({ conversationId, onConversationCreated, onAssistantMe
       <div
         style={{
           ...historyPanelStyle,
-          maxHeight: historyExpanded ? '40vh' : '0',
+          maxHeight: expanded ? '40vh' : '0',
         }}
       >
         <div style={messageListStyle}>

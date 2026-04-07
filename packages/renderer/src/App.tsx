@@ -15,6 +15,7 @@ export function App() {
   const [sidebarKey, setSidebarKey] = useState(0);
   const [lastAssistantMsg, setLastAssistantMsg] = useState<string | undefined>();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [chatExpanded, setChatExpanded] = useState(false);
 
   // Password lock state
   const [lockState, setLockState] = useState<'loading' | 'locked-startup' | 'locked-enable' | 'unlocked'>('loading');
@@ -116,8 +117,8 @@ export function App() {
         <h1 style={titleTextStyle}>{APP_NAME}</h1>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
-          <button onClick={toggleActive} style={activeBtnStyle(arisActive)}>
-            {arisActive ? 'Active' : 'Disabled'}
+          <button onClick={toggleActive} style={statusIndicatorStyle} title={arisActive ? 'Active' : 'Disabled'}>
+            <span style={statusDotStyle(arisActive)} />
           </button>
           <button
             onClick={() => setView(view === 'settings' ? 'chat' : 'settings')}
@@ -158,7 +159,7 @@ export function App() {
         {view === 'chat' && (
           <div style={chatLayoutStyle}>
             {/* Avatar — dominant focal point */}
-            <div style={avatarAreaStyle}>
+            <div style={avatarAreaStyle(chatExpanded)}>
               <AvatarDisplay lastAssistantMessage={lastAssistantMsg} />
               {!arisActive && (
                 <div style={disabledOverlayStyle}>
@@ -178,6 +179,8 @@ export function App() {
                 conversationId={activeConversation}
                 onConversationCreated={handleConversationCreated}
                 onAssistantMessage={setLastAssistantMsg}
+                expanded={chatExpanded}
+                onToggleExpand={() => setChatExpanded((v) => !v)}
               />
             )}
           </div>
@@ -219,12 +222,13 @@ const titleTextStyle: React.CSSProperties = {
   fontSize: 'var(--text-xl)',
   fontWeight: 'var(--font-bold)' as any,
   color: 'var(--text-accent)',
-  letterSpacing: '0.05em',
+  letterSpacing: '0.08em',
   textTransform: 'uppercase' as any,
   position: 'absolute',
   left: '50%',
   transform: 'translateX(-50%)',
   pointerEvents: 'none',
+  textShadow: '0 0 10px rgba(0, 230, 118, 0.3)',
 };
 
 const iconBtnStyle = {
@@ -244,20 +248,29 @@ const iconBtnStyle = {
   flexShrink: 0,
 } as React.CSSProperties;
 
-function activeBtnStyle(active: boolean) {
+const statusIndicatorStyle = {
+  background: 'transparent',
+  border: 'none',
+  cursor: 'pointer',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  width: 24,
+  height: 24,
+  padding: 0,
+  WebkitAppRegion: 'no-drag',
+} as React.CSSProperties;
+
+function statusDotStyle(active: boolean): React.CSSProperties {
   return {
-    background: active ? 'var(--color-success-bg)' : 'var(--color-error-bg)',
-    color: active ? 'var(--color-success)' : 'var(--color-error)',
-    border: '1px solid ' + (active ? 'rgba(0,230,118,0.3)' : 'rgba(255,83,112,0.3)'),
-    borderRadius: 'var(--radius-full)',
-    padding: 'var(--space-1) var(--space-3)',
-    cursor: 'pointer',
-    fontSize: 'var(--text-xs)',
-    fontWeight: 'var(--font-semibold)' as any,
-    transition: 'var(--transition-fast)',
-    lineHeight: 1,
-    WebkitAppRegion: 'no-drag',
-  } as React.CSSProperties;
+    width: 8,
+    height: 8,
+    borderRadius: '50%',
+    background: active ? 'var(--color-success)' : 'var(--color-error)',
+    boxShadow: active ? '0 0 6px rgba(0, 230, 118, 0.5)' : '0 0 6px rgba(255, 83, 112, 0.5)',
+    transition: 'var(--transition-normal)',
+    display: 'block',
+  };
 }
 
 const bodyStyle: React.CSSProperties = {
@@ -274,12 +287,15 @@ const chatLayoutStyle: React.CSSProperties = {
   overflow: 'hidden',
 };
 
-const avatarAreaStyle: React.CSSProperties = {
-  flex: 1,
-  minHeight: 200,
-  position: 'relative',
-  background: 'var(--bg-canvas)',
-};
+function avatarAreaStyle(chatExpanded: boolean): React.CSSProperties {
+  return {
+    flex: chatExpanded ? '0 0 35%' : '1 1 0%',
+    minHeight: 160,
+    position: 'relative',
+    background: 'var(--bg-canvas)',
+    transition: 'flex 300ms ease',
+  };
+}
 
 const disabledOverlayStyle: React.CSSProperties = {
   position: 'absolute',
@@ -297,7 +313,7 @@ const enableBtnStyle: React.CSSProperties = {
   background: 'var(--color-primary)',
   color: 'var(--color-primary-on)',
   border: 'none',
-  borderRadius: 'var(--radius-lg)',
+  borderRadius: 'var(--radius-full)',
   padding: 'var(--space-2) var(--space-6)',
   cursor: 'pointer',
   fontSize: 'var(--text-base)',
