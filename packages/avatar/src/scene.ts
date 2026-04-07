@@ -117,6 +117,17 @@ export class AvatarScene {
     return this._isHumanoid;
   }
 
+  /** Returns capability flags derived from the currently loaded VRM */
+  getCapabilities(): { facialExpressions: boolean; lipSync: boolean; gazeTracking: boolean } {
+    const vrm = this.vrm;
+    if (!vrm) return { facialExpressions: false, lipSync: false, gazeTracking: false };
+    return {
+      facialExpressions: vrm.expressionManager != null,
+      lipSync: vrm.expressionManager != null,
+      gazeTracking: vrm.lookAt != null,
+    };
+  }
+
   private detectHumanoid(vrm: VRM): boolean {
     const coreBones: VRMHumanBoneName[] = [
       VRMHumanBoneName.Hips,
