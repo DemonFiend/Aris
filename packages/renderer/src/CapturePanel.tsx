@@ -554,9 +554,11 @@ export function CapturePanel() {
 
       {/* Save button */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.75rem' }}>
-        <button onClick={revokeConsent} style={{ ...smallBtnStyle, color: 'var(--text-muted)' }}>
-          Revoke Capture Consent
-        </button>
+        {hasConsented ? (
+          <button onClick={revokeConsent} style={{ ...smallBtnStyle, color: 'var(--text-muted)' }}>
+            Revoke Capture Consent
+          </button>
+        ) : <span />}
         <button onClick={saveSettings} disabled={saving} style={saveBtnStyle}>
           {saving ? 'Saving...' : 'Save Settings'}
         </button>
