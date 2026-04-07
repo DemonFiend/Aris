@@ -147,8 +147,8 @@ export function VoiceControls({ onTranscript }: Props) {
         onClick={toggleListening}
         style={{
           ...micBtnStyle,
-          background: listening ? '#dc2626' : '#333',
-          borderColor: listening ? '#dc2626' : '#555',
+          background: listening ? 'var(--color-error)' : 'var(--bg-elevated)',
+          borderColor: listening ? 'var(--color-error)' : 'var(--border-default)',
         }}
         title={listening ? 'Stop listening' : 'Start voice input'}
       >
@@ -175,35 +175,37 @@ export function VoiceControls({ onTranscript }: Props) {
 const containerStyle: React.CSSProperties = {
   display: 'flex',
   alignItems: 'center',
-  gap: '0.35rem',
+  gap: 'var(--space-1)',
 };
 
 const micBtnStyle: React.CSSProperties = {
-  border: '1px solid #555',
-  color: '#fff',
-  borderRadius: '8px',
-  padding: '0.4rem 0.6rem',
+  border: '1px solid var(--border-default)',
+  color: 'var(--text-primary)',
+  borderRadius: 'var(--radius-lg)',
+  padding: 'var(--space-1) var(--space-2)',
   cursor: 'pointer',
-  fontSize: '0.9rem',
+  fontSize: 'var(--text-base)',
   lineHeight: 1,
   flexShrink: 0,
+  transition: 'var(--transition-fast)',
 };
 
 const speakBtnStyle: React.CSSProperties = {
-  background: '#333',
-  border: '1px solid #555',
-  color: '#fff',
-  borderRadius: '8px',
-  padding: '0.4rem 0.6rem',
+  background: 'var(--bg-elevated)',
+  border: '1px solid var(--border-default)',
+  color: 'var(--text-primary)',
+  borderRadius: 'var(--radius-lg)',
+  padding: 'var(--space-1) var(--space-2)',
   cursor: 'pointer',
-  fontSize: '0.9rem',
+  fontSize: 'var(--text-base)',
   lineHeight: 1,
   flexShrink: 0,
+  transition: 'var(--transition-fast)',
 };
 
 const interimStyle: React.CSSProperties = {
-  fontSize: '0.75rem',
-  color: '#888',
+  fontSize: 'var(--text-xs)',
+  color: 'var(--text-muted)',
   fontStyle: 'italic',
   overflow: 'hidden',
   textOverflow: 'ellipsis',
@@ -212,11 +214,11 @@ const interimStyle: React.CSSProperties = {
 };
 
 const errorStyle: React.CSSProperties = {
-  fontSize: '0.7rem',
-  color: '#e55',
+  fontSize: 'var(--text-xs)',
+  color: 'var(--color-error)',
 };
 
 const statusStyle: React.CSSProperties = {
-  fontSize: '0.7rem',
-  color: '#6b8aff',
+  fontSize: 'var(--text-xs)',
+  color: 'var(--color-info)',
 };

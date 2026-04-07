@@ -21,7 +21,7 @@ export function VoiceSettings() {
     setSaving(false);
   };
 
-  if (!config) return <div style={{ color: '#888', padding: '1rem' }}>Loading...</div>;
+  if (!config) return <div style={{ color: 'var(--text-muted)', padding: 'var(--space-4)' }}>Loading...</div>;
 
   return (
     <div style={sectionStyle}>
@@ -71,7 +71,7 @@ export function VoiceSettings() {
             onChange={(e) => updateConfig({ ttsRate: parseFloat(e.target.value) })}
             style={{ width: 100 }}
           />
-          <span style={{ fontSize: '0.8rem', color: '#aaa', minWidth: 30 }}>
+          <span style={{ fontSize: 'var(--text-sm)', color: 'var(--text-secondary)', minWidth: 30 }}>
             {config.ttsRate.toFixed(1)}
           </span>
         </div>
@@ -89,7 +89,7 @@ export function VoiceSettings() {
             onChange={(e) => updateConfig({ ttsPitch: parseFloat(e.target.value) })}
             style={{ width: 100 }}
           />
-          <span style={{ fontSize: '0.8rem', color: '#aaa', minWidth: 30 }}>
+          <span style={{ fontSize: 'var(--text-sm)', color: 'var(--text-secondary)', minWidth: 30 }}>
             {config.ttsPitch.toFixed(1)}
           </span>
         </div>
@@ -113,48 +113,49 @@ export function VoiceSettings() {
 }
 
 const sectionStyle: React.CSSProperties = {
-  padding: '0.5rem 0',
+  padding: 'var(--space-2) 0',
 };
 
 const headingStyle: React.CSSProperties = {
-  margin: '0 0 0.75rem',
-  fontSize: '1rem',
-  fontWeight: 600,
+  margin: '0 0 var(--space-3)',
+  fontSize: 'var(--text-md)',
+  fontWeight: 'var(--font-semibold)' as any,
 };
 
 const rowStyle: React.CSSProperties = {
   display: 'flex',
   justifyContent: 'space-between',
   alignItems: 'center',
-  padding: '0.4rem 0',
-  fontSize: '0.9rem',
+  padding: 'var(--space-1) 0',
+  fontSize: 'var(--text-base)',
 };
 
 const hintStyle: React.CSSProperties = {
-  fontSize: '0.75rem',
-  color: '#666',
-  margin: '0.15rem 0 0.5rem',
+  fontSize: 'var(--text-xs)',
+  color: 'var(--text-muted)',
+  margin: 'var(--space-1) 0 var(--space-2)',
 };
 
 const selectStyle: React.CSSProperties = {
-  background: '#222',
-  color: '#eee',
-  border: '1px solid #555',
-  borderRadius: '4px',
-  padding: '0.25rem 0.4rem',
-  fontSize: '0.8rem',
+  background: 'var(--bg-surface)',
+  color: 'var(--text-primary)',
+  border: '1px solid var(--border-default)',
+  borderRadius: 'var(--radius-sm)',
+  padding: 'var(--space-1) var(--space-2)',
+  fontSize: 'var(--text-sm)',
 };
 
 function toggleBtnStyle(on: boolean): React.CSSProperties {
   return {
-    background: on ? '#2563eb' : '#333',
-    color: '#fff',
-    border: '1px solid ' + (on ? '#2563eb' : '#555'),
-    borderRadius: '4px',
-    padding: '0.25rem 0.6rem',
+    background: on ? 'var(--color-primary)' : 'var(--bg-elevated)',
+    color: on ? 'var(--color-primary-on)' : 'var(--text-primary)',
+    border: '1px solid ' + (on ? 'var(--color-primary)' : 'var(--border-default)'),
+    borderRadius: 'var(--radius-sm)',
+    padding: 'var(--space-1) var(--space-2)',
     cursor: 'pointer',
-    fontSize: '0.8rem',
-    fontWeight: 600,
+    fontSize: 'var(--text-sm)',
+    fontWeight: 'var(--font-semibold)' as any,
     minWidth: '40px',
+    transition: 'var(--transition-fast)',
   };
 }

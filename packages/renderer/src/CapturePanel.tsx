@@ -151,7 +151,7 @@ export function CapturePanel() {
       {/* Status */}
       <div style={rowStyle}>
         <span>Status</span>
-        <span style={{ color: isActive ? '#4ade80' : '#888', fontSize: '0.85rem', fontWeight: 600 }}>
+        <span style={{ color: isActive ? 'var(--color-success)' : 'var(--text-muted)', fontSize: 'var(--text-sm)', fontWeight: 'var(--font-semibold)' as any }}>
           {isActive ? 'Capturing' : 'Idle'}
         </span>
       </div>
@@ -197,7 +197,7 @@ export function CapturePanel() {
         </div>
         <div style={sourceListStyle}>
           {filteredSources.length === 0 && !loading && (
-            <p style={{ color: '#666', fontSize: '0.8rem', margin: '0.5rem 0' }}>
+            <p style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm)', margin: 'var(--space-2) 0' }}>
               No {settings.captureMode === 'monitor' ? 'monitors' : 'windows'} found. Click Refresh.
             </p>
           )}
@@ -207,7 +207,7 @@ export function CapturePanel() {
               onClick={() => setSelectedSource(src.id)}
               style={{
                 ...sourceItemStyle,
-                borderColor: selectedSource === src.id ? '#2563eb' : '#444',
+                borderColor: selectedSource === src.id ? 'var(--color-primary)' : 'var(--border-muted)',
               }}
             >
               {src.thumbnailDataUrl && (
@@ -217,7 +217,7 @@ export function CapturePanel() {
                   style={{ width: 80, height: 50, objectFit: 'cover', borderRadius: 3 }}
                 />
               )}
-              <span style={{ fontSize: '0.7rem', color: '#ccc', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 100 }}>
+              <span style={{ fontSize: 'var(--text-xs)', color: 'var(--text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 100 }}>
                 {src.name}
               </span>
             </button>
@@ -233,7 +233,7 @@ export function CapturePanel() {
           </button>
         ) : (
           <>
-            <button onClick={stopCapture} style={{ ...actionBtnStyle, background: '#522', color: '#e88' }}>
+            <button onClick={stopCapture} style={{ ...actionBtnStyle, background: 'var(--color-error-bg)', color: 'var(--color-error)' }}>
               Stop Capture
             </button>
             <button onClick={analyzeFrame} style={actionBtnStyle}>
@@ -316,7 +316,7 @@ export function CapturePanel() {
       <div style={groupStyle}>
         <label style={labelStyle}>Screenshot Storage</label>
         <div style={rowStyle}>
-          <span style={{ fontSize: '0.8rem', color: '#aaa' }}>Save to Disk</span>
+          <span style={{ fontSize: 'var(--text-sm)', color: 'var(--text-secondary)' }}>Save to Disk</span>
           <button
             onClick={() => updateSetting('saveToDisk', !settings.saveToDisk)}
             style={toggleStyle(settings.saveToDisk)}
@@ -409,7 +409,7 @@ export function CapturePanel() {
           Periodic screenshots to give AI context about what you're doing, even when not actively capturing.
         </p>
         <div style={rowStyle}>
-          <span style={{ fontSize: '0.8rem', color: '#aaa' }}>Enabled</span>
+          <span style={{ fontSize: 'var(--text-sm)', color: 'var(--text-secondary)' }}>Enabled</span>
           <button
             onClick={() => updateSetting('heartbeatEnabled', !settings.heartbeatEnabled)}
             style={toggleStyle(settings.heartbeatEnabled)}
@@ -440,7 +440,7 @@ export function CapturePanel() {
       <div style={groupStyle}>
         <label style={labelStyle}>Video Capture</label>
         <div style={rowStyle}>
-          <span style={{ fontSize: '0.8rem', color: '#aaa' }}>Enabled</span>
+          <span style={{ fontSize: 'var(--text-sm)', color: 'var(--text-secondary)' }}>Enabled</span>
           <button
             onClick={() => updateSetting('videoEnabled', !settings.videoEnabled)}
             style={toggleStyle(settings.videoEnabled)}
@@ -510,176 +510,183 @@ export function CapturePanel() {
 /* ───── Styles ───── */
 
 const sectionStyle: React.CSSProperties = {
-  padding: '0.5rem 0',
+  padding: 'var(--space-2) 0',
 };
 
 const headingStyle: React.CSSProperties = {
-  margin: '0 0 0.75rem',
-  fontSize: '1rem',
-  fontWeight: 600,
+  margin: '0 0 var(--space-3)',
+  fontSize: 'var(--text-md)',
+  fontWeight: 'var(--font-semibold)' as any,
 };
 
 const groupStyle: React.CSSProperties = {
-  margin: '0.5rem 0',
+  margin: 'var(--space-2) 0',
 };
 
 const labelStyle: React.CSSProperties = {
-  fontSize: '0.85rem',
-  fontWeight: 600,
-  color: '#ccc',
+  fontSize: 'var(--text-sm)',
+  fontWeight: 'var(--font-semibold)' as any,
+  color: 'var(--text-secondary)',
   display: 'block',
-  marginBottom: '0.35rem',
+  marginBottom: 'var(--space-1)',
 };
 
 const rowStyle: React.CSSProperties = {
   display: 'flex',
   justifyContent: 'space-between',
   alignItems: 'center',
-  padding: '0.3rem 0',
-  fontSize: '0.9rem',
+  padding: 'var(--space-1) 0',
+  fontSize: 'var(--text-base)',
 };
 
 const statsStyle: React.CSSProperties = {
   display: 'flex',
-  gap: '1rem',
-  fontSize: '0.8rem',
-  color: '#aaa',
-  padding: '0.25rem 0',
+  gap: 'var(--space-4)',
+  fontSize: 'var(--text-sm)',
+  color: 'var(--text-secondary)',
+  padding: 'var(--space-1) 0',
 };
 
 const sliderRowStyle: React.CSSProperties = {
   display: 'flex',
   alignItems: 'center',
-  gap: '0.5rem',
-  padding: '0.25rem 0',
+  gap: 'var(--space-2)',
+  padding: 'var(--space-1) 0',
 };
 
 const sliderLabelStyle: React.CSSProperties = {
-  fontSize: '0.8rem',
-  color: '#aaa',
+  fontSize: 'var(--text-sm)',
+  color: 'var(--text-secondary)',
   minWidth: 90,
 };
 
 const sliderStyle: React.CSSProperties = {
   flex: 1,
-  accentColor: '#2563eb',
+  accentColor: 'var(--color-primary)',
 };
 
 const sliderValueStyle: React.CSSProperties = {
-  fontSize: '0.8rem',
-  color: '#ccc',
+  fontSize: 'var(--text-sm)',
+  color: 'var(--text-secondary)',
   minWidth: 55,
   textAlign: 'right',
 };
 
 const sourceListStyle: React.CSSProperties = {
   display: 'flex',
-  gap: '0.5rem',
+  gap: 'var(--space-2)',
   overflowX: 'auto',
-  paddingBottom: '0.25rem',
+  paddingBottom: 'var(--space-1)',
 };
 
 const sourceItemStyle: React.CSSProperties = {
-  background: '#1a1a1a',
-  border: '2px solid #444',
-  borderRadius: '6px',
-  padding: '0.35rem',
+  background: 'var(--bg-surface)',
+  border: '2px solid var(--border-muted)',
+  borderRadius: 'var(--radius-md)',
+  padding: 'var(--space-1)',
   cursor: 'pointer',
   display: 'flex',
   flexDirection: 'column' as const,
   alignItems: 'center',
-  gap: '0.25rem',
+  gap: 'var(--space-1)',
   minWidth: 100,
   maxWidth: 120,
+  transition: 'var(--transition-fast)',
 };
 
 const actionBtnStyle: React.CSSProperties = {
-  background: '#333',
-  color: '#eee',
-  border: '1px solid #555',
-  borderRadius: '4px',
-  padding: '0.3rem 0.7rem',
+  background: 'var(--bg-elevated)',
+  color: 'var(--text-primary)',
+  border: '1px solid var(--border-default)',
+  borderRadius: 'var(--radius-sm)',
+  padding: 'var(--space-1) var(--space-3)',
   cursor: 'pointer',
-  fontSize: '0.8rem',
+  fontSize: 'var(--text-sm)',
+  transition: 'var(--transition-fast)',
 };
 
 const refreshBtnStyle: React.CSSProperties = {
   background: 'none',
-  border: '1px solid #444',
-  color: '#888',
-  borderRadius: '4px',
-  padding: '0.15rem 0.4rem',
+  border: '1px solid var(--border-muted)',
+  color: 'var(--text-muted)',
+  borderRadius: 'var(--radius-sm)',
+  padding: 'var(--space-1) var(--space-2)',
   cursor: 'pointer',
-  fontSize: '0.7rem',
+  fontSize: 'var(--text-xs)',
+  transition: 'var(--transition-fast)',
 };
 
 const smallBtnStyle: React.CSSProperties = {
-  background: '#333',
-  color: '#ccc',
-  border: '1px solid #555',
-  borderRadius: '4px',
-  padding: '0.2rem 0.5rem',
+  background: 'var(--bg-elevated)',
+  color: 'var(--text-secondary)',
+  border: '1px solid var(--border-default)',
+  borderRadius: 'var(--radius-sm)',
+  padding: 'var(--space-1) var(--space-2)',
   cursor: 'pointer',
-  fontSize: '0.75rem',
+  fontSize: 'var(--text-xs)',
   whiteSpace: 'nowrap',
+  transition: 'var(--transition-fast)',
 };
 
 const saveBtnStyle: React.CSSProperties = {
-  background: '#2563eb',
-  color: '#fff',
+  background: 'var(--color-primary)',
+  color: 'var(--color-primary-on)',
   border: 'none',
-  borderRadius: '4px',
-  padding: '0.4rem 1rem',
+  borderRadius: 'var(--radius-sm)',
+  padding: 'var(--space-1) var(--space-4)',
   cursor: 'pointer',
-  fontSize: '0.85rem',
-  fontWeight: 600,
+  fontSize: 'var(--text-sm)',
+  fontWeight: 'var(--font-semibold)' as any,
+  transition: 'var(--transition-fast)',
 };
 
 const textInputStyle: React.CSSProperties = {
   flex: 1,
-  background: '#1a1a1a',
-  color: '#ccc',
-  border: '1px solid #444',
-  borderRadius: '4px',
-  padding: '0.3rem 0.5rem',
-  fontSize: '0.75rem',
+  background: 'var(--bg-surface)',
+  color: 'var(--text-secondary)',
+  border: '1px solid var(--border-default)',
+  borderRadius: 'var(--radius-sm)',
+  padding: 'var(--space-1) var(--space-2)',
+  fontSize: 'var(--text-xs)',
 };
 
 const hintStyle: React.CSSProperties = {
-  fontSize: '0.72rem',
-  color: '#666',
-  margin: '0.2rem 0 0',
+  fontSize: 'var(--text-xs)',
+  color: 'var(--text-muted)',
+  margin: 'var(--space-1) 0 0',
 };
 
 const dividerStyle: React.CSSProperties = {
   border: 'none',
-  borderTop: '1px solid #333',
-  margin: '0.75rem 0',
+  borderTop: '1px solid var(--border-subtle)',
+  margin: 'var(--space-3) 0',
 };
 
 function toggleStyle(on: boolean): React.CSSProperties {
   return {
-    background: on ? '#2563eb' : '#333',
-    color: '#fff',
-    border: '1px solid ' + (on ? '#2563eb' : '#555'),
-    borderRadius: '4px',
-    padding: '0.2rem 0.5rem',
+    background: on ? 'var(--color-primary)' : 'var(--bg-elevated)',
+    color: on ? 'var(--color-primary-on)' : 'var(--text-primary)',
+    border: '1px solid ' + (on ? 'var(--color-primary)' : 'var(--border-default)'),
+    borderRadius: 'var(--radius-sm)',
+    padding: 'var(--space-1) var(--space-2)',
     cursor: 'pointer',
-    fontSize: '0.8rem',
-    fontWeight: 600,
+    fontSize: 'var(--text-sm)',
+    fontWeight: 'var(--font-semibold)' as any,
     minWidth: 40,
+    transition: 'var(--transition-fast)',
   };
 }
 
 function pillStyle(active: boolean): React.CSSProperties {
   return {
-    background: active ? '#2563eb' : '#1a1a1a',
-    color: active ? '#fff' : '#888',
-    border: '1px solid ' + (active ? '#2563eb' : '#444'),
-    borderRadius: '12px',
-    padding: '0.2rem 0.6rem',
+    background: active ? 'var(--color-primary)' : 'var(--bg-surface)',
+    color: active ? 'var(--color-primary-on)' : 'var(--text-muted)',
+    border: '1px solid ' + (active ? 'var(--color-primary)' : 'var(--border-muted)'),
+    borderRadius: 'var(--radius-xl)',
+    padding: 'var(--space-1) var(--space-2)',
     cursor: 'pointer',
-    fontSize: '0.78rem',
-    fontWeight: active ? 600 : 400,
+    fontSize: 'var(--text-sm)',
+    fontWeight: active ? 'var(--font-semibold)' as any : 'var(--font-normal)' as any,
+    transition: 'var(--transition-fast)',
   };
 }
