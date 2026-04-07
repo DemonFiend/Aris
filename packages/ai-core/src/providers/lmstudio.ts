@@ -96,7 +96,9 @@ export class LMStudioProvider implements AIProvider {
       stream: false,
     };
 
-    const res = await fetch(`${this.baseUrl}/api/v1/chat`, {
+    const url = `${this.baseUrl}/v1/chat/completions`;
+    console.log('[LMStudio] POST', url, '| model:', body.model, '| messages:', body.messages.length);
+    const res = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
@@ -127,7 +129,9 @@ export class LMStudioProvider implements AIProvider {
       stream: true,
     };
 
-    const res = await fetch(`${this.baseUrl}/api/v1/chat`, {
+    const url = `${this.baseUrl}/v1/chat/completions`;
+    console.log('[LMStudio] POST (stream)', url, '| model:', body.model, '| messages:', body.messages.length);
+    const res = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
@@ -194,7 +198,8 @@ export class LMStudioProvider implements AIProvider {
       stream: false,
     };
 
-    const res = await fetch(`${this.baseUrl}/api/v1/chat`, {
+    const url = `${this.baseUrl}/v1/chat/completions`;
+    const res = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
@@ -218,7 +223,7 @@ export class LMStudioProvider implements AIProvider {
 
   async testConnection(): Promise<boolean> {
     try {
-      const res = await fetch(`${this.baseUrl}/api/v1/models`);
+      const res = await fetch(`${this.baseUrl}/v1/models`);
       if (!res.ok) return false;
       const data = (await res.json()) as LMStudioModelsResponse;
       return Array.isArray(data.data) && data.data.length > 0;
@@ -229,7 +234,7 @@ export class LMStudioProvider implements AIProvider {
 
   async getModels(): Promise<ModelInfo[]> {
     try {
-      const res = await fetch(`${this.baseUrl}/api/v1/models`);
+      const res = await fetch(`${this.baseUrl}/v1/models`);
       if (!res.ok) return [];
       const data = (await res.json()) as LMStudioModelsResponse;
       return data.data.map((m) => ({
