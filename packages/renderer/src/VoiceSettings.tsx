@@ -24,11 +24,13 @@ export function VoiceSettings() {
   if (!config) return <div style={{ color: 'var(--text-muted)', padding: 'var(--space-4)' }}>Loading...</div>;
 
   return (
-    <div style={sectionStyle}>
+    <div style={containerStyle}>
       <h3 style={headingStyle}>Voice Settings</h3>
 
       <div style={rowStyle}>
-        <span>Language</span>
+        <div style={rowLabelStyle}>
+          <span style={labelStyle}>Language</span>
+        </div>
         <select
           value={config.language}
           onChange={(e) => updateConfig({ language: e.target.value })}
@@ -45,117 +47,173 @@ export function VoiceSettings() {
         </select>
       </div>
 
-      <div style={rowStyle}>
-        <span>Push-to-talk</span>
-        <button
-          onClick={() => updateConfig({ pushToTalk: !config.pushToTalk })}
-          style={toggleBtnStyle(config.pushToTalk)}
-          disabled={saving}
-        >
-          {config.pushToTalk ? 'ON' : 'OFF'}
-        </button>
-      </div>
-      {config.pushToTalk && (
-        <p style={hintStyle}>Key: {config.pushToTalkKey} — press to toggle voice input</p>
-      )}
+      <div style={dividerStyle} />
 
       <div style={rowStyle}>
-        <span>Speech rate</span>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <input
-            type="range"
-            min="0.5"
-            max="2"
-            step="0.1"
-            value={config.ttsRate}
-            onChange={(e) => updateConfig({ ttsRate: parseFloat(e.target.value) })}
-            style={{ width: 100 }}
-          />
-          <span style={{ fontSize: 'var(--text-sm)', color: 'var(--text-secondary)', minWidth: 30 }}>
-            {config.ttsRate.toFixed(1)}
-          </span>
+        <div style={rowLabelStyle}>
+          <span style={labelStyle}>Push-to-talk</span>
+          {config.pushToTalk && (
+            <span style={hintStyle}>Key: {config.pushToTalkKey}</span>
+          )}
         </div>
+        <ToggleSwitch on={config.pushToTalk} onClick={() => updateConfig({ pushToTalk: !config.pushToTalk })} disabled={saving} />
       </div>
 
+      <div style={dividerStyle} />
+
       <div style={rowStyle}>
-        <span>Speech pitch</span>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <input
-            type="range"
-            min="0.5"
-            max="2"
-            step="0.1"
-            value={config.ttsPitch}
-            onChange={(e) => updateConfig({ ttsPitch: parseFloat(e.target.value) })}
-            style={{ width: 100 }}
-          />
-          <span style={{ fontSize: 'var(--text-sm)', color: 'var(--text-secondary)', minWidth: 30 }}>
-            {config.ttsPitch.toFixed(1)}
-          </span>
+        <div style={rowLabelStyle}>
+          <span style={labelStyle}>Speech rate</span>
+          <span style={valueStyle}>{config.ttsRate.toFixed(1)}</span>
         </div>
+        <input
+          type="range"
+          min="0.5"
+          max="2"
+          step="0.1"
+          value={config.ttsRate}
+          onChange={(e) => updateConfig({ ttsRate: parseFloat(e.target.value) })}
+          style={sliderStyle}
+        />
       </div>
 
       <div style={rowStyle}>
-        <span>Voice activity detection</span>
-        <button
-          onClick={() => updateConfig({ vadEnabled: !config.vadEnabled })}
-          style={toggleBtnStyle(config.vadEnabled)}
-          disabled={saving}
-        >
-          {config.vadEnabled ? 'ON' : 'OFF'}
-        </button>
+        <div style={rowLabelStyle}>
+          <span style={labelStyle}>Speech pitch</span>
+          <span style={valueStyle}>{config.ttsPitch.toFixed(1)}</span>
+        </div>
+        <input
+          type="range"
+          min="0.5"
+          max="2"
+          step="0.1"
+          value={config.ttsPitch}
+          onChange={(e) => updateConfig({ ttsPitch: parseFloat(e.target.value) })}
+          style={sliderStyle}
+        />
       </div>
-      <p style={hintStyle}>
-        When enabled, stops listening automatically when you stop talking.
-      </p>
+
+      <div style={dividerStyle} />
+
+      <div style={rowStyle}>
+        <div style={rowLabelStyle}>
+          <span style={labelStyle}>Voice activity detection</span>
+          <span style={hintStyle}>Auto-stops listening when you stop talking</span>
+        </div>
+        <ToggleSwitch on={config.vadEnabled} onClick={() => updateConfig({ vadEnabled: !config.vadEnabled })} disabled={saving} />
+      </div>
     </div>
   );
 }
 
-const sectionStyle: React.CSSProperties = {
-  padding: 'var(--space-2) 0',
+function ToggleSwitch({ on, onClick, disabled }: { on: boolean; onClick: () => void; disabled?: boolean }) {
+  return (
+    <button onClick={onClick} disabled={disabled} style={toggleBtnStyle}>
+      <span style={toggleTrackStyle(on)}>
+        <span style={toggleKnobStyle(on)} />
+      </span>
+    </button>
+  );
+}
+
+const containerStyle: React.CSSProperties = {
+  padding: 'var(--space-4)',
 };
 
 const headingStyle: React.CSSProperties = {
   margin: '0 0 var(--space-3)',
   fontSize: 'var(--text-md)',
   fontWeight: 'var(--font-semibold)' as any,
+  color: 'var(--text-primary)',
 };
 
 const rowStyle: React.CSSProperties = {
   display: 'flex',
   justifyContent: 'space-between',
   alignItems: 'center',
-  padding: 'var(--space-1) 0',
+  padding: 'var(--space-3) 0',
+  gap: 'var(--space-4)',
+};
+
+const rowLabelStyle: React.CSSProperties = {
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 2,
+  flex: 1,
+  minWidth: 0,
+};
+
+const labelStyle: React.CSSProperties = {
   fontSize: 'var(--text-base)',
+  fontWeight: 'var(--font-medium)' as any,
 };
 
 const hintStyle: React.CSSProperties = {
   fontSize: 'var(--text-xs)',
   color: 'var(--text-muted)',
-  margin: 'var(--space-1) 0 var(--space-2)',
+};
+
+const valueStyle: React.CSSProperties = {
+  fontSize: 'var(--text-xs)',
+  color: 'var(--text-secondary)',
+  fontFamily: 'var(--font-mono)',
+};
+
+const dividerStyle: React.CSSProperties = {
+  border: 'none',
+  borderTop: '1px solid var(--border-subtle)',
+  margin: 0,
 };
 
 const selectStyle: React.CSSProperties = {
-  background: 'var(--bg-surface)',
+  background: 'var(--bg-base)',
   color: 'var(--text-primary)',
   border: '1px solid var(--border-default)',
-  borderRadius: 'var(--radius-sm)',
+  borderRadius: 'var(--radius-md)',
   padding: 'var(--space-1) var(--space-2)',
   fontSize: 'var(--text-sm)',
+  fontFamily: 'var(--font-sans)',
+  outline: 'none',
 };
 
-function toggleBtnStyle(on: boolean): React.CSSProperties {
+const sliderStyle: React.CSSProperties = {
+  width: 100,
+  accentColor: 'var(--color-primary)',
+  flexShrink: 0,
+};
+
+const toggleBtnStyle: React.CSSProperties = {
+  background: 'none',
+  border: 'none',
+  padding: 0,
+  cursor: 'pointer',
+  display: 'flex',
+  alignItems: 'center',
+  flexShrink: 0,
+};
+
+function toggleTrackStyle(on: boolean): React.CSSProperties {
   return {
-    background: on ? 'var(--color-primary)' : 'var(--bg-elevated)',
-    color: on ? 'var(--color-primary-on)' : 'var(--text-primary)',
-    border: '1px solid ' + (on ? 'var(--color-primary)' : 'var(--border-default)'),
-    borderRadius: 'var(--radius-sm)',
-    padding: 'var(--space-1) var(--space-2)',
-    cursor: 'pointer',
-    fontSize: 'var(--text-sm)',
-    fontWeight: 'var(--font-semibold)' as any,
-    minWidth: '40px',
-    transition: 'var(--transition-fast)',
+    display: 'flex',
+    alignItems: 'center',
+    width: 36,
+    height: 20,
+    borderRadius: 'var(--radius-full)',
+    background: on ? 'var(--color-primary)' : 'var(--bg-overlay)',
+    padding: 2,
+    transition: 'var(--transition-normal)',
+    boxShadow: on ? 'var(--shadow-glow-sm)' : 'none',
+  };
+}
+
+function toggleKnobStyle(on: boolean): React.CSSProperties {
+  return {
+    width: 16,
+    height: 16,
+    borderRadius: '50%',
+    background: on ? '#fff' : 'var(--text-muted)',
+    transition: 'var(--transition-normal)',
+    transform: on ? 'translateX(16px)' : 'translateX(0)',
+    boxShadow: 'var(--shadow-sm)',
   };
 }

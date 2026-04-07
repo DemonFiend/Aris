@@ -7,6 +7,16 @@ import { SecuritySettings } from './SecuritySettings';
 
 type Tab = 'providers' | 'avatar' | 'voice' | 'capture' | 'security' | 'general' | 'data';
 
+const TABS: { key: Tab; label: string; icon: string }[] = [
+  { key: 'providers', label: 'AI Providers', icon: '\u2728' },
+  { key: 'avatar', label: 'Avatar', icon: '\uD83D\uDC64' },
+  { key: 'voice', label: 'Voice', icon: '\uD83C\uDF99' },
+  { key: 'capture', label: 'Capture', icon: '\uD83D\uDCF7' },
+  { key: 'security', label: 'Security', icon: '\uD83D\uDD12' },
+  { key: 'general', label: 'General', icon: '\u2699' },
+  { key: 'data', label: 'Data', icon: '\uD83D\uDCBE' },
+];
+
 export function SettingsPanel() {
   const [tab, setTab] = useState<Tab>('providers');
   const [overlayMode, setOverlayMode] = useState(false);
@@ -41,175 +51,347 @@ export function SettingsPanel() {
     window.location.reload();
   };
 
-  const tabs: { key: Tab; label: string }[] = [
-    { key: 'providers', label: 'AI Providers' },
-    { key: 'avatar', label: 'Avatar' },
-    { key: 'voice', label: 'Voice' },
-    { key: 'capture', label: 'Capture' },
-    { key: 'security', label: 'Security' },
-    { key: 'general', label: 'General' },
-    { key: 'data', label: 'Data' },
-  ];
-
   return (
-    <div style={{ padding: 'var(--space-4)' }}>
-      <div style={tabBarStyle}>
-        {tabs.map((t) => (
-          <button
-            key={t.key}
-            onClick={() => setTab(t.key)}
-            style={{
-              ...tabBtnStyle,
-              borderBottom: tab === t.key ? '2px solid var(--color-primary)' : '2px solid transparent',
-              color: tab === t.key ? 'var(--text-primary)' : 'var(--text-muted)',
-            }}
-          >
-            {t.label}
-          </button>
-        ))}
+    <div style={shellStyle}>
+      {/* Header */}
+      <div style={headerStyle}>
+        <h1 style={titleStyle}>Settings</h1>
+        <span style={brandStyle}>Aris</span>
       </div>
 
-      {tab === 'providers' && <ProviderSettings />}
-
-      {tab === 'avatar' && <AvatarSettings />}
-
-      {tab === 'voice' && <VoiceSettings />}
-
-      {tab === 'capture' && <CapturePanel />}
-
-      {tab === 'security' && <SecuritySettings />}
-
-      {tab === 'general' && (
-        <div style={sectionStyle}>
-          <h3 style={headingStyle}>Window</h3>
-          <div style={rowStyle}>
-            <span>Overlay mode (always on top)</span>
-            <button onClick={toggleOverlay} style={toggleBtnStyle(overlayMode)}>
-              {overlayMode ? 'ON' : 'OFF'}
-            </button>
-          </div>
-          <p style={hintStyle}>
-            Overlay mode keeps Aris visible over your game with slight transparency.
-          </p>
-
-          <div style={{ ...rowStyle, marginTop: '1rem' }}>
-            <span>Minimize to tray</span>
-            <button
-              onClick={() => window.aris.invoke('window:minimize-to-tray')}
-              style={actionBtnStyle}
-            >
-              Minimize
-            </button>
-          </div>
-        </div>
-      )}
-
-      {tab === 'data' && (
-        <div style={sectionStyle}>
-          <h3 style={headingStyle}>Data Management</h3>
-
-          <div style={rowStyle}>
-            <span>Export all data</span>
-            <button onClick={handleExport} style={actionBtnStyle}>
-              {exportStatus === 'done' ? 'Exported!' : 'Export Encrypted Backup'}
-            </button>
-          </div>
-          <p style={hintStyle}>
-            Saves an encrypted backup of all conversations, settings, and game profiles.
-          </p>
-
-          <div style={{ ...rowStyle, marginTop: '1.5rem' }}>
-            <span style={{ color: 'var(--color-error)' }}>Delete all data</span>
-            {!confirmWipe ? (
+      {/* Tab navigation */}
+      <div style={tabScrollStyle}>
+        <div style={tabBarStyle}>
+          {TABS.map((t) => {
+            const active = tab === t.key;
+            return (
               <button
-                onClick={() => setConfirmWipe(true)}
-                style={{ ...actionBtnStyle, background: 'var(--color-error-bg)', color: 'var(--color-error)', border: '1px solid rgba(255,83,112,0.3)' }}
+                key={t.key}
+                onClick={() => setTab(t.key)}
+                style={{
+                  ...tabPillStyle,
+                  ...(active ? tabPillActiveStyle : {}),
+                }}
               >
-                Wipe
+                <span style={{ fontSize: 'var(--text-sm)' }}>{t.icon}</span>
+                <span>{t.label}</span>
               </button>
-            ) : (
-              <div style={{ display: 'flex', gap: 'var(--space-1)' }}>
-                <button onClick={handleWipe} style={{ ...actionBtnStyle, background: 'var(--color-error)', color: 'var(--text-primary)' }}>
-                  Confirm Delete
-                </button>
-                <button onClick={() => setConfirmWipe(false)} style={actionBtnStyle}>
-                  Cancel
-                </button>
-              </div>
-            )}
-          </div>
-          <p style={hintStyle}>
-            Permanently deletes the database. This cannot be undone.
-          </p>
+            );
+          })}
         </div>
-      )}
+      </div>
+
+      {/* Content area */}
+      <div style={contentStyle}>
+        {tab === 'providers' && (
+          <SettingsCard>
+            <ProviderSettings />
+          </SettingsCard>
+        )}
+
+        {tab === 'avatar' && (
+          <SettingsCard>
+            <AvatarSettings />
+          </SettingsCard>
+        )}
+
+        {tab === 'voice' && (
+          <SettingsCard>
+            <VoiceSettings />
+          </SettingsCard>
+        )}
+
+        {tab === 'capture' && (
+          <SettingsCard>
+            <CapturePanel />
+          </SettingsCard>
+        )}
+
+        {tab === 'security' && (
+          <SettingsCard>
+            <SecuritySettings />
+          </SettingsCard>
+        )}
+
+        {tab === 'general' && (
+          <SettingsCard>
+            <div style={cardInnerStyle}>
+              <h3 style={sectionHeadingStyle}>Window</h3>
+
+              <SettingRow
+                label="Overlay mode"
+                description="Keeps Aris visible over your game with slight transparency"
+              >
+                <ToggleButton on={overlayMode} onClick={toggleOverlay} />
+              </SettingRow>
+
+              <SettingRow label="Minimize to tray" description="Hide Aris to the system tray">
+                <button
+                  onClick={() => window.aris.invoke('window:minimize-to-tray')}
+                  style={secondaryBtnStyle}
+                >
+                  Minimize
+                </button>
+              </SettingRow>
+            </div>
+          </SettingsCard>
+        )}
+
+        {tab === 'data' && (
+          <SettingsCard>
+            <div style={cardInnerStyle}>
+              <h3 style={sectionHeadingStyle}>Data Management</h3>
+
+              <SettingRow
+                label="Export all data"
+                description="Saves an encrypted backup of all conversations, settings, and game profiles"
+              >
+                <button onClick={handleExport} style={secondaryBtnStyle}>
+                  {exportStatus === 'done' ? 'Exported!' : 'Export Backup'}
+                </button>
+              </SettingRow>
+
+              <div style={dividerStyle} />
+
+              <SettingRow
+                label={<span style={{ color: 'var(--color-error)' }}>Delete all data</span>}
+                description="Permanently deletes the database. This cannot be undone."
+              >
+                {!confirmWipe ? (
+                  <button onClick={() => setConfirmWipe(true)} style={dangerBtnStyle}>
+                    Wipe
+                  </button>
+                ) : (
+                  <div style={{ display: 'flex', gap: 'var(--space-1)' }}>
+                    <button
+                      onClick={handleWipe}
+                      style={{ ...dangerBtnStyle, background: 'var(--color-error)', color: '#fff' }}
+                    >
+                      Confirm
+                    </button>
+                    <button onClick={() => setConfirmWipe(false)} style={secondaryBtnStyle}>
+                      Cancel
+                    </button>
+                  </div>
+                )}
+              </SettingRow>
+            </div>
+          </SettingsCard>
+        )}
+      </div>
     </div>
   );
 }
 
+/* ── Shared sub-components ── */
+
+function SettingsCard({ children }: { children: React.ReactNode }) {
+  return <div style={cardStyle}>{children}</div>;
+}
+
+function SettingRow({
+  label,
+  description,
+  children,
+}: {
+  label: React.ReactNode;
+  description?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div style={settingRowStyle}>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontSize: 'var(--text-base)', fontWeight: 'var(--font-medium)' as any }}>
+          {label}
+        </div>
+        {description && <p style={descStyle}>{description}</p>}
+      </div>
+      <div style={{ flexShrink: 0 }}>{children}</div>
+    </div>
+  );
+}
+
+function ToggleButton({ on, onClick }: { on: boolean; onClick: () => void }) {
+  return (
+    <button onClick={onClick} style={toggleBtnStyle(on)}>
+      <span style={toggleTrackStyle(on)}>
+        <span style={toggleKnobStyle(on)} />
+      </span>
+    </button>
+  );
+}
+
+/* ── Styles ── */
+
+const shellStyle: React.CSSProperties = {
+  display: 'flex',
+  flexDirection: 'column',
+  height: '100%',
+  overflow: 'hidden',
+};
+
+const headerStyle: React.CSSProperties = {
+  display: 'flex',
+  justifyContent: 'space-between',
+  alignItems: 'baseline',
+  padding: 'var(--space-4) var(--space-4) var(--space-2)',
+};
+
+const titleStyle: React.CSSProperties = {
+  margin: 0,
+  fontSize: 'var(--text-xl)',
+  fontWeight: 'var(--font-bold)' as any,
+  color: 'var(--text-primary)',
+};
+
+const brandStyle: React.CSSProperties = {
+  fontSize: 'var(--text-sm)',
+  fontWeight: 'var(--font-bold)' as any,
+  color: 'var(--color-primary)',
+  letterSpacing: '0.05em',
+  textTransform: 'uppercase',
+};
+
+const tabScrollStyle: React.CSSProperties = {
+  overflowX: 'auto',
+  overflowY: 'hidden',
+  padding: '0 var(--space-4)',
+  scrollbarWidth: 'none',
+};
+
 const tabBarStyle: React.CSSProperties = {
   display: 'flex',
   gap: 'var(--space-1)',
-  marginBottom: 'var(--space-4)',
-  borderBottom: '1px solid var(--border-subtle)',
+  paddingBottom: 'var(--space-2)',
 };
 
-const tabBtnStyle: React.CSSProperties = {
-  background: 'none',
-  border: 'none',
-  padding: 'var(--space-2) var(--space-3)',
+const tabPillStyle: React.CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: 'var(--space-1)',
+  background: 'transparent',
+  border: '1px solid transparent',
+  borderRadius: 'var(--radius-full)',
+  padding: 'var(--space-1) var(--space-3)',
   cursor: 'pointer',
-  fontSize: 'var(--text-sm)',
-  fontWeight: 'var(--font-semibold)' as any,
+  fontSize: 'var(--text-xs)',
+  fontWeight: 'var(--font-medium)' as any,
+  color: 'var(--text-muted)',
+  whiteSpace: 'nowrap',
   transition: 'var(--transition-fast)',
 };
 
-const sectionStyle: React.CSSProperties = {
-  padding: 'var(--space-2) 0',
+const tabPillActiveStyle: React.CSSProperties = {
+  background: 'var(--color-primary-subtle)',
+  border: '1px solid var(--border-default)',
+  color: 'var(--color-primary)',
+  fontWeight: 'var(--font-semibold)' as any,
 };
 
-const headingStyle: React.CSSProperties = {
+const contentStyle: React.CSSProperties = {
+  flex: 1,
+  overflowY: 'auto',
+  padding: '0 var(--space-4) var(--space-4)',
+};
+
+const cardStyle: React.CSSProperties = {
+  background: 'var(--bg-surface)',
+  border: '1px solid var(--border-subtle)',
+  borderRadius: 'var(--radius-xl)',
+  overflow: 'hidden',
+};
+
+const cardInnerStyle: React.CSSProperties = {
+  padding: 'var(--space-4)',
+};
+
+const sectionHeadingStyle: React.CSSProperties = {
   margin: '0 0 var(--space-3)',
   fontSize: 'var(--text-md)',
   fontWeight: 'var(--font-semibold)' as any,
+  color: 'var(--text-primary)',
 };
 
-const rowStyle: React.CSSProperties = {
+const settingRowStyle: React.CSSProperties = {
   display: 'flex',
   justifyContent: 'space-between',
   alignItems: 'center',
-  padding: 'var(--space-1) 0',
-  fontSize: 'var(--text-base)',
+  padding: 'var(--space-3) 0',
+  gap: 'var(--space-4)',
 };
 
-const hintStyle: React.CSSProperties = {
+const descStyle: React.CSSProperties = {
   fontSize: 'var(--text-xs)',
   color: 'var(--text-muted)',
   margin: 'var(--space-1) 0 0',
+  lineHeight: 'var(--leading-normal)',
 };
 
-const actionBtnStyle: React.CSSProperties = {
-  background: 'var(--bg-surface)',
+const dividerStyle: React.CSSProperties = {
+  border: 'none',
+  borderTop: '1px solid var(--border-subtle)',
+  margin: 0,
+};
+
+const secondaryBtnStyle: React.CSSProperties = {
+  background: 'var(--bg-elevated)',
   color: 'var(--text-primary)',
   border: '1px solid var(--border-default)',
-  borderRadius: 'var(--radius-sm)',
+  borderRadius: 'var(--radius-md)',
   padding: 'var(--space-1) var(--space-3)',
   cursor: 'pointer',
   fontSize: 'var(--text-sm)',
+  fontWeight: 'var(--font-medium)' as any,
   transition: 'var(--transition-fast)',
+  whiteSpace: 'nowrap',
+};
+
+const dangerBtnStyle: React.CSSProperties = {
+  background: 'var(--color-error-bg)',
+  color: 'var(--color-error)',
+  border: '1px solid rgba(255,83,112,0.3)',
+  borderRadius: 'var(--radius-md)',
+  padding: 'var(--space-1) var(--space-3)',
+  cursor: 'pointer',
+  fontSize: 'var(--text-sm)',
+  fontWeight: 'var(--font-medium)' as any,
+  transition: 'var(--transition-fast)',
+  whiteSpace: 'nowrap',
 };
 
 function toggleBtnStyle(on: boolean): React.CSSProperties {
   return {
-    background: on ? 'var(--color-primary)' : 'var(--bg-surface)',
-    color: on ? 'var(--color-primary-on)' : 'var(--text-primary)',
-    border: '1px solid ' + (on ? 'var(--color-primary)' : 'var(--border-default)'),
-    borderRadius: 'var(--radius-sm)',
-    padding: 'var(--space-1) var(--space-3)',
+    background: 'none',
+    border: 'none',
+    padding: 0,
     cursor: 'pointer',
-    fontSize: 'var(--text-sm)',
-    fontWeight: 'var(--font-semibold)' as any,
-    minWidth: '40px',
-    transition: 'var(--transition-fast)',
+    display: 'flex',
+    alignItems: 'center',
+  };
+}
+
+function toggleTrackStyle(on: boolean): React.CSSProperties {
+  return {
+    display: 'flex',
+    alignItems: 'center',
+    width: 36,
+    height: 20,
+    borderRadius: 'var(--radius-full)',
+    background: on ? 'var(--color-primary)' : 'var(--bg-overlay)',
+    padding: 2,
+    transition: 'var(--transition-normal)',
+    boxShadow: on ? 'var(--shadow-glow-sm)' : 'none',
+  };
+}
+
+function toggleKnobStyle(on: boolean): React.CSSProperties {
+  return {
+    width: 16,
+    height: 16,
+    borderRadius: '50%',
+    background: on ? '#fff' : 'var(--text-muted)',
+    transition: 'var(--transition-normal)',
+    transform: on ? 'translateX(16px)' : 'translateX(0)',
+    boxShadow: 'var(--shadow-sm)',
   };
 }

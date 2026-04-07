@@ -9,18 +9,18 @@ interface ProviderInfo {
 }
 
 const PROVIDER_DEFS = [
-  { id: 'claude', name: 'Claude (Anthropic)', needsKey: true },
-  { id: 'openai', name: 'OpenAI', needsKey: true },
-  { id: 'ollama', name: 'Ollama (Local)', needsKey: false, needsUrl: true, defaultUrl: 'http://127.0.0.1:11434' },
-  { id: 'custom-openai', name: 'Custom OpenAI-compatible', needsKey: true, needsUrl: true, defaultUrl: 'http://127.0.0.1:8000/v1' },
-  { id: 'custom-anthropic', name: 'Custom Anthropic-compatible', needsKey: true, needsUrl: true, defaultUrl: 'http://127.0.0.1:8000/v1' },
-  { id: 'lmstudio', name: 'LM Studio (Local)', needsKey: false, needsUrl: true, defaultUrl: 'http://127.0.0.1:1234/v1' },
+  { id: 'claude', name: 'Claude (Anthropic)', needsKey: true, icon: '\uD83E\uDDE0' },
+  { id: 'openai', name: 'OpenAI', needsKey: true, icon: '\uD83D\uDCA1' },
+  { id: 'ollama', name: 'Ollama (Local)', needsKey: false, needsUrl: true, defaultUrl: 'http://127.0.0.1:11434', icon: '\uD83E\uDD99' },
+  { id: 'custom-openai', name: 'Custom OpenAI-compatible', needsKey: true, needsUrl: true, defaultUrl: 'http://127.0.0.1:8000/v1', icon: '\uD83D\uDD27' },
+  { id: 'custom-anthropic', name: 'Custom Anthropic-compatible', needsKey: true, needsUrl: true, defaultUrl: 'http://127.0.0.1:8000/v1', icon: '\uD83D\uDD27' },
+  { id: 'lmstudio', name: 'LM Studio (Local)', needsKey: false, needsUrl: true, defaultUrl: 'http://127.0.0.1:1234/v1', icon: '\uD83D\uDCBB' },
 ];
 
 export function ProviderSettings() {
   const [configs, setConfigs] = useState<ProviderConfig[]>([]);
   const [providers, setProviders] = useState<ProviderInfo[]>([]);
-  const [editing, setEditing] = useState<string | null>(null);
+  const [expanded, setExpanded] = useState<string | null>(null);
   const [apiKey, setApiKey] = useState('');
   const [baseUrl, setBaseUrl] = useState('http://127.0.0.1:11434');
   const [selectedModel, setSelectedModel] = useState('');
@@ -52,11 +52,15 @@ export function ProviderSettings() {
     setLoadingModels((s) => ({ ...s, [id]: false }));
   }, []);
 
-  const openEditor = useCallback(
+  const toggleExpand = useCallback(
     (id: string) => {
+      if (expanded === id) {
+        setExpanded(null);
+        return;
+      }
       const def = PROVIDER_DEFS.find((d) => d.id === id)!;
       const cfg = configs.find((c) => c.id === id);
-      setEditing(id);
+      setExpanded(id);
       setApiKey('');
       setBaseUrl(cfg?.baseUrl ?? def.defaultUrl ?? '');
       const currentModel = cfg?.defaultModel ?? '';
@@ -64,12 +68,11 @@ export function ProviderSettings() {
       setCustomModelInput('');
       setUseCustomModel(false);
 
-      // Fetch models if provider is already registered
       if (providers.some((p) => p.id === id)) {
         fetchModels(id);
       }
     },
-    [configs, providers, fetchModels],
+    [expanded, configs, providers, fetchModels],
   );
 
   const getEffectiveModel = (): string => {
@@ -88,7 +91,7 @@ export function ProviderSettings() {
       ...(model ? { defaultModel: model } : {}),
     };
     await window.aris.invoke('ai:save-provider-config', config);
-    setEditing(null);
+    setExpanded(null);
     setApiKey('');
     setSelectedModel('');
     setCustomModelInput('');
@@ -119,98 +122,85 @@ export function ProviderSettings() {
   const getConfig = (id: string) => configs.find((c) => c.id === id);
 
   return (
-    <div style={{ padding: 'var(--space-4)' }}>
-      <h2 style={{ margin: '0 0 var(--space-4)', fontSize: 'var(--text-lg)' }}>AI Providers</h2>
-
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
       {PROVIDER_DEFS.map((def) => {
         const cfg = getConfig(def.id);
+        const configured = isConfigured(def.id);
+        const registered = isRegistered(def.id);
+        const isExpanded = expanded === def.id;
+        const test = testStatus[def.id] ?? 'idle';
+
         return (
-          <div
-            key={def.id}
-            style={{
-              border: '1px solid var(--border-default)',
-              borderRadius: 'var(--radius-lg)',
-              padding: 'var(--space-3)',
-              marginBottom: 'var(--space-2)',
-              background: isConfigured(def.id) ? 'var(--color-success-bg)' : 'var(--bg-surface)',
-            }}
-          >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div>
-                <strong>{def.name}</strong>
-                {isConfigured(def.id) && (
-                  <span style={{ color: 'var(--color-success)', marginLeft: 'var(--space-2)', fontSize: 'var(--text-sm)' }}>
-                    configured
-                  </span>
-                )}
-                {cfg?.defaultModel && (
-                  <span style={{ color: 'var(--text-muted)', marginLeft: 'var(--space-2)', fontSize: 'var(--text-xs)' }}>
-                    model: {cfg.defaultModel}
-                  </span>
-                )}
+          <div key={def.id} style={cardStyle(configured, isExpanded)}>
+            {/* Card header — clickable to expand */}
+            <button onClick={() => toggleExpand(def.id)} style={cardHeaderStyle}>
+              <div style={cardHeaderLeftStyle}>
+                <span style={iconStyle}>{def.icon}</span>
+                <div>
+                  <div style={providerNameStyle}>{def.name}</div>
+                  {cfg?.defaultModel && (
+                    <div style={modelTagStyle}>{cfg.defaultModel}</div>
+                  )}
+                </div>
               </div>
-              <div style={{ display: 'flex', gap: '0.25rem' }}>
-                {isRegistered(def.id) && (
-                  <>
-                    <button onClick={() => testConnection(def.id)} style={btnStyle}>
-                      {testStatus[def.id] === 'testing'
-                        ? '...'
-                        : testStatus[def.id] === 'ok'
-                          ? 'OK'
-                          : testStatus[def.id] === 'fail'
-                            ? 'FAIL'
-                            : 'Test'}
-                    </button>
-                    <button onClick={() => setActive(def.id)} style={btnStyle}>
-                      Activate
-                    </button>
-                  </>
-                )}
+              <div style={cardHeaderRightStyle}>
+                {configured && <span style={statusDotStyle(true)} />}
+                <span style={chevronStyle(isExpanded)}>{'\u276F'}</span>
+              </div>
+            </button>
+
+            {/* Quick actions bar — visible when configured but not expanded */}
+            {registered && !isExpanded && (
+              <div style={quickActionsStyle}>
                 <button
-                  onClick={() => {
-                    if (editing === def.id) {
-                      setEditing(null);
-                    } else {
-                      openEditor(def.id);
-                    }
-                  }}
-                  style={btnStyle}
+                  onClick={(e) => { e.stopPropagation(); testConnection(def.id); }}
+                  style={chipBtnStyle(test === 'ok' ? 'success' : test === 'fail' ? 'error' : 'default')}
                 >
-                  {editing === def.id ? 'Cancel' : 'Configure'}
+                  {test === 'testing' ? 'Testing...' : test === 'ok' ? 'Connected' : test === 'fail' ? 'Failed' : 'Test'}
+                </button>
+                <button
+                  onClick={(e) => { e.stopPropagation(); setActive(def.id); }}
+                  style={chipBtnStyle('primary')}
+                >
+                  Activate
                 </button>
               </div>
-            </div>
+            )}
 
-            {editing === def.id && (
-              <div style={{ marginTop: '0.5rem' }}>
+            {/* Expanded config form */}
+            {isExpanded && (
+              <div style={cardBodyStyle}>
                 {def.needsKey && (
-                  <input
-                    type="password"
-                    placeholder="API Key"
-                    value={apiKey}
-                    onChange={(e) => setApiKey(e.target.value)}
-                    style={inputStyle}
-                  />
+                  <div style={fieldGroupStyle}>
+                    <label style={fieldLabelStyle}>API Key</label>
+                    <input
+                      type="password"
+                      placeholder={cfg?.apiKey ? 'Key saved (enter new to update)' : 'Enter API key'}
+                      value={apiKey}
+                      onChange={(e) => setApiKey(e.target.value)}
+                      style={inputStyle}
+                    />
+                  </div>
                 )}
+
                 {def.needsUrl && (
-                  <input
-                    type="text"
-                    placeholder="Base URL"
-                    value={baseUrl}
-                    onChange={(e) => setBaseUrl(e.target.value)}
-                    style={inputStyle}
-                  />
+                  <div style={fieldGroupStyle}>
+                    <label style={fieldLabelStyle}>Base URL</label>
+                    <input
+                      type="text"
+                      placeholder="http://127.0.0.1:..."
+                      value={baseUrl}
+                      onChange={(e) => setBaseUrl(e.target.value)}
+                      style={inputStyle}
+                    />
+                  </div>
                 )}
 
                 {/* Model selection */}
-                <div style={{ marginTop: '0.25rem' }}>
-                  <label style={{ fontSize: 'var(--text-sm)', color: 'var(--text-secondary)', display: 'block', marginBottom: 'var(--space-1)' }}>
-                    Model
-                  </label>
+                <div style={fieldGroupStyle}>
+                  <label style={fieldLabelStyle}>Model</label>
                   {loadingModels[def.id] ? (
-                    <div style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)', padding: 'var(--space-1) 0' }}>
-                      Loading models...
-                    </div>
+                    <div style={loadingTextStyle}>Loading models...</div>
                   ) : (models[def.id]?.length ?? 0) > 0 && !useCustomModel ? (
                     <>
                       <select
@@ -220,19 +210,14 @@ export function ProviderSettings() {
                       >
                         <option value="">-- Select a model --</option>
                         {models[def.id].map((m) => (
-                          <option key={m.id} value={m.id}>
-                            {m.name}
-                          </option>
+                          <option key={m.id} value={m.id}>{m.name}</option>
                         ))}
                       </select>
                       <button
-                        onClick={() => {
-                          setUseCustomModel(true);
-                          setCustomModelInput(selectedModel);
-                        }}
-                        style={{ ...linkBtnStyle, marginTop: '0.2rem' }}
+                        onClick={() => { setUseCustomModel(true); setCustomModelInput(selectedModel); }}
+                        style={linkBtnStyle}
                       >
-                        Enter custom model ID
+                        Enter custom model ID instead
                       </button>
                     </>
                   ) : (
@@ -242,30 +227,21 @@ export function ProviderSettings() {
                         placeholder="Model ID (e.g. gpt-4o, claude-sonnet-4-20250514)"
                         value={useCustomModel ? customModelInput : selectedModel}
                         onChange={(e) => {
-                          if (useCustomModel) {
-                            setCustomModelInput(e.target.value);
-                          } else {
-                            setSelectedModel(e.target.value);
-                          }
+                          if (useCustomModel) setCustomModelInput(e.target.value);
+                          else setSelectedModel(e.target.value);
                         }}
                         style={inputStyle}
                       />
                       {useCustomModel && (models[def.id]?.length ?? 0) > 0 && (
                         <button
-                          onClick={() => {
-                            setUseCustomModel(false);
-                            setSelectedModel(customModelInput);
-                          }}
-                          style={{ ...linkBtnStyle, marginTop: '0.2rem' }}
+                          onClick={() => { setUseCustomModel(false); setSelectedModel(customModelInput); }}
+                          style={linkBtnStyle}
                         >
                           Pick from available models
                         </button>
                       )}
-                      {isRegistered(def.id) && !loadingModels[def.id] && (models[def.id]?.length ?? 0) === 0 && (
-                        <button
-                          onClick={() => fetchModels(def.id)}
-                          style={{ ...linkBtnStyle, marginTop: '0.2rem' }}
-                        >
+                      {registered && !loadingModels[def.id] && (models[def.id]?.length ?? 0) === 0 && (
+                        <button onClick={() => fetchModels(def.id)} style={linkBtnStyle}>
                           Refresh model list
                         </button>
                       )}
@@ -273,9 +249,26 @@ export function ProviderSettings() {
                   )}
                 </div>
 
-                <button onClick={() => saveConfig(def.id)} style={{ ...btnStyle, marginTop: '0.5rem' }}>
-                  Save
-                </button>
+                {/* Action buttons */}
+                <div style={cardActionsStyle}>
+                  {registered && (
+                    <>
+                      <button
+                        onClick={() => testConnection(def.id)}
+                        style={chipBtnStyle(test === 'ok' ? 'success' : test === 'fail' ? 'error' : 'default')}
+                      >
+                        {test === 'testing' ? 'Testing...' : test === 'ok' ? 'Connected' : test === 'fail' ? 'Failed' : 'Test Connection'}
+                      </button>
+                      <button onClick={() => setActive(def.id)} style={chipBtnStyle('default')}>
+                        Activate
+                      </button>
+                    </>
+                  )}
+                  <div style={{ flex: 1 }} />
+                  <button onClick={() => saveConfig(def.id)} style={saveBtnStyle}>
+                    Save
+                  </button>
+                </div>
               </div>
             )}
           </div>
@@ -285,40 +278,132 @@ export function ProviderSettings() {
   );
 }
 
-const btnStyle: React.CSSProperties = {
-  background: 'var(--bg-surface)',
-  color: 'var(--text-primary)',
-  border: '1px solid var(--border-default)',
-  borderRadius: 'var(--radius-sm)',
-  padding: 'var(--space-1) var(--space-2)',
+/* ── Styles ── */
+
+function cardStyle(configured: boolean, expanded: boolean): React.CSSProperties {
+  return {
+    background: 'var(--bg-surface)',
+    border: `1px solid ${configured ? 'var(--border-default)' : 'var(--border-subtle)'}`,
+    borderRadius: 'var(--radius-xl)',
+    overflow: 'hidden',
+    transition: 'var(--transition-normal)',
+    ...(expanded ? { boxShadow: 'var(--shadow-md)' } : {}),
+  };
+}
+
+const cardHeaderStyle: React.CSSProperties = {
+  display: 'flex',
+  justifyContent: 'space-between',
+  alignItems: 'center',
+  width: '100%',
+  padding: 'var(--space-3) var(--space-4)',
+  background: 'none',
+  border: 'none',
   cursor: 'pointer',
-  fontSize: 'var(--text-sm)',
-  transition: 'var(--transition-fast)',
+  textAlign: 'left',
+  color: 'var(--text-primary)',
+};
+
+const cardHeaderLeftStyle: React.CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: 'var(--space-3)',
+  minWidth: 0,
+};
+
+const iconStyle: React.CSSProperties = {
+  fontSize: 'var(--text-lg)',
+  lineHeight: 1,
+};
+
+const providerNameStyle: React.CSSProperties = {
+  fontSize: 'var(--text-base)',
+  fontWeight: 'var(--font-semibold)' as any,
+};
+
+const modelTagStyle: React.CSSProperties = {
+  fontSize: 'var(--text-xs)',
+  color: 'var(--text-muted)',
+  marginTop: 2,
+};
+
+const cardHeaderRightStyle: React.CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: 'var(--space-2)',
+  flexShrink: 0,
+};
+
+function statusDotStyle(active: boolean): React.CSSProperties {
+  return {
+    display: 'inline-block',
+    width: 8,
+    height: 8,
+    borderRadius: '50%',
+    background: active ? 'var(--color-success)' : 'var(--text-muted)',
+    boxShadow: active ? '0 0 6px var(--color-success)' : 'none',
+  };
+}
+
+function chevronStyle(open: boolean): React.CSSProperties {
+  return {
+    fontSize: 'var(--text-sm)',
+    color: 'var(--text-muted)',
+    transition: 'var(--transition-fast)',
+    transform: open ? 'rotate(90deg)' : 'rotate(0)',
+  };
+}
+
+const quickActionsStyle: React.CSSProperties = {
+  display: 'flex',
+  gap: 'var(--space-1)',
+  padding: '0 var(--space-4) var(--space-3)',
+};
+
+const cardBodyStyle: React.CSSProperties = {
+  padding: '0 var(--space-4) var(--space-4)',
+  borderTop: '1px solid var(--border-subtle)',
+  paddingTop: 'var(--space-3)',
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 'var(--space-3)',
+};
+
+const fieldGroupStyle: React.CSSProperties = {
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 'var(--space-1)',
+};
+
+const fieldLabelStyle: React.CSSProperties = {
+  fontSize: 'var(--text-xs)',
+  fontWeight: 'var(--font-semibold)' as any,
+  color: 'var(--text-secondary)',
+  textTransform: 'uppercase',
+  letterSpacing: '0.04em',
 };
 
 const inputStyle: React.CSSProperties = {
-  display: 'block',
   width: '100%',
-  padding: 'var(--space-2)',
-  marginTop: 'var(--space-1)',
-  background: 'var(--bg-surface)',
+  padding: 'var(--space-2) var(--space-3)',
+  background: 'var(--bg-base)',
   color: 'var(--text-primary)',
   border: '1px solid var(--border-default)',
   borderRadius: 'var(--radius-md)',
   fontSize: 'var(--text-sm)',
+  fontFamily: 'var(--font-sans)',
+  outline: 'none',
   boxSizing: 'border-box',
 };
 
 const selectStyle: React.CSSProperties = {
-  display: 'block',
-  width: '100%',
-  padding: 'var(--space-2)',
-  background: 'var(--bg-surface)',
-  color: 'var(--text-primary)',
-  border: '1px solid var(--border-default)',
-  borderRadius: 'var(--radius-md)',
+  ...inputStyle,
+};
+
+const loadingTextStyle: React.CSSProperties = {
   fontSize: 'var(--text-sm)',
-  boxSizing: 'border-box',
+  color: 'var(--text-muted)',
+  padding: 'var(--space-1) 0',
 };
 
 const linkBtnStyle: React.CSSProperties = {
@@ -329,4 +414,47 @@ const linkBtnStyle: React.CSSProperties = {
   cursor: 'pointer',
   fontSize: 'var(--text-xs)',
   textDecoration: 'underline',
+  textAlign: 'left',
+};
+
+const cardActionsStyle: React.CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  gap: 'var(--space-2)',
+  paddingTop: 'var(--space-1)',
+};
+
+function chipBtnStyle(variant: 'default' | 'primary' | 'success' | 'error'): React.CSSProperties {
+  const base: React.CSSProperties = {
+    borderRadius: 'var(--radius-full)',
+    padding: 'var(--space-1) var(--space-3)',
+    cursor: 'pointer',
+    fontSize: 'var(--text-xs)',
+    fontWeight: 'var(--font-medium)' as any,
+    transition: 'var(--transition-fast)',
+    whiteSpace: 'nowrap',
+    border: 'none',
+  };
+  switch (variant) {
+    case 'primary':
+      return { ...base, background: 'var(--color-primary-subtle)', color: 'var(--color-primary)' };
+    case 'success':
+      return { ...base, background: 'var(--color-success-bg)', color: 'var(--color-success)' };
+    case 'error':
+      return { ...base, background: 'var(--color-error-bg)', color: 'var(--color-error)' };
+    default:
+      return { ...base, background: 'var(--bg-elevated)', color: 'var(--text-secondary)' };
+  }
+}
+
+const saveBtnStyle: React.CSSProperties = {
+  background: 'var(--color-primary)',
+  color: 'var(--color-primary-on)',
+  border: 'none',
+  borderRadius: 'var(--radius-md)',
+  padding: 'var(--space-2) var(--space-5)',
+  cursor: 'pointer',
+  fontSize: 'var(--text-sm)',
+  fontWeight: 'var(--font-semibold)' as any,
+  transition: 'var(--transition-fast)',
 };
