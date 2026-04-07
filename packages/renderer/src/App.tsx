@@ -16,6 +16,7 @@ export function App() {
   const [lastAssistantMsg, setLastAssistantMsg] = useState<string | undefined>();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [chatExpanded, setChatExpanded] = useState(false);
+  const [aiStreaming, setAiStreaming] = useState(false);
 
   // Password lock state
   const [lockState, setLockState] = useState<'loading' | 'locked-startup' | 'locked-enable' | 'unlocked'>('loading');
@@ -160,7 +161,7 @@ export function App() {
           <div style={chatLayoutStyle}>
             {/* Avatar — dominant focal point */}
             <div style={avatarAreaStyle(chatExpanded)}>
-              <AvatarDisplay lastAssistantMessage={lastAssistantMsg} />
+              <AvatarDisplay lastAssistantMessage={lastAssistantMsg} streaming={aiStreaming} />
               {!arisActive && (
                 <div style={disabledOverlayStyle}>
                   <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: 'var(--text-lg)' }}>
@@ -179,6 +180,7 @@ export function App() {
                 conversationId={activeConversation}
                 onConversationCreated={handleConversationCreated}
                 onAssistantMessage={setLastAssistantMsg}
+                onStreamingChange={setAiStreaming}
                 expanded={chatExpanded}
                 onToggleExpand={() => setChatExpanded((v) => !v)}
               />
