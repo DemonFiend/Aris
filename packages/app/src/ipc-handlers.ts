@@ -175,11 +175,15 @@ export function registerIpcHandlers(): void {
       const provider = registry.getActive();
       const sender = event.sender;
       try {
+        let doneSent = false;
         for await (const chunk of provider.streamChat(messages, options)) {
           sender.send('ai:stream-chunk', chunk);
+          if ((chunk as { done?: boolean }).done) doneSent = true;
         }
-        // Always send a final done signal so the renderer persists the message
-        sender.send('ai:stream-chunk', { text: '', done: true });
+        // Only send a fallback done signal if the provider didn't already send one
+        if (!doneSent) {
+          sender.send('ai:stream-chunk', { text: '', done: true });
+        }
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
         console.error('[ai:stream-chat] Error:', msg);

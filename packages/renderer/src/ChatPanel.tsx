@@ -27,6 +27,7 @@ export function ChatPanel({ conversationId, onConversationCreated, onAssistantMe
   const streamBufferRef = useRef('');
   const activeConvRef = useRef<string | null>(conversationId);
   const savedRef = useRef(false);
+  const streamGenRef = useRef(0);        // generation counter — ignores stale done signals
 
   const scrollToBottom = useCallback(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -69,12 +70,12 @@ export function ChatPanel({ conversationId, onConversationCreated, onAssistantMe
   }, [conversationId]); // eslint-disable-line react-hooks/exhaustive-deps -- streaming intentionally excluded: we only reload on conversation change, not on every streaming state toggle
 
   useEffect(() => {
+    let lastHandledGen = 0;
     const cleanup = window.aris.on('ai:stream-chunk', (chunk: unknown) => {
       const { text, done } = chunk as ChatChunk;
+      const gen = streamGenRef.current;
       if (text) {
         streamBufferRef.current += text;
-        // Capture ref value now — if done arrives in the same React batch,
-        // the ref will be cleared before this callback executes.
         const snapshot = streamBufferRef.current;
         setMessages((prev) => {
           const updated = [...prev];
@@ -86,9 +87,11 @@ export function ChatPanel({ conversationId, onConversationCreated, onAssistantMe
         });
       }
       if (done) {
+        // Ignore duplicate or stale done signals from a previous stream
+        if (gen <= lastHandledGen) return;
+        lastHandledGen = gen;
+
         const finalContent = streamBufferRef.current;
-        // Explicitly commit final content so it survives any React
-        // batching edge-case where a prior text-chunk update was deferred.
         if (finalContent) {
           setMessages((prev) => {
             const updated = [...prev];
@@ -136,6 +139,7 @@ export function ChatPanel({ conversationId, onConversationCreated, onAssistantMe
     if (!expanded) onToggleExpand();
     streamBufferRef.current = '';
     savedRef.current = false;
+    streamGenRef.current += 1;
 
     let convId = activeConvRef.current;
     if (!convId) {
@@ -172,7 +176,8 @@ export function ChatPanel({ conversationId, onConversationCreated, onAssistantMe
       try {
         const posCtx = (await window.aris.invoke('window:get-position-context')) as PositionContext | null;
         if (posCtx) {
-          systemPrompt += `\n\n[Position context: You are displayed in a ${posCtx.windowBounds.width}x${posCtx.windowBounds.height} window, docked ${posCtx.dockPosition} on the ${posCtx.screenQuadrant} of the screen${posCtx.overlayMode ? ', in overlay mode on top of other windows' : ''}. You can naturally reference your position when relevant, e.g. "I can see I'm tucked in the corner" or "I'm floating over your game right now".]`;
+          const position = posCtx.dockPosition === 'center' ? 'floating on screen' : `on the ${posCtx.dockPosition} side of the screen`;
+          systemPrompt += `\n\n[You are ${position}${posCtx.overlayMode ? ', overlaying on top of the player\'s game' : ''}. You may subtly reference this when it feels natural, but NEVER mention window dimensions, pixels, or technical details like "docked" — just be aware of where you are.]`;
         }
       } catch {
         // Position context unavailable — continue without it
