@@ -16,6 +16,7 @@ import {
 } from '@aris/shared';
 import type { CaptureSettings, ScreenshotFolderStats } from '@aris/shared';
 import { getSetting, setSetting } from './settings-store';
+import { encryptScreenshot, decryptScreenshot, secureDelete } from './screenshot-crypto';
 
 const SETTINGS_KEY = 'capture-settings';
 
@@ -80,11 +81,22 @@ export function saveScreenshot(
 
   const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
   const gameSuffix = detectedGame ? `_${detectedGame.replace(/[^a-zA-Z0-9]/g, '-')}` : '';
-  const filename = `screenshot_${timestamp}${gameSuffix}.jpg`;
+  const filename = `screenshot_${timestamp}${gameSuffix}.enc`;
   const filePath = path.join(settings.screenshotFolder, filename);
 
-  fs.writeFileSync(filePath, buffer);
+  const encrypted = encryptScreenshot(buffer);
+  fs.writeFileSync(filePath, encrypted);
   return filePath;
+}
+
+/** Decrypt and return a saved screenshot as a JPEG buffer */
+export function readScreenshot(filePath: string): Buffer {
+  const raw = fs.readFileSync(filePath);
+  // Legacy unencrypted JPEG files start with FF D8 (JPEG SOI marker)
+  if (raw.length >= 2 && raw[0] === 0xff && raw[1] === 0xd8) {
+    return raw;
+  }
+  return decryptScreenshot(raw);
 }
 
 export function getScreenshotFolderStats(): ScreenshotFolderStats {
@@ -97,7 +109,7 @@ export function getScreenshotFolderStats(): ScreenshotFolderStats {
 
   const files = fs
     .readdirSync(folder)
-    .filter((f) => f.endsWith('.jpg'))
+    .filter((f) => f.endsWith('.enc') || f.endsWith('.jpg'))
     .map((f) => {
       const fp = path.join(folder, f);
       const stat = fs.statSync(fp);
@@ -123,7 +135,7 @@ export function pruneScreenshots(): { deleted: number } {
 
   const files = fs
     .readdirSync(folder)
-    .filter((f) => f.endsWith('.jpg'))
+    .filter((f) => f.endsWith('.enc') || f.endsWith('.jpg'))
     .map((f) => {
       const fp = path.join(folder, f);
       const stat = fs.statSync(fp);
@@ -137,7 +149,7 @@ export function pruneScreenshots(): { deleted: number } {
   while (files.length - deleted > settings.maxScreenshots) {
     const file = files[deleted];
     try {
-      fs.unlinkSync(file.path);
+      secureDelete(file.path);
       deleted++;
     } catch {
       break;
@@ -151,7 +163,7 @@ export function pruneScreenshots(): { deleted: number } {
   while (totalSize > limitBytes && idx < files.length) {
     const file = files[idx];
     try {
-      fs.unlinkSync(file.path);
+      secureDelete(file.path);
       totalSize -= file.size;
       deleted++;
       idx++;
