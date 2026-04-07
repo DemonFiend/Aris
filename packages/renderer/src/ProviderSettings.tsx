@@ -14,7 +14,7 @@ const PROVIDER_DEFS = [
   { id: 'ollama', name: 'Ollama (Local)', needsKey: false, needsUrl: true, defaultUrl: 'http://127.0.0.1:11434', icon: '\uD83E\uDD99' },
   { id: 'custom-openai', name: 'Custom OpenAI-compatible', needsKey: true, needsUrl: true, defaultUrl: 'http://127.0.0.1:8000/v1', icon: '\uD83D\uDD27' },
   { id: 'custom-anthropic', name: 'Custom Anthropic-compatible', needsKey: true, needsUrl: true, defaultUrl: 'http://127.0.0.1:8000/v1', icon: '\uD83D\uDD27' },
-  { id: 'lmstudio', name: 'LM Studio (Local)', needsKey: false, needsUrl: true, defaultUrl: 'http://127.0.0.1:1234/v1', icon: '\uD83D\uDCBB' },
+  { id: 'lmstudio', name: 'LM Studio (Local)', needsKey: false, needsUrl: true, defaultUrl: 'http://127.0.0.1:1234', icon: '\uD83D\uDCBB' },
 ];
 
 export function ProviderSettings() {

@@ -1,4 +1,3 @@
-import OpenAI from 'openai';
 import type {
   AIProvider,
   ChatMessage,
@@ -9,65 +8,142 @@ import type {
 } from '@aris/shared';
 import { DEFAULT_MAX_TOKENS, DEFAULT_TEMPERATURE } from '@aris/shared';
 
+interface LMStudioModel {
+  id: string;
+  object: string;
+}
+
+interface LMStudioModelsResponse {
+  data: LMStudioModel[];
+}
+
+interface LMStudioChatChoice {
+  message: { role: string; content: string };
+  delta?: { content?: string };
+  finish_reason: string | null;
+}
+
+interface LMStudioChatResponse {
+  id: string;
+  model: string;
+  choices: LMStudioChatChoice[];
+  usage?: {
+    prompt_tokens: number;
+    completion_tokens: number;
+  };
+}
+
+interface LMStudioStreamChoice {
+  delta: { content?: string };
+  finish_reason: string | null;
+}
+
+interface LMStudioStreamChunk {
+  model: string;
+  choices: LMStudioStreamChoice[];
+}
+
+type MessageContent =
+  | string
+  | Array<
+      | { type: 'text'; text: string }
+      | { type: 'image_url'; image_url: { url: string } }
+    >;
+
+interface PreparedMessage {
+  role: string;
+  content: MessageContent;
+}
+
 export class LMStudioProvider implements AIProvider {
   readonly id = 'lmstudio';
   readonly name = 'LM Studio (Local)';
   readonly supportsVision = true;
   readonly supportsStreaming = true;
 
-  private client: OpenAI;
   private baseUrl: string;
   private defaultModel: string;
 
-  constructor(baseUrl = 'http://127.0.0.1:1234/v1', defaultModel = '') {
+  constructor(baseUrl = 'http://127.0.0.1:1234', defaultModel = '') {
     this.baseUrl = baseUrl.replace(/\/$/, '');
     this.defaultModel = defaultModel;
-    this.client = new OpenAI({
-      apiKey: 'lm-studio',
-      baseURL: this.baseUrl,
-    });
   }
 
   async chat(messages: ChatMessage[], options?: ChatOptions): Promise<ChatResponse> {
-    const openaiMessages = this.prepareMessages(messages, options?.systemPrompt);
-
-    const response = await this.client.chat.completions.create({
+    const body = {
       model: options?.model ?? this.defaultModel,
+      messages: this.prepareMessages(messages, options?.systemPrompt),
       max_tokens: options?.maxTokens ?? DEFAULT_MAX_TOKENS,
       temperature: options?.temperature ?? DEFAULT_TEMPERATURE,
-      messages: openaiMessages,
+      stream: false,
+    };
+
+    const res = await fetch(`${this.baseUrl}/api/v1/chat/completions`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
     });
 
-    const choice = response.choices[0];
+    if (!res.ok) throw new Error(`LM Studio error: ${res.status} ${res.statusText}`);
+    const data = (await res.json()) as LMStudioChatResponse;
+
+    const choice = data.choices[0];
     return {
       text: choice?.message?.content ?? '',
-      model: response.model,
-      usage: response.usage
+      model: data.model,
+      usage: data.usage
         ? {
-            inputTokens: response.usage.prompt_tokens,
-            outputTokens: response.usage.completion_tokens,
+            inputTokens: data.usage.prompt_tokens,
+            outputTokens: data.usage.completion_tokens,
           }
         : undefined,
     };
   }
 
   async *streamChat(messages: ChatMessage[], options?: ChatOptions): AsyncIterable<ChatChunk> {
-    const openaiMessages = this.prepareMessages(messages, options?.systemPrompt);
-
-    const stream = await this.client.chat.completions.create({
+    const body = {
       model: options?.model ?? this.defaultModel,
+      messages: this.prepareMessages(messages, options?.systemPrompt),
       max_tokens: options?.maxTokens ?? DEFAULT_MAX_TOKENS,
       temperature: options?.temperature ?? DEFAULT_TEMPERATURE,
-      messages: openaiMessages,
       stream: true,
+    };
+
+    const res = await fetch(`${this.baseUrl}/api/v1/chat/completions`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
     });
 
-    for await (const chunk of stream) {
-      const delta = chunk.choices[0]?.delta?.content;
-      if (delta) {
-        yield { text: delta, done: false };
+    if (!res.ok) throw new Error(`LM Studio error: ${res.status} ${res.statusText}`);
+    if (!res.body) throw new Error('LM Studio returned no stream body');
+
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop() ?? '';
+
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (!trimmed || !trimmed.startsWith('data: ')) continue;
+        const payload = trimmed.slice(6);
+        if (payload === '[DONE]') return;
+        const chunk = JSON.parse(payload) as LMStudioStreamChunk;
+        const delta = chunk.choices[0]?.delta?.content;
+        if (delta) {
+          yield { text: delta, done: false };
+        }
+        if (chunk.choices[0]?.finish_reason != null) return;
       }
     }
+
     yield { text: '', done: true };
   }
 
@@ -75,10 +151,8 @@ export class LMStudioProvider implements AIProvider {
     const base64 = image.toString('base64');
     const mediaType = this.detectMediaType(image);
 
-    const response = await this.client.chat.completions.create({
+    const body = {
       model: options?.model ?? this.defaultModel,
-      max_tokens: options?.maxTokens ?? DEFAULT_MAX_TOKENS,
-      temperature: options?.temperature ?? DEFAULT_TEMPERATURE,
       messages: [
         {
           role: 'user',
@@ -91,16 +165,28 @@ export class LMStudioProvider implements AIProvider {
           ],
         },
       ],
+      max_tokens: options?.maxTokens ?? DEFAULT_MAX_TOKENS,
+      temperature: options?.temperature ?? DEFAULT_TEMPERATURE,
+      stream: false,
+    };
+
+    const res = await fetch(`${this.baseUrl}/api/v1/chat/completions`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
     });
 
-    const choice = response.choices[0];
+    if (!res.ok) throw new Error(`LM Studio error: ${res.status} ${res.statusText}`);
+    const data = (await res.json()) as LMStudioChatResponse;
+
+    const choice = data.choices[0];
     return {
       text: choice?.message?.content ?? '',
-      model: response.model,
-      usage: response.usage
+      model: data.model,
+      usage: data.usage
         ? {
-            inputTokens: response.usage.prompt_tokens,
-            outputTokens: response.usage.completion_tokens,
+            inputTokens: data.usage.prompt_tokens,
+            outputTokens: data.usage.completion_tokens,
           }
         : undefined,
     };
@@ -108,12 +194,10 @@ export class LMStudioProvider implements AIProvider {
 
   async testConnection(): Promise<boolean> {
     try {
-      const list = await this.client.models.list();
-      const models: string[] = [];
-      for await (const m of list) {
-        models.push(m.id);
-      }
-      return models.length > 0;
+      const res = await fetch(`${this.baseUrl}/api/v1/models`);
+      if (!res.ok) return false;
+      const data = (await res.json()) as LMStudioModelsResponse;
+      return Array.isArray(data.data) && data.data.length > 0;
     } catch {
       return false;
     }
@@ -121,27 +205,22 @@ export class LMStudioProvider implements AIProvider {
 
   async getModels(): Promise<ModelInfo[]> {
     try {
-      const list = await this.client.models.list();
-      const chatModels: ModelInfo[] = [];
-      for await (const model of list) {
-        chatModels.push({
-          id: model.id,
-          name: model.id,
-          supportsVision: false,
-          contextLength: 4096,
-        });
-      }
-      return chatModels;
+      const res = await fetch(`${this.baseUrl}/api/v1/models`);
+      if (!res.ok) return [];
+      const data = (await res.json()) as LMStudioModelsResponse;
+      return data.data.map((m) => ({
+        id: m.id,
+        name: m.id,
+        supportsVision: false,
+        contextLength: 4096,
+      }));
     } catch {
       return [];
     }
   }
 
-  private prepareMessages(
-    messages: ChatMessage[],
-    systemPrompt?: string,
-  ): OpenAI.ChatCompletionMessageParam[] {
-    const result: OpenAI.ChatCompletionMessageParam[] = [];
+  private prepareMessages(messages: ChatMessage[], systemPrompt?: string): PreparedMessage[] {
+    const result: PreparedMessage[] = [];
 
     if (systemPrompt) {
       result.push({ role: 'system', content: systemPrompt });
@@ -154,7 +233,10 @@ export class LMStudioProvider implements AIProvider {
       }
 
       if (msg.images?.length) {
-        const content: OpenAI.ChatCompletionContentPart[] = msg.images.map((img: Buffer) => ({
+        const content: Array<
+          | { type: 'text'; text: string }
+          | { type: 'image_url'; image_url: { url: string } }
+        > = msg.images.map((img: Buffer) => ({
           type: 'image_url' as const,
           image_url: {
             url: `data:${this.detectMediaType(img)};base64,${img.toString('base64')}`,
