@@ -73,11 +73,14 @@ export function ChatPanel({ conversationId, onConversationCreated, onAssistantMe
       const { text, done } = chunk as ChatChunk;
       if (text) {
         streamBufferRef.current += text;
+        // Capture ref value now — if done arrives in the same React batch,
+        // the ref will be cleared before this callback executes.
+        const snapshot = streamBufferRef.current;
         setMessages((prev) => {
           const updated = [...prev];
           const last = updated[updated.length - 1];
           if (last?.role === 'assistant') {
-            updated[updated.length - 1] = { ...last, content: streamBufferRef.current };
+            updated[updated.length - 1] = { ...last, content: snapshot };
           }
           return updated;
         });
