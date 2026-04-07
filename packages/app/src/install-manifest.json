@@ -1,0 +1,41 @@
+{
+  "lmstudio": {
+    "version": "0.3.6",
+    "win32": {
+      "url": "https://releases.lmstudio.ai/windows/x64/0.3.6/1/LM-Studio-0.3.6.exe",
+      "filename": "LM-Studio-0.3.6-Setup.exe"
+    },
+    "darwin": null,
+    "linux": null
+  },
+  "ollama": {
+    "version": "0.6.4",
+    "win32": {
+      "url": "https://github.com/ollama/ollama/releases/download/v0.6.4/OllamaSetup.exe",
+      "filename": "OllamaSetup.exe"
+    },
+    "darwin": null,
+    "linux": null
+  },
+  "whisper": {
+    "version": "1.7.5",
+    "win32": {
+      "url": "https://github.com/ggerganov/whisper.cpp/releases/download/v1.7.5/whisper-bin-x64.zip",
+      "filename": "whisper-bin-x64.zip"
+    },
+    "darwin": null,
+    "linux": null,
+    "models": {
+      "base.en": {
+        "url": "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-base.en.bin",
+        "filename": "ggml-base.en.bin"
+      }
+    }
+  },
+  "kokoro": {
+    "version": "latest",
+    "win32": null,
+    "darwin": null,
+    "linux": null
+  }
+}

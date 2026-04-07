@@ -29,9 +29,19 @@ import {
 } from './game-profile-store';
 import { exportAllData, exportEncryptedFile, importEncryptedFile, wipeAllData } from './data-export';
 import { detectAllServices, detectService } from './service-detector';
-import { getInstallInfo, getAllInstallInfo, openDownloadPage, verifyInstall } from './install-orchestrator';
+import {
+  getInstallInfo,
+  getAllInstallInfo,
+  openDownloadPage,
+  verifyInstall,
+  getManifest,
+  downloadAndInstall,
+  launchInstaller,
+  extractZip,
+  startWhisperService,
+} from './install-orchestrator';
 import { getUninstallTargets, performUninstall } from './uninstall-orchestrator';
-import type { ServiceName, UninstallTargetId } from '@aris/shared';
+import type { ServiceName, UninstallTargetId, InstallProgress } from '@aris/shared';
 import {
   getPasswordConfig,
   setPassword,
@@ -571,6 +581,40 @@ export function registerIpcHandlers(): void {
   });
 
   ipcMain.handle('install:verify', async (_event, name: ServiceName) => verifyInstall(name));
+
+  ipcMain.handle('install:get-manifest', async () => getManifest());
+
+  ipcMain.handle('install:download-and-install', async (event, name: ServiceName) => {
+    const onProgress = (progress: InstallProgress) => {
+      event.sender.send('install:progress', progress);
+    };
+    return downloadAndInstall(name, onProgress);
+  });
+
+  ipcMain.handle('install:launch-installer', async (_event, installerPath: unknown) => {
+    if (typeof installerPath !== 'string') throw new Error('installerPath must be a string');
+    await launchInstaller(installerPath);
+    return true;
+  });
+
+  ipcMain.handle('install:extract', async (_event, zipPath: unknown, destDir: unknown) => {
+    if (typeof zipPath !== 'string' || typeof destDir !== 'string') {
+      throw new Error('zipPath and destDir must be strings');
+    }
+    await extractZip(zipPath, destDir);
+    return true;
+  });
+
+  ipcMain.handle(
+    'install:start-service',
+    async (_event, installDir: unknown, modelPath: unknown) => {
+      if (typeof installDir !== 'string' || typeof modelPath !== 'string') {
+        throw new Error('installDir and modelPath must be strings');
+      }
+      startWhisperService(installDir, modelPath);
+      return true;
+    },
+  );
 
   // Uninstall flow handlers
   ipcMain.handle('uninstall:scan', async () => getUninstallTargets());

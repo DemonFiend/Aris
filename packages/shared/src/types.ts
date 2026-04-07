@@ -415,6 +415,41 @@ export interface UninstallProgress {
   message?: string;
 }
 
+/** Single platform entry in the install manifest */
+export interface ManifestPlatformEntry {
+  url: string;
+  filename: string;
+}
+
+/** Per-service entry in the install manifest */
+export interface ServiceManifestEntry {
+  version: string;
+  win32: ManifestPlatformEntry | null;
+  darwin: ManifestPlatformEntry | null;
+  linux: ManifestPlatformEntry | null;
+  /** Optional model files (e.g. whisper GGML models) */
+  models?: Record<string, ManifestPlatformEntry>;
+}
+
+/** Full install manifest — service name → manifest entry */
+export type InstallManifest = Record<ServiceName, ServiceManifestEntry>;
+
+/** Progress event streamed during install:download-and-install */
+export interface InstallProgress {
+  service: ServiceName;
+  stage: 'downloading' | 'extracting' | 'installing' | 'starting' | 'done' | 'error';
+  /** 0-100 percent complete for the current stage */
+  percent: number;
+  message: string;
+}
+
+/** Result returned by install:download-and-install when the flow completes */
+export interface InstallResult {
+  service: ServiceName;
+  success: boolean;
+  error: string | null;
+}
+
 /** IPC channel names for main <-> renderer communication */
 export type IpcChannel =
   | 'ai:chat'
@@ -504,6 +539,11 @@ export type IpcChannel =
   | 'install:get-all-info'
   | 'install:open-download'
   | 'install:verify'
+  | 'install:get-manifest'
+  | 'install:download-and-install'
+  | 'install:launch-installer'
+  | 'install:extract'
+  | 'install:start-service'
   | 'setup:is-complete'
   | 'setup:mark-complete'
   | 'uninstall:scan'
