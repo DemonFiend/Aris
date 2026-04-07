@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
-import { VRMLoaderPlugin, VRM } from '@pixiv/three-vrm';
+import { VRMLoaderPlugin, VRM, VRMUtils } from '@pixiv/three-vrm';
 
 export class AvatarScene {
   readonly renderer: THREE.WebGLRenderer;
@@ -71,6 +71,15 @@ export class AvatarScene {
           if (this.vrm) {
             this.scene.remove(this.vrm.scene);
           }
+
+          // Combine skeletons for proper skinned-mesh bounds
+          VRMUtils.combineSkeletons(gltf.scene);
+
+          // Disable frustum culling on all VRM objects — skinned meshes
+          // have rest-pose bounding volumes that cause incorrect culling
+          vrm.scene.traverse((obj) => {
+            obj.frustumCulled = false;
+          });
 
           this.vrm = vrm;
           this.scene.add(vrm.scene);
