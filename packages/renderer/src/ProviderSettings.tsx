@@ -122,7 +122,7 @@ export function ProviderSettings() {
   const getConfig = (id: string) => configs.find((c) => c.id === id);
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)', padding: 'var(--space-4)' }}>
       {PROVIDER_DEFS.map((def) => {
         const cfg = getConfig(def.id);
         const configured = isConfigured(def.id);
@@ -282,7 +282,7 @@ export function ProviderSettings() {
 
 function cardStyle(configured: boolean, expanded: boolean): React.CSSProperties {
   return {
-    background: 'var(--bg-surface)',
+    background: 'var(--bg-elevated)',
     border: `1px solid ${configured ? 'var(--border-default)' : 'var(--border-subtle)'}`,
     borderRadius: 'var(--radius-xl)',
     overflow: 'hidden',
@@ -361,9 +361,8 @@ const quickActionsStyle: React.CSSProperties = {
 };
 
 const cardBodyStyle: React.CSSProperties = {
-  padding: '0 var(--space-4) var(--space-4)',
+  padding: 'var(--space-3) var(--space-4) var(--space-4)',
   borderTop: '1px solid var(--border-subtle)',
-  paddingTop: 'var(--space-3)',
   display: 'flex',
   flexDirection: 'column',
   gap: 'var(--space-3)',
