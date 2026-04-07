@@ -1,5 +1,7 @@
 import { test, expect, _electron as electron } from '@playwright/test';
 import path from 'path';
+import fs from 'fs';
+import { createMinimalVRM } from '../fixtures/create-test-vrm';
 
 const appPath = path.resolve(__dirname, '../../packages/app/dist/main.js');
 
@@ -9,9 +11,6 @@ test.describe('Avatar preview rendering', () => {
     const window = await electronApp.firstWindow();
     await window.waitForLoadState('domcontentloaded');
 
-    // Inject a canvas and create a minimal Three.js scene to verify
-    // WebGL works and lighting produces non-black output.
-    // We test at the WebGL level since React doesn't mount in test env.
     const result = await window.evaluate(async () => {
       const canvas = document.createElement('canvas');
       canvas.width = 200;
@@ -21,26 +20,17 @@ test.describe('Avatar preview rendering', () => {
       const gl = canvas.getContext('webgl2') || canvas.getContext('webgl');
       if (!gl) return { ok: false, reason: 'no-webgl' };
 
-      // Clear to a non-black color to verify WebGL pipeline works
       gl.clearColor(0.2, 0.3, 0.5, 1.0);
       gl.clear(gl.COLOR_BUFFER_BIT);
 
-      // Read back pixels — should NOT be all zeros
       const pixels = new Uint8Array(4);
       gl.readPixels(100, 100, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
 
       document.body.removeChild(canvas);
-      return {
-        ok: true,
-        r: pixels[0],
-        g: pixels[1],
-        b: pixels[2],
-        a: pixels[3],
-      };
+      return { ok: true, r: pixels[0], g: pixels[1], b: pixels[2], a: pixels[3] };
     });
 
     expect(result.ok).toBe(true);
-    // Verify the pixel is non-black (WebGL rendered the clear color)
     expect((result as any).r + (result as any).g + (result as any).b).toBeGreaterThan(0);
 
     await electronApp.close();
@@ -51,7 +41,6 @@ test.describe('Avatar preview rendering', () => {
     const window = await electronApp.firstWindow();
     await window.waitForLoadState('domcontentloaded');
 
-    // Verify that creating a WebGL context on a zero-size canvas doesn't crash
     const result = await window.evaluate(async () => {
       const canvas = document.createElement('canvas');
       canvas.width = 0;
@@ -69,7 +58,54 @@ test.describe('Avatar preview rendering', () => {
     });
 
     expect(result.ok).toBe(true);
+    await electronApp.close();
+  });
 
+  test('should load a VRM model from the avatars directory', async () => {
+    const electronApp = await electron.launch({ args: [appPath] });
+    const window = await electronApp.firstWindow();
+    await window.waitForLoadState('domcontentloaded');
+
+    // Seed a test VRM into the app's userData/avatars directory
+    const userDataPath = await electronApp.evaluate(async ({ app: electronApp }) => {
+      return electronApp.getPath('userData');
+    });
+    const avatarsDir = path.join(userDataPath, 'avatars');
+    fs.mkdirSync(avatarsDir, { recursive: true });
+    fs.writeFileSync(path.join(avatarsDir, 'test-avatar.vrm'), createMinimalVRM());
+
+    // Verify the avatar:list-available IPC returns our seeded model
+    const avatars = await window.evaluate(async () => {
+      return window.aris.invoke('avatar:list-available');
+    });
+    expect(avatars).toEqual(
+      expect.arrayContaining([expect.objectContaining({ filename: 'test-avatar.vrm' })]),
+    );
+
+    // Set it as default and verify
+    await window.evaluate(async () => {
+      await window.aris.invoke('avatar:set-default', 'test-avatar.vrm');
+    });
+
+    const defaultAvatar = await window.evaluate(async () => {
+      return window.aris.invoke('avatar:get-default');
+    });
+    expect(defaultAvatar).toEqual(expect.objectContaining({ filename: 'test-avatar.vrm' }));
+
+    // Verify the avatar:// protocol serves the file
+    const fetchResult = await window.evaluate(async () => {
+      try {
+        const res = await fetch('avatar://test-avatar.vrm');
+        return { ok: res.ok, status: res.status, size: (await res.arrayBuffer()).byteLength };
+      } catch (e: any) {
+        return { ok: false, error: e.message };
+      }
+    });
+    expect(fetchResult.ok).toBe(true);
+    expect((fetchResult as any).size).toBeGreaterThan(0);
+
+    // Clean up
+    fs.unlinkSync(path.join(avatarsDir, 'test-avatar.vrm'));
     await electronApp.close();
   });
 });
