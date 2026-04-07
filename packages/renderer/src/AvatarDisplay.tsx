@@ -1,20 +1,23 @@
 import { useRef, useEffect, useState, useCallback } from 'react';
-import { AvatarScene, IdleAnimation, IdleVariationManager, ExpressionController, GestureController, sentimentToExpression } from '@aris/avatar';
-import type { Expression, GestureType } from '@aris/avatar';
-import type { AvatarInfo, CompanionConfig } from '@aris/shared';
+import { AvatarScene, IdleAnimation, IdleVariationManager, ExpressionController, GestureController, GazeController, sentimentToExpression } from '@aris/avatar';
+import type { Expression, GestureType, DockHint } from '@aris/avatar';
+import type { AvatarInfo, CompanionConfig, PositionContext } from '@aris/shared';
 
 interface Props {
   /** Text of latest assistant message — used to drive expressions */
   lastAssistantMessage?: string;
+  /** Whether the AI is currently streaming a response */
+  streaming?: boolean;
 }
 
-export function AvatarDisplay({ lastAssistantMessage }: Props) {
+export function AvatarDisplay({ lastAssistantMessage, streaming }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const sceneRef = useRef<AvatarScene | null>(null);
   const idleRef = useRef<IdleAnimation | null>(null);
   const variationsRef = useRef<IdleVariationManager | null>(null);
   const exprRef = useRef<ExpressionController | null>(null);
   const gestureRef = useRef<GestureController | null>(null);
+  const gazeRef = useRef<GazeController | null>(null);
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -64,11 +67,23 @@ export function AvatarDisplay({ lastAssistantMessage }: Props) {
           gesture.setVRM(vrm);
           gestureRef.current = gesture;
 
+          const gaze = new GazeController();
+          gaze.setVRM(vrm);
+          gazeRef.current = gaze;
+
+          // Fetch initial position context for gaze awareness
+          window.aris.invoke('window:get-position-context').then((ctx) => {
+            if (ctx) {
+              gaze.setDockHint((ctx as PositionContext).dockPosition as DockHint);
+            }
+          });
+
           scene.onFrame((delta: number) => {
             idle.update(delta);
             variations.update(delta);
             expr.update(delta);
             gesture.update(delta);
+            gaze.update(delta);
           });
           vrmLoaded = true;
         } catch {
@@ -97,6 +112,7 @@ export function AvatarDisplay({ lastAssistantMessage }: Props) {
       variationsRef.current = null;
       exprRef.current = null;
       gestureRef.current = null;
+      gazeRef.current = null;
     };
   }, [initScene]);
 
@@ -135,6 +151,26 @@ export function AvatarDisplay({ lastAssistantMessage }: Props) {
       window.removeEventListener('resize', handleResize);
     };
   }, [loaded]);
+
+  // Listen for position changes and update gaze dock hint
+  useEffect(() => {
+    const cleanup = window.aris.on?.('window:position-changed', (ctx: unknown) => {
+      if (ctx && gazeRef.current) {
+        gazeRef.current.setDockHint((ctx as PositionContext).dockPosition as DockHint);
+      }
+    });
+    return cleanup;
+  }, []);
+
+  // Switch gaze mode based on streaming state
+  useEffect(() => {
+    if (!gazeRef.current) return;
+    if (streaming) {
+      gazeRef.current.setMode('speaking');
+    } else {
+      gazeRef.current.setMode('idle');
+    }
+  }, [streaming]);
 
   // Drive expressions from assistant messages
   useEffect(() => {

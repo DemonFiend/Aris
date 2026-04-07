@@ -8,3 +8,5 @@ export { GestureController } from './gestures';
 export type { GestureType } from './gestures';
 export { IdleVariationManager } from './idle-variations';
 export type { IdleVariationType } from './idle-variations';
+export { GazeController } from './gaze';
+export type { GazeMode, DockHint } from './gaze';

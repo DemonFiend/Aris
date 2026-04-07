@@ -245,6 +245,24 @@ export const DEFAULT_COMPANION_CONFIG: CompanionConfig = {
   wakeWord: null,
 };
 
+/** Dock position of the app window relative to screen edges */
+export type DockPosition = 'top' | 'bottom' | 'left' | 'right' | 'floating' | 'fullscreen';
+
+/** Screen quadrant the window center occupies */
+export type ScreenQuadrant = 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right' | 'center';
+
+/** Position context describing the app's physical location on screen */
+export interface PositionContext {
+  dockPosition: DockPosition;
+  screenQuadrant: ScreenQuadrant;
+  overlayMode: boolean;
+  windowBounds: { x: number; y: number; width: number; height: number };
+  screenBounds: { width: number; height: number };
+}
+
+/** Gaze mode for the avatar's eye/head direction */
+export type GazeMode = 'idle' | 'speaking' | 'listening' | 'awareness';
+
 /** Password lock configuration */
 export interface PasswordConfig {
   enabled: boolean;
@@ -325,5 +343,6 @@ export type IpcChannel =
   | 'password:remove'
   | 'window:toggle-overlay'
   | 'window:get-overlay'
+  | 'window:get-position-context'
   | 'window:minimize-to-tray'
   | 'window:quit';
