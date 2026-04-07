@@ -23,7 +23,7 @@ const bsqlVersion = bsqlPkg.dependencies['better-sqlite3'].replace(/[\^~]/, '');
 
 // Electron major → NODE_MODULE_VERSION mapping
 const electronMajor = parseInt(electronVersion.split('.')[0], 10);
-const abiMap = { 31: 127, 32: 128, 33: 130, 34: 132 };
+const abiMap = { 31: 127, 32: 128, 33: 130, 34: 132, 35: 133, 36: 135, 37: 136, 38: 139, 39: 140 };
 const electronAbi = abiMap[electronMajor];
 if (!electronAbi) {
   console.error(`[rebuild] Unknown Electron major ${electronMajor}. Known: ${Object.keys(abiMap).join(', ')}`);
