@@ -1,5 +1,9 @@
 import { defineConfig } from '@playwright/test';
 
+// Force production mode so the Electron app loads built renderer files
+// instead of trying to connect to the Vite dev server (localhost:5173).
+process.env.NODE_ENV = 'production';
+
 export default defineConfig({
   testDir: './tests/e2e',
   timeout: 30_000,
