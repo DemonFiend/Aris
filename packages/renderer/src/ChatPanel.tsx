@@ -86,15 +86,27 @@ export function ChatPanel({ conversationId, onConversationCreated, onAssistantMe
         });
       }
       if (done) {
-        setStreaming(false);
         const finalContent = streamBufferRef.current;
+        // Explicitly commit final content so it survives any React
+        // batching edge-case where a prior text-chunk update was deferred.
+        if (finalContent) {
+          setMessages((prev) => {
+            const updated = [...prev];
+            const last = updated[updated.length - 1];
+            if (last?.role === 'assistant') {
+              updated[updated.length - 1] = { ...last, content: finalContent };
+            }
+            return updated;
+          });
+        }
+        streamBufferRef.current = '';
+        setStreaming(false);
         const convId = activeConvRef.current;
         if (convId && finalContent) {
           savedRef.current = true;
           window.aris.invoke('messages:add', convId, 'assistant', finalContent);
           onAssistantMessage?.(finalContent);
         }
-        streamBufferRef.current = '';
       }
     });
     return cleanup;
