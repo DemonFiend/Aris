@@ -44,4 +44,12 @@ export class ProviderRegistry {
   get(id: string): AIProvider | undefined {
     return this.providers.get(id);
   }
+
+  getActiveId(): string | null {
+    return this.activeId;
+  }
+
+  clearActive(): void {
+    this.activeId = null;
+  }
 }

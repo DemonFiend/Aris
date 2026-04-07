@@ -80,6 +80,46 @@ test.describe('Provider save', () => {
     await electronApp.close();
   });
 
+  test('should persist active provider across app restart', async () => {
+    const electronApp = await electron.launch({ args: [appPath] });
+    const window = await electronApp.firstWindow();
+    await window.waitForLoadState('domcontentloaded');
+
+    // Save and activate Ollama provider (doesn't need a running server)
+    await window.evaluate(async () => {
+      await (window as any).aris.invoke('ai:save-provider-config', {
+        id: 'ollama',
+        enabled: true,
+        baseUrl: 'http://127.0.0.1:11434',
+        defaultModel: 'llama3',
+      });
+      await (window as any).aris.invoke('ai:set-provider', 'ollama');
+    });
+
+    await electronApp.close();
+
+    // Relaunch app and check active provider is restored
+    const electronApp2 = await electron.launch({ args: [appPath] });
+    const window2 = await electronApp2.firstWindow();
+    await window2.waitForLoadState('domcontentloaded');
+
+    const result = await window2.evaluate(async () => {
+      try {
+        const providers = await (window as any).aris.invoke('ai:get-providers');
+        // getActive() would throw "No active AI provider set" if not restored
+        const models = await (window as any).aris.invoke('ai:get-models', 'ollama');
+        return { hasOllama: providers.some((p: any) => p.id === 'ollama'), restored: true };
+      } catch (err: any) {
+        return { hasOllama: false, restored: false, error: err.message };
+      }
+    });
+
+    expect(result.hasOllama).toBe(true);
+    expect(result.restored).toBe(true);
+
+    await electronApp2.close();
+  });
+
   test('should reject non-HTTPS remote URL for any provider', async () => {
     const electronApp = await electron.launch({ args: [appPath] });
     const window = await electronApp.firstWindow();

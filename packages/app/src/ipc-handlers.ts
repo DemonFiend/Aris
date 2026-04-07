@@ -152,6 +152,12 @@ export function initProviders(): void {
       console.warn(`[initProviders] Skipping provider "${config.id}": ${err instanceof Error ? err.message : err}`);
     }
   }
+
+  // Restore the active provider from persistent settings
+  const savedActiveId = getSetting('activeProviderId');
+  if (savedActiveId && registry.get(savedActiveId)) {
+    registry.setActive(savedActiveId);
+  }
 }
 
 export function registerIpcHandlers(): void {
@@ -195,6 +201,17 @@ export function registerIpcHandlers(): void {
 
   ipcMain.handle('ai:set-provider', async (_event, providerId: string) => {
     registry.setActive(providerId);
+    setSetting('activeProviderId', providerId);
+    return true;
+  });
+
+  ipcMain.handle('ai:get-active-provider', async () => {
+    return registry.getActiveId();
+  });
+
+  ipcMain.handle('ai:clear-provider', async () => {
+    registry.clearActive();
+    deleteSetting('activeProviderId');
     return true;
   });
 
