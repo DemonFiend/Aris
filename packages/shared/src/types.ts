@@ -198,12 +198,36 @@ export interface AvatarInfo {
   isDefault: boolean;
 }
 
+/** Companion persona union types */
+export type PersonaTone = 'cheerful' | 'warm' | 'calm' | 'playful' | 'professional' | 'dry' | 'dramatic';
+export type PersonaTraits = 'supportive' | 'curious' | 'friendly' | 'confident' | 'mischievous' | 'reserved' | 'protective' | 'chaotic';
+export type InteractionFrequency = 'only-when-spoken-to' | 'occasionally-initiates' | 'frequently-initiates';
+export type HumorLevel = 'none' | 'light' | 'witty' | 'sarcastic' | 'chaotic';
+export type ExpressivenessLevel = 'low' | 'medium' | 'high';
+export type AdvancedModifier = 'observant' | 'clingy' | 'shy' | 'bold' | 'flirty' | 'blunt' | 'affectionate' | 'competitive' | 'energetic' | 'patient';
+
+export const TONE_OPTIONS: PersonaTone[] = ['cheerful', 'warm', 'calm', 'playful', 'professional', 'dry', 'dramatic'];
+export const TRAITS_OPTIONS: PersonaTraits[] = ['supportive', 'curious', 'friendly', 'confident', 'mischievous', 'reserved', 'protective', 'chaotic'];
+export const INTERACTION_FREQUENCY_OPTIONS: InteractionFrequency[] = ['only-when-spoken-to', 'occasionally-initiates', 'frequently-initiates'];
+export const HUMOR_OPTIONS: HumorLevel[] = ['none', 'light', 'witty', 'sarcastic', 'chaotic'];
+export const EXPRESSIVENESS_OPTIONS: ExpressivenessLevel[] = ['low', 'medium', 'high'];
+export const ADVANCED_MODIFIER_OPTIONS: AdvancedModifier[] = ['observant', 'clingy', 'shy', 'bold', 'flirty', 'blunt', 'affectionate', 'competitive', 'energetic', 'patient'];
+
 /** Companion personality configuration */
 export interface CompanionPersonality {
   name: string;
   greeting: string;
   responseStyle: 'casual' | 'formal' | 'playful' | 'serious';
   defaultExpression: 'neutral' | 'happy' | 'thinking';
+  mode: 'simple' | 'advanced';
+  tone: PersonaTone;
+  traits: PersonaTraits;
+  interactionFrequency: InteractionFrequency;
+  humor: HumorLevel;
+  expressiveness: ExpressivenessLevel;
+  advancedModifiers: AdvancedModifier[];
+  customPrompt: string | null;
+  activePreset: 'supportive-gamer' | 'sassy-gamer' | null;
 }
 
 /** Companion idle behavior settings */
@@ -233,6 +257,15 @@ export const DEFAULT_COMPANION_CONFIG: CompanionConfig = {
     greeting: 'Hey! Ready to game?',
     responseStyle: 'casual',
     defaultExpression: 'neutral',
+    mode: 'simple',
+    tone: 'cheerful',
+    traits: 'friendly',
+    interactionFrequency: 'occasionally-initiates',
+    humor: 'light',
+    expressiveness: 'medium',
+    advancedModifiers: [],
+    customPrompt: null,
+    activePreset: null,
   },
   idle: {
     enabled: true,
