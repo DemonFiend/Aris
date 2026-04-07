@@ -1,5 +1,5 @@
 import { useRef, useEffect, useState, useCallback } from 'react';
-import { AvatarScene, IdleAnimation, ExpressionController, GestureController, sentimentToExpression } from '@aris/avatar';
+import { AvatarScene, IdleAnimation, IdleVariationManager, ExpressionController, GestureController, sentimentToExpression } from '@aris/avatar';
 import type { Expression, GestureType } from '@aris/avatar';
 import type { AvatarInfo, CompanionConfig } from '@aris/shared';
 
@@ -12,6 +12,7 @@ export function AvatarDisplay({ lastAssistantMessage }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const sceneRef = useRef<AvatarScene | null>(null);
   const idleRef = useRef<IdleAnimation | null>(null);
+  const variationsRef = useRef<IdleVariationManager | null>(null);
   const exprRef = useRef<ExpressionController | null>(null);
   const gestureRef = useRef<GestureController | null>(null);
   const [loaded, setLoaded] = useState(false);
@@ -45,6 +46,13 @@ export function AvatarDisplay({ lastAssistantMessage }: Props) {
           }
           idleRef.current = idle;
 
+          const variations = new IdleVariationManager();
+          variations.setVRM(vrm);
+          if (companionConfig?.idle?.variationFrequency != null) {
+            variations.setFrequencyScale(companionConfig.idle.variationFrequency);
+          }
+          variationsRef.current = variations;
+
           const expr = new ExpressionController();
           expr.setVRM(vrm);
           if (companionConfig?.personality?.defaultExpression) {
@@ -58,6 +66,7 @@ export function AvatarDisplay({ lastAssistantMessage }: Props) {
 
           scene.onFrame((delta: number) => {
             idle.update(delta);
+            variations.update(delta);
             expr.update(delta);
             gesture.update(delta);
           });
@@ -85,6 +94,7 @@ export function AvatarDisplay({ lastAssistantMessage }: Props) {
       sceneRef.current?.dispose();
       sceneRef.current = null;
       idleRef.current = null;
+      variationsRef.current = null;
       exprRef.current = null;
       gestureRef.current = null;
     };
@@ -98,24 +108,33 @@ export function AvatarDisplay({ lastAssistantMessage }: Props) {
     return cleanup;
   }, []);
 
-  // Resize handler — debounced so the model only repositions after resize ends
+  // Resize handler — debounced so the model only repositions after resize ends.
+  // Depends on `loaded` so the observer re-initialises after the scene is ready,
+  // and includes a window resize listener as fallback for Electron edge-cases.
   useEffect(() => {
     const canvas = canvasRef.current;
-    if (!canvas) return;
+    if (!canvas || !loaded) return;
+
+    // Immediate resize to match current container dimensions
+    sceneRef.current?.resize(canvas.clientWidth, canvas.clientHeight);
 
     let timeout: ReturnType<typeof setTimeout>;
-    const observer = new ResizeObserver(() => {
+    const handleResize = () => {
       clearTimeout(timeout);
       timeout = setTimeout(() => {
         sceneRef.current?.resize(canvas.clientWidth, canvas.clientHeight);
       }, 150);
-    });
+    };
+
+    const observer = new ResizeObserver(handleResize);
     observer.observe(canvas);
+    window.addEventListener('resize', handleResize);
     return () => {
       clearTimeout(timeout);
       observer.disconnect();
+      window.removeEventListener('resize', handleResize);
     };
-  }, []);
+  }, [loaded]);
 
   // Drive expressions from assistant messages
   useEffect(() => {

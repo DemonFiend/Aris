@@ -197,7 +197,7 @@ const rootStyle: React.CSSProperties = {
   fontFamily: 'var(--font-sans)',
   color: 'var(--text-primary)',
   background: 'var(--bg-canvas)',
-  minHeight: '100vh',
+  height: '100%',
   display: 'flex',
   flexDirection: 'column',
   overflow: 'hidden',

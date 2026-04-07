@@ -212,6 +212,8 @@ export interface CompanionIdleBehavior {
   swayIntensity: number;         // 0-1, scales head sway
   blinkFrequency: number;        // average seconds between blinks (2-10)
   expressionSensitivity: number; // 0-1, how easily expressions trigger from text
+  bodyIntensity: number;         // 0-1, scales full-body idle motions (hips, spine, arms, shoulders)
+  variationFrequency: number;    // 0-1, how frequently idle variations fire (stretch, glance, settle)
 }
 
 /** Full companion config — extensible with sensible defaults */
@@ -235,6 +237,8 @@ export const DEFAULT_COMPANION_CONFIG: CompanionConfig = {
     swayIntensity: 1.0,
     blinkFrequency: 4,
     expressionSensitivity: 0.5,
+    bodyIntensity: 1.0,
+    variationFrequency: 0.5,
   },
   defaultAvatar: null,
   ttsVoice: null,

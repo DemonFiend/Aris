@@ -6,3 +6,5 @@ export { IdleAnimation } from './idle-animation';
 export type { IdleConfig } from './idle-animation';
 export { GestureController } from './gestures';
 export type { GestureType } from './gestures';
+export { IdleVariationManager } from './idle-variations';
+export type { IdleVariationType } from './idle-variations';
