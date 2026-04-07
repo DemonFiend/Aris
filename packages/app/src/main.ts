@@ -19,7 +19,7 @@ protocol.registerSchemesAsPrivileged([
       standard: true,
       secure: true,
       supportFetchAPI: true,
-      bypassCSP: true,
+      bypassCSP: false,
     },
   },
 ]);
@@ -202,10 +202,11 @@ app.whenReady().then(() => {
     const url = new URL(request.url);
     // avatar://filename.vrm -> host is the filename
     const filename = decodeURIComponent(url.hostname || url.pathname.replace(/^\/+/, ''));
+    const avatarDirResolved = path.resolve(avatarDir);
     const filePath = path.resolve(avatarDir, filename);
 
     // Guard against path traversal (e.g. avatar://../../etc/passwd)
-    if (!filePath.startsWith(avatarDir)) {
+    if (!filePath.startsWith(avatarDirResolved + path.sep)) {
       return new Response('Forbidden', { status: 403 });
     }
 

@@ -30,10 +30,10 @@ function encryptString(value: string): string {
 }
 
 function decryptString(encoded: string): string {
-  if (safeStorage.isEncryptionAvailable()) {
-    return safeStorage.decryptString(Buffer.from(encoded, 'base64'));
+  if (!safeStorage.isEncryptionAvailable()) {
+    throw new Error('System keychain unavailable — cannot decrypt API keys.');
   }
-  return Buffer.from(encoded, 'base64').toString();
+  return safeStorage.decryptString(Buffer.from(encoded, 'base64'));
 }
 
 /** Validate that a provider base URL is safe (HTTPS or localhost) */

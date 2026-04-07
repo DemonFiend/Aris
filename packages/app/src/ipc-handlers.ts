@@ -87,6 +87,30 @@ function validateString(value: unknown, name: string): asserts value is string {
   }
 }
 
+function validateProviderUrl(url: string, allowLocalOnly = false): void {
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    throw new Error(`Invalid provider URL: ${url}`);
+  }
+
+  const isLocalhost = ['localhost', '127.0.0.1', '::1'].includes(parsed.hostname);
+
+  if (allowLocalOnly && !isLocalhost) {
+    throw new Error('This provider only supports localhost URLs');
+  }
+
+  if (!isLocalhost && parsed.protocol !== 'https:') {
+    throw new Error('Custom provider URL must use HTTPS');
+  }
+
+  // Block RFC 1918 private ranges
+  if (/^(10\.|172\.(1[6-9]|2\d|3[01])\.|192\.168\.)/.test(parsed.hostname)) {
+    throw new Error('Custom provider URL must not target private network addresses');
+  }
+}
+
 function initProviderFromConfig(config: ProviderConfig): void {
   if (!config.enabled) return;
 
