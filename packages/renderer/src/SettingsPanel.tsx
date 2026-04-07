@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { ProviderSettings } from './ProviderSettings';
 import { AvatarSettings } from './AvatarSettings';
+import { IdleSettings } from './IdleSettings';
 import { CapturePanel } from './CapturePanel';
 import { VoiceSettings } from './VoiceSettings';
 import { SecuritySettings } from './SecuritySettings';
@@ -90,9 +91,16 @@ export function SettingsPanel() {
         )}
 
         {tab === 'avatar' && (
-          <SettingsCard>
-            <AvatarSettings />
-          </SettingsCard>
+          <>
+            <SettingsCard>
+              <AvatarSettings />
+            </SettingsCard>
+            <div style={{ marginTop: 'var(--space-3)' }}>
+              <SettingsCard>
+                <IdleSettings />
+              </SettingsCard>
+            </div>
+          </>
         )}
 
         {tab === 'voice' && (

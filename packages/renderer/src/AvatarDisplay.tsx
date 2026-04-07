@@ -51,8 +51,13 @@ export function AvatarDisplay({ lastAssistantMessage, streaming }: Props) {
 
           const variations = new IdleVariationManager();
           variations.setVRM(vrm);
-          if (companionConfig?.idle?.variationFrequency != null) {
-            variations.setFrequencyScale(companionConfig.idle.variationFrequency);
+          if (companionConfig?.idle) {
+            if (companionConfig.idle.variationFrequency != null) {
+              variations.setFrequencyScale(companionConfig.idle.variationFrequency);
+            }
+            if (companionConfig.idle.enabled === false) {
+              variations.setFrequencyScale(0);
+            }
           }
           variationsRef.current = variations;
 

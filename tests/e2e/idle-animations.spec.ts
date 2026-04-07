@@ -64,4 +64,45 @@ test.describe('Idle animation system', () => {
 
     await electronApp.close();
   });
+
+  test('companion config supports enabled/mode fields for beginner/advanced UI', async () => {
+    const electronApp = await electron.launch({ args: [appPath] });
+    const window = await electronApp.firstWindow();
+    await window.waitForLoadState('domcontentloaded');
+
+    const result = await window.evaluate(async () => {
+      try {
+        const config = await (window as any).aris.invoke('companion:get-config');
+        // Toggle to advanced mode with disabled
+        const updated = {
+          ...config,
+          idle: { ...config.idle, enabled: false, mode: 'advanced' },
+        };
+        await (window as any).aris.invoke('companion:set-config', updated);
+        const readback = await (window as any).aris.invoke('companion:get-config');
+        return {
+          ok: true,
+          enabled: readback.idle.enabled,
+          mode: readback.idle.mode,
+        };
+      } catch (e: any) {
+        return { ok: false, error: e.message };
+      }
+    });
+
+    expect(result.ok).toBe(true);
+    expect((result as any).enabled).toBe(false);
+    expect((result as any).mode).toBe('advanced');
+
+    // Reset back to defaults
+    await window.evaluate(async () => {
+      const config = await (window as any).aris.invoke('companion:get-config');
+      await (window as any).aris.invoke('companion:set-config', {
+        ...config,
+        idle: { ...config.idle, enabled: true, mode: 'beginner' },
+      });
+    });
+
+    await electronApp.close();
+  });
 });

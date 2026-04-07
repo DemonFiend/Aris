@@ -8,6 +8,7 @@ import type { VRM } from '@pixiv/three-vrm';
  * - Body-level motions: hip sway, torso rock, arm drift, shoulder settle
  */
 export interface IdleConfig {
+  enabled: boolean;
   breathingIntensity: number;
   swayIntensity: number;
   blinkFrequency: number;
@@ -22,6 +23,7 @@ export class IdleAnimation {
   private nextBlink = 3;
   private isBlinking = false;
   private config: IdleConfig = {
+    enabled: true,
     breathingIntensity: 1,
     swayIntensity: 1,
     blinkFrequency: 4,
@@ -37,7 +39,7 @@ export class IdleAnimation {
   }
 
   update(delta: number): void {
-    if (!this.vrm) return;
+    if (!this.vrm || !this.config.enabled) return;
 
     this.time += delta;
 

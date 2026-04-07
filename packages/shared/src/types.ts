@@ -208,6 +208,8 @@ export interface CompanionPersonality {
 
 /** Companion idle behavior settings */
 export interface CompanionIdleBehavior {
+  enabled: boolean;              // master on/off for idle animations
+  mode: 'beginner' | 'advanced'; // beginner = single toggle, advanced = full sliders
   breathingIntensity: number;    // 0-1, scales idle breathing animation
   swayIntensity: number;         // 0-1, scales head sway
   blinkFrequency: number;        // average seconds between blinks (2-10)
@@ -233,6 +235,8 @@ export const DEFAULT_COMPANION_CONFIG: CompanionConfig = {
     defaultExpression: 'neutral',
   },
   idle: {
+    enabled: true,
+    mode: 'beginner',
     breathingIntensity: 1.0,
     swayIntensity: 1.0,
     blinkFrequency: 4,
