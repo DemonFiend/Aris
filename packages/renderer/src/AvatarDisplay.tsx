@@ -129,12 +129,12 @@ export function AvatarDisplay({ lastAssistantMessage }: Props) {
       <canvas ref={canvasRef} style={canvasStyle} />
       {!loaded && !error && (
         <div style={overlayStyle}>
-          <span style={{ color: '#888', fontSize: '0.85rem' }}>Loading avatar...</span>
+          <span style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm)' }}>Loading avatar...</span>
         </div>
       )}
       {error && (
         <div style={overlayStyle}>
-          <span style={{ color: '#e55', fontSize: '0.8rem', textAlign: 'center', padding: '1rem' }}>
+          <span style={{ color: 'var(--color-error)', fontSize: 'var(--text-sm)', textAlign: 'center', padding: 'var(--space-4)' }}>
             {error}
           </span>
         </div>
@@ -148,8 +148,8 @@ const wrapperStyle: React.CSSProperties = {
   width: '100%',
   height: '100%',
   minHeight: 200,
-  background: '#0a0a0a',
-  borderRadius: '8px',
+  background: 'var(--bg-canvas)',
+  borderRadius: 'var(--radius-lg)',
   overflow: 'hidden',
 };
 
@@ -165,5 +165,5 @@ const overlayStyle: React.CSSProperties = {
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'center',
-  background: 'rgba(10, 10, 10, 0.8)',
+  background: 'rgba(6, 13, 23, 0.85)',
 };

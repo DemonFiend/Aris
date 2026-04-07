@@ -1,5 +1,6 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
+import './globals.css';
 import { App } from './App';
 
 // Provide a no-op IPC shim when running outside Electron (e.g. browser dev mode).

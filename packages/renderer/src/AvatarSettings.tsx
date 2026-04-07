@@ -225,7 +225,7 @@ export function AvatarSettings() {
   const previewPanel = previewAvatar && (
     <div style={previewContainerStyle}>
       <div style={previewHeaderStyle}>
-        <span style={{ fontSize: '0.85rem', fontWeight: 600 }}>
+        <span style={{ fontSize: 'var(--text-sm)', fontWeight: 'var(--font-semibold)' as any }}>
           Preview: {avatars.find((a) => a.filename === previewAvatar)?.name ?? previewAvatar}
         </span>
         <button onClick={handleClosePreview} style={closeBtnStyle}>Close</button>
@@ -234,19 +234,19 @@ export function AvatarSettings() {
         <canvas ref={previewCanvasRef} style={previewCanvasStyle} />
         {previewLoading && (
           <div style={previewOverlayStyle}>
-            <span style={{ color: '#888', fontSize: '0.8rem' }}>Loading model...</span>
+            <span style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm)' }}>Loading model...</span>
           </div>
         )}
         {previewError && (
           <div style={previewOverlayStyle}>
-            <span style={{ color: '#f87171', fontSize: '0.8rem', textAlign: 'center', padding: '0.5rem' }}>
+            <span style={{ color: 'var(--color-error)', fontSize: 'var(--text-sm)', textAlign: 'center', padding: 'var(--space-2)' }}>
               {previewError}
             </span>
           </div>
         )}
         {previewSuccess && !previewLoading && (
           <div style={previewBadgeStyle}>
-            <span style={{ color: '#4ade80', fontSize: '0.75rem', fontWeight: 600 }}>Model OK</span>
+            <span style={{ color: 'var(--color-success)', fontSize: 'var(--text-xs)', fontWeight: 'var(--font-semibold)' as any }}>Model OK</span>
           </div>
         )}
       </div>
@@ -316,177 +316,179 @@ export function AvatarSettings() {
 }
 
 const sectionStyle: React.CSSProperties = {
-  padding: '0.5rem 0',
+  padding: 'var(--space-2) 0',
 };
 
 const headingStyle: React.CSSProperties = {
-  margin: '0 0 0.75rem',
-  fontSize: '1rem',
-  fontWeight: 600,
+  margin: '0 0 var(--space-3)',
+  fontSize: 'var(--text-md)',
+  fontWeight: 'var(--font-semibold)' as any,
 };
 
 const hintStyle: React.CSSProperties = {
-  fontSize: '0.75rem',
-  color: '#666',
-  margin: '0.15rem 0 0',
+  fontSize: 'var(--text-xs)',
+  color: 'var(--text-muted)',
+  margin: 'var(--space-1) 0 0',
 };
 
 const errorStyle: React.CSSProperties = {
-  fontSize: '0.75rem',
-  color: '#f87171',
-  background: '#1c1111',
-  border: '1px solid #7f1d1d',
-  borderRadius: '4px',
-  padding: '0.35rem 0.5rem',
-  marginTop: '0.5rem',
+  fontSize: 'var(--text-xs)',
+  color: 'var(--color-error)',
+  background: 'var(--color-error-bg)',
+  border: '1px solid rgba(255,83,112,0.3)',
+  borderRadius: 'var(--radius-sm)',
+  padding: 'var(--space-1) var(--space-2)',
+  marginTop: 'var(--space-2)',
 };
 
 const statusStyle: React.CSSProperties = {
-  fontSize: '0.75rem',
-  color: '#4ade80',
-  marginTop: '0.5rem',
+  fontSize: 'var(--text-xs)',
+  color: 'var(--color-success)',
+  marginTop: 'var(--space-2)',
 };
 
 const currentStyle: React.CSSProperties = {
-  fontSize: '0.85rem',
-  color: '#aaa',
-  marginBottom: '0.75rem',
+  fontSize: 'var(--text-sm)',
+  color: 'var(--text-secondary)',
+  marginBottom: 'var(--space-3)',
 };
 
 const listStyle: React.CSSProperties = {
   display: 'flex',
   flexDirection: 'column',
-  gap: '0.5rem',
-  marginTop: '0.5rem',
+  gap: 'var(--space-2)',
+  marginTop: 'var(--space-2)',
 };
 
 const avatarRowStyle: React.CSSProperties = {
   display: 'flex',
   justifyContent: 'space-between',
   alignItems: 'center',
-  padding: '0.5rem 0.75rem',
-  background: '#1a1a1a',
-  borderRadius: '6px',
-  border: '1px solid #333',
+  padding: 'var(--space-2) var(--space-3)',
+  background: 'var(--bg-surface)',
+  borderRadius: 'var(--radius-md)',
+  border: '1px solid var(--border-default)',
 };
 
 const avatarInfoStyle: React.CSSProperties = {
   display: 'flex',
   flexDirection: 'column',
-  gap: '0.15rem',
+  gap: 'var(--space-1)',
 };
 
 const avatarNameStyle: React.CSSProperties = {
-  fontSize: '0.9rem',
-  fontWeight: 500,
+  fontSize: 'var(--text-base)',
+  fontWeight: 'var(--font-medium)' as any,
 };
 
 const activeBadgeStyle: React.CSSProperties = {
-  fontSize: '0.75rem',
-  color: '#4ade80',
-  background: '#14532d',
-  padding: '0.2rem 0.5rem',
-  borderRadius: '4px',
-  fontWeight: 600,
+  fontSize: 'var(--text-xs)',
+  color: 'var(--color-success)',
+  background: 'var(--color-success-bg)',
+  padding: 'var(--space-1) var(--space-2)',
+  borderRadius: 'var(--radius-sm)',
+  fontWeight: 'var(--font-semibold)' as any,
 };
 
 const selectBtnStyle: React.CSSProperties = {
-  background: '#333',
-  color: '#eee',
-  border: '1px solid #555',
-  borderRadius: '4px',
-  padding: '0.25rem 0.6rem',
+  background: 'var(--bg-surface)',
+  color: 'var(--text-primary)',
+  border: '1px solid var(--border-default)',
+  borderRadius: 'var(--radius-sm)',
+  padding: 'var(--space-1) var(--space-3)',
   cursor: 'pointer',
-  fontSize: '0.8rem',
+  fontSize: 'var(--text-sm)',
 };
 
 const buttonRowStyle: React.CSSProperties = {
   display: 'flex',
-  gap: '0.5rem',
-  marginTop: '0.75rem',
+  gap: 'var(--space-2)',
+  marginTop: 'var(--space-3)',
 };
 
 const actionBtnStyle: React.CSSProperties = {
-  background: '#2563eb',
-  color: '#fff',
+  background: 'var(--color-primary)',
+  color: 'var(--color-primary-on)',
   border: 'none',
-  borderRadius: '6px',
-  padding: '0.4rem 0.8rem',
+  borderRadius: 'var(--radius-md)',
+  padding: 'var(--space-2) var(--space-3)',
   cursor: 'pointer',
-  fontSize: '0.8rem',
-  fontWeight: 600,
+  fontSize: 'var(--text-sm)',
+  fontWeight: 'var(--font-semibold)' as any,
+  transition: 'var(--transition-fast)',
 };
 
 const secondaryBtnStyle: React.CSSProperties = {
-  background: '#333',
-  color: '#eee',
-  border: '1px solid #555',
-  borderRadius: '6px',
-  padding: '0.4rem 0.8rem',
+  background: 'var(--bg-surface)',
+  color: 'var(--text-primary)',
+  border: '1px solid var(--border-default)',
+  borderRadius: 'var(--radius-md)',
+  padding: 'var(--space-2) var(--space-3)',
   cursor: 'pointer',
-  fontSize: '0.8rem',
+  fontSize: 'var(--text-sm)',
+  transition: 'var(--transition-fast)',
 };
 
 const avatarActionsStyle: React.CSSProperties = {
   display: 'flex',
-  gap: '0.35rem',
+  gap: 'var(--space-1)',
   alignItems: 'center',
 };
 
 const previewBtnStyle: React.CSSProperties = {
-  background: '#1e3a5f',
-  color: '#93c5fd',
-  border: '1px solid #2563eb',
-  borderRadius: '4px',
-  padding: '0.25rem 0.5rem',
+  background: 'var(--bg-interactive)',
+  color: 'var(--color-info)',
+  border: '1px solid var(--border-default)',
+  borderRadius: 'var(--radius-sm)',
+  padding: 'var(--space-1) var(--space-2)',
   cursor: 'pointer',
-  fontSize: '0.75rem',
-  fontWeight: 500,
+  fontSize: 'var(--text-xs)',
+  fontWeight: 'var(--font-medium)' as any,
 };
 
 const deleteBtnStyle: React.CSSProperties = {
-  background: '#3b1111',
-  color: '#f87171',
-  border: '1px solid #7f1d1d',
-  borderRadius: '4px',
-  padding: '0.25rem 0.5rem',
+  background: 'var(--color-error-bg)',
+  color: 'var(--color-error)',
+  border: '1px solid rgba(255,83,112,0.3)',
+  borderRadius: 'var(--radius-sm)',
+  padding: 'var(--space-1) var(--space-2)',
   cursor: 'pointer',
-  fontSize: '0.75rem',
-  fontWeight: 500,
+  fontSize: 'var(--text-xs)',
+  fontWeight: 'var(--font-medium)' as any,
 };
 
 const previewContainerStyle: React.CSSProperties = {
-  marginTop: '0.75rem',
-  border: '1px solid #333',
-  borderRadius: '8px',
+  marginTop: 'var(--space-3)',
+  border: '1px solid var(--border-default)',
+  borderRadius: 'var(--radius-lg)',
   overflow: 'hidden',
-  background: '#111',
+  background: 'var(--bg-base)',
 };
 
 const previewHeaderStyle: React.CSSProperties = {
   display: 'flex',
   justifyContent: 'space-between',
   alignItems: 'center',
-  padding: '0.4rem 0.6rem',
-  background: '#1a1a1a',
-  borderBottom: '1px solid #333',
+  padding: 'var(--space-1) var(--space-3)',
+  background: 'var(--bg-surface)',
+  borderBottom: '1px solid var(--border-subtle)',
 };
 
 const closeBtnStyle: React.CSSProperties = {
-  background: '#333',
-  color: '#eee',
-  border: '1px solid #555',
-  borderRadius: '4px',
-  padding: '0.15rem 0.5rem',
+  background: 'var(--bg-surface)',
+  color: 'var(--text-primary)',
+  border: '1px solid var(--border-default)',
+  borderRadius: 'var(--radius-sm)',
+  padding: 'var(--space-1) var(--space-2)',
   cursor: 'pointer',
-  fontSize: '0.75rem',
+  fontSize: 'var(--text-xs)',
 };
 
 const previewCanvasWrapStyle: React.CSSProperties = {
   position: 'relative',
   width: '100%',
   height: 220,
-  background: '#0a0a0a',
+  background: 'var(--bg-canvas)',
 };
 
 const previewCanvasStyle: React.CSSProperties = {
@@ -501,14 +503,14 @@ const previewOverlayStyle: React.CSSProperties = {
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'center',
-  background: 'rgba(10, 10, 10, 0.85)',
+  background: 'rgba(6, 13, 23, 0.85)',
 };
 
 const previewBadgeStyle: React.CSSProperties = {
   position: 'absolute',
   bottom: 8,
   right: 8,
-  background: 'rgba(20, 83, 45, 0.85)',
-  padding: '0.15rem 0.5rem',
-  borderRadius: '4px',
+  background: 'var(--color-success-bg)',
+  padding: 'var(--space-1) var(--space-2)',
+  borderRadius: 'var(--radius-sm)',
 };

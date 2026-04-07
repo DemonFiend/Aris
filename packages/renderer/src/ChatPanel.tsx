@@ -154,8 +154,8 @@ export function ChatPanel({ conversationId, onConversationCreated, onAssistantMe
       <div style={messageListStyle}>
         {messages.length === 0 && (
           <div style={emptyStyle}>
-            <p style={{ fontSize: '1.2rem', margin: '0 0 0.5rem' }}>Hey! I'm Aris.</p>
-            <p style={{ color: '#888', margin: 0 }}>Your AI gaming companion. Ask me anything.</p>
+            <p style={{ fontSize: 'var(--text-xl)', margin: '0 0 var(--space-2)', color: 'var(--text-primary)' }}>Hey! I'm Aris.</p>
+            <p style={{ color: 'var(--text-muted)', margin: 0 }}>Your AI gaming companion. Ask me anything.</p>
           </div>
         )}
 
@@ -201,10 +201,10 @@ const containerStyle: React.CSSProperties = {
 const messageListStyle: React.CSSProperties = {
   flex: 1,
   overflowY: 'auto',
-  padding: '1rem',
+  padding: 'var(--space-4)',
   display: 'flex',
   flexDirection: 'column',
-  gap: '0.5rem',
+  gap: 'var(--space-2)',
 };
 
 const emptyStyle: React.CSSProperties = {
@@ -213,7 +213,7 @@ const emptyStyle: React.CSSProperties = {
   flexDirection: 'column',
   alignItems: 'center',
   justifyContent: 'center',
-  color: '#aaa',
+  color: 'var(--text-secondary)',
 };
 
 const userBubbleWrap: React.CSSProperties = {
@@ -228,56 +228,60 @@ const assistantBubbleWrap: React.CSSProperties = {
 
 const bubbleBase: React.CSSProperties = {
   maxWidth: '80%',
-  padding: '0.5rem 0.75rem',
-  borderRadius: '12px',
-  fontSize: '0.9rem',
-  lineHeight: '1.4',
+  padding: 'var(--space-2) var(--space-3)',
+  borderRadius: 'var(--radius-xl)',
+  fontSize: 'var(--text-base)',
+  lineHeight: 'var(--leading-relaxed)',
   whiteSpace: 'pre-wrap',
   wordBreak: 'break-word',
 };
 
 const userBubble: React.CSSProperties = {
   ...bubbleBase,
-  background: '#2563eb',
-  color: '#fff',
-  borderBottomRightRadius: '4px',
+  background: 'var(--color-primary)',
+  color: 'var(--color-primary-on)',
+  borderBottomRightRadius: 'var(--radius-sm)',
+  maxWidth: '75%',
 };
 
 const assistantBubble: React.CSSProperties = {
   ...bubbleBase,
-  background: '#2a2a2a',
-  color: '#e0e0e0',
-  borderBottomLeftRadius: '4px',
+  background: 'var(--bg-surface)',
+  color: 'var(--text-primary)',
+  border: '1px solid var(--border-subtle)',
+  borderBottomLeftRadius: 'var(--radius-sm)',
+  maxWidth: '85%',
 };
 
 const inputAreaStyle: React.CSSProperties = {
   display: 'flex',
-  gap: '0.5rem',
-  padding: '0.75rem 1rem',
-  borderTop: '1px solid #333',
-  background: '#1a1a1a',
+  gap: 'var(--space-2)',
+  padding: 'var(--space-3) var(--space-4)',
+  borderTop: '1px solid var(--border-subtle)',
+  background: 'var(--bg-base)',
 };
 
 const textareaStyle: React.CSSProperties = {
   flex: 1,
   resize: 'none',
-  background: '#222',
-  color: '#eee',
-  border: '1px solid #444',
-  borderRadius: '8px',
-  padding: '0.5rem 0.75rem',
-  fontSize: '0.9rem',
+  background: 'var(--bg-surface)',
+  color: 'var(--text-primary)',
+  border: '1px solid var(--border-default)',
+  borderRadius: 'var(--radius-lg)',
+  padding: 'var(--space-2) var(--space-3)',
+  fontSize: 'var(--text-base)',
   fontFamily: 'inherit',
   outline: 'none',
 };
 
 const sendBtnStyle: React.CSSProperties = {
-  background: '#2563eb',
-  color: '#fff',
+  background: 'var(--color-primary)',
+  color: 'var(--color-primary-on)',
   border: 'none',
-  borderRadius: '8px',
-  padding: '0.5rem 1rem',
+  borderRadius: 'var(--radius-md)',
+  padding: 'var(--space-2) var(--space-4)',
   cursor: 'pointer',
-  fontSize: '0.85rem',
-  fontWeight: 600,
+  fontSize: 'var(--text-sm)',
+  fontWeight: 'var(--font-bold)' as any,
+  transition: 'var(--transition-fast)',
 };

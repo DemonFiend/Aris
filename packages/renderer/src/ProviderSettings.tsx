@@ -119,8 +119,8 @@ export function ProviderSettings() {
   const getConfig = (id: string) => configs.find((c) => c.id === id);
 
   return (
-    <div style={{ padding: '1rem' }}>
-      <h2 style={{ margin: '0 0 1rem', fontSize: '1.1rem' }}>AI Providers</h2>
+    <div style={{ padding: 'var(--space-4)' }}>
+      <h2 style={{ margin: '0 0 var(--space-4)', fontSize: 'var(--text-lg)' }}>AI Providers</h2>
 
       {PROVIDER_DEFS.map((def) => {
         const cfg = getConfig(def.id);
@@ -128,23 +128,23 @@ export function ProviderSettings() {
           <div
             key={def.id}
             style={{
-              border: '1px solid #333',
-              borderRadius: '8px',
-              padding: '0.75rem',
-              marginBottom: '0.5rem',
-              background: isConfigured(def.id) ? '#1a2a1a' : '#1a1a1a',
+              border: '1px solid var(--border-default)',
+              borderRadius: 'var(--radius-lg)',
+              padding: 'var(--space-3)',
+              marginBottom: 'var(--space-2)',
+              background: isConfigured(def.id) ? 'var(--color-success-bg)' : 'var(--bg-surface)',
             }}
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div>
                 <strong>{def.name}</strong>
                 {isConfigured(def.id) && (
-                  <span style={{ color: '#4a4', marginLeft: '0.5rem', fontSize: '0.8rem' }}>
+                  <span style={{ color: 'var(--color-success)', marginLeft: 'var(--space-2)', fontSize: 'var(--text-sm)' }}>
                     configured
                   </span>
                 )}
                 {cfg?.defaultModel && (
-                  <span style={{ color: '#888', marginLeft: '0.5rem', fontSize: '0.75rem' }}>
+                  <span style={{ color: 'var(--text-muted)', marginLeft: 'var(--space-2)', fontSize: 'var(--text-xs)' }}>
                     model: {cfg.defaultModel}
                   </span>
                 )}
@@ -204,11 +204,11 @@ export function ProviderSettings() {
 
                 {/* Model selection */}
                 <div style={{ marginTop: '0.25rem' }}>
-                  <label style={{ fontSize: '0.8rem', color: '#aaa', display: 'block', marginBottom: '0.2rem' }}>
+                  <label style={{ fontSize: 'var(--text-sm)', color: 'var(--text-secondary)', display: 'block', marginBottom: 'var(--space-1)' }}>
                     Model
                   </label>
                   {loadingModels[def.id] ? (
-                    <div style={{ fontSize: '0.8rem', color: '#888', padding: '0.4rem 0' }}>
+                    <div style={{ fontSize: 'var(--text-sm)', color: 'var(--text-muted)', padding: 'var(--space-1) 0' }}>
                       Loading models...
                     </div>
                   ) : (models[def.id]?.length ?? 0) > 0 && !useCustomModel ? (
@@ -286,46 +286,47 @@ export function ProviderSettings() {
 }
 
 const btnStyle: React.CSSProperties = {
-  background: '#333',
-  color: '#eee',
-  border: '1px solid #555',
-  borderRadius: '4px',
-  padding: '0.25rem 0.5rem',
+  background: 'var(--bg-surface)',
+  color: 'var(--text-primary)',
+  border: '1px solid var(--border-default)',
+  borderRadius: 'var(--radius-sm)',
+  padding: 'var(--space-1) var(--space-2)',
   cursor: 'pointer',
-  fontSize: '0.8rem',
+  fontSize: 'var(--text-sm)',
+  transition: 'var(--transition-fast)',
 };
 
 const inputStyle: React.CSSProperties = {
   display: 'block',
   width: '100%',
-  padding: '0.4rem',
-  marginTop: '0.25rem',
-  background: '#222',
-  color: '#eee',
-  border: '1px solid #444',
-  borderRadius: '4px',
-  fontSize: '0.85rem',
+  padding: 'var(--space-2)',
+  marginTop: 'var(--space-1)',
+  background: 'var(--bg-surface)',
+  color: 'var(--text-primary)',
+  border: '1px solid var(--border-default)',
+  borderRadius: 'var(--radius-md)',
+  fontSize: 'var(--text-sm)',
   boxSizing: 'border-box',
 };
 
 const selectStyle: React.CSSProperties = {
   display: 'block',
   width: '100%',
-  padding: '0.4rem',
-  background: '#222',
-  color: '#eee',
-  border: '1px solid #444',
-  borderRadius: '4px',
-  fontSize: '0.85rem',
+  padding: 'var(--space-2)',
+  background: 'var(--bg-surface)',
+  color: 'var(--text-primary)',
+  border: '1px solid var(--border-default)',
+  borderRadius: 'var(--radius-md)',
+  fontSize: 'var(--text-sm)',
   boxSizing: 'border-box',
 };
 
 const linkBtnStyle: React.CSSProperties = {
   background: 'none',
-  color: '#6af',
+  color: 'var(--text-accent)',
   border: 'none',
   padding: 0,
   cursor: 'pointer',
-  fontSize: '0.75rem',
+  fontSize: 'var(--text-xs)',
   textDecoration: 'underline',
 };

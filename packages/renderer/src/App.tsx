@@ -62,21 +62,22 @@ export function App() {
 }
 
 const rootStyle: React.CSSProperties = {
-  fontFamily: 'system-ui, sans-serif',
-  color: '#eee',
-  background: '#111',
+  fontFamily: 'var(--font-sans)',
+  color: 'var(--text-primary)',
+  background: 'var(--bg-base)',
   minHeight: '100vh',
   display: 'flex',
   flexDirection: 'column',
 };
 
 const headerStyle: React.CSSProperties = {
-  padding: '0.75rem 1rem',
-  borderBottom: '1px solid #333',
+  padding: 'var(--space-3) var(--space-4)',
+  borderBottom: '1px solid var(--border-subtle)',
   display: 'flex',
   justifyContent: 'space-between',
   alignItems: 'center',
   flexShrink: 0,
+  background: 'var(--bg-base)',
 };
 
 const bodyStyle: React.CSSProperties = {
@@ -95,15 +96,17 @@ const chatColumnStyle: React.CSSProperties = {
 
 const avatarPanelStyle: React.CSSProperties = {
   height: 200,
-  borderBottom: '1px solid #333',
+  borderBottom: '1px solid var(--border-subtle)',
   flexShrink: 0,
 };
 
 const navBtnStyle: React.CSSProperties = {
-  background: 'none',
-  border: '1px solid #444',
-  color: '#ccc',
-  borderRadius: '4px',
-  padding: '0.25rem 0.5rem',
+  background: 'transparent',
+  border: '1px solid var(--border-default)',
+  color: 'var(--text-secondary)',
+  borderRadius: 'var(--radius-md)',
+  padding: 'var(--space-1) var(--space-2)',
   cursor: 'pointer',
+  fontSize: 'var(--text-sm)',
+  transition: 'var(--transition-fast)',
 };

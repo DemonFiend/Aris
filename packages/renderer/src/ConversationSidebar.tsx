@@ -53,7 +53,8 @@ export function ConversationSidebar({ activeId, onSelect, onNew }: Props) {
             onClick={() => onSelect(c.id)}
             style={{
               ...itemStyle,
-              background: c.id === activeId ? '#2a2a3a' : 'transparent',
+              background: c.id === activeId ? 'var(--bg-active)' : 'transparent',
+              borderLeft: c.id === activeId ? '2px solid var(--color-primary)' : '2px solid transparent',
             }}
           >
             <div style={titleStyle}>{c.title}</div>
@@ -70,7 +71,7 @@ export function ConversationSidebar({ activeId, onSelect, onNew }: Props) {
           </div>
         ))}
         {conversations.length === 0 && (
-          <div style={{ color: '#666', padding: '0.5rem', fontSize: '0.8rem' }}>
+          <div style={{ color: 'var(--text-muted)', padding: 'var(--space-2)', fontSize: 'var(--text-sm)' }}>
             No conversations yet
           </div>
         )}
@@ -80,34 +81,35 @@ export function ConversationSidebar({ activeId, onSelect, onNew }: Props) {
 }
 
 const sidebarStyle: React.CSSProperties = {
-  width: '220px',
-  borderRight: '1px solid #333',
+  width: 'var(--sidebar-width)',
+  borderRight: '1px solid var(--border-subtle)',
   display: 'flex',
   flexDirection: 'column',
-  background: '#0d0d0d',
+  background: 'var(--bg-base)',
   flexShrink: 0,
 };
 
 const newBtnStyle: React.CSSProperties = {
-  margin: '0.5rem',
-  padding: '0.4rem',
-  background: '#2563eb',
-  color: '#fff',
+  margin: 'var(--space-2)',
+  padding: 'var(--space-2)',
+  background: 'var(--color-primary)',
+  color: 'var(--color-primary-on)',
   border: 'none',
-  borderRadius: '6px',
+  borderRadius: 'var(--radius-md)',
   cursor: 'pointer',
-  fontSize: '0.85rem',
-  fontWeight: 600,
+  fontSize: 'var(--text-sm)',
+  fontWeight: 'var(--font-semibold)' as any,
+  transition: 'var(--transition-fast)',
 };
 
 const searchStyle: React.CSSProperties = {
-  margin: '0 0.5rem 0.5rem',
-  padding: '0.35rem 0.5rem',
-  background: '#1a1a1a',
-  color: '#eee',
-  border: '1px solid #333',
-  borderRadius: '4px',
-  fontSize: '0.8rem',
+  margin: '0 var(--space-2) var(--space-2)',
+  padding: 'var(--space-1) var(--space-2)',
+  background: 'var(--bg-surface)',
+  color: 'var(--text-primary)',
+  border: '1px solid var(--border-default)',
+  borderRadius: 'var(--radius-sm)',
+  fontSize: 'var(--text-sm)',
   outline: 'none',
 };
 
@@ -117,23 +119,24 @@ const listStyle: React.CSSProperties = {
 };
 
 const itemStyle: React.CSSProperties = {
-  padding: '0.5rem',
+  padding: 'var(--space-2)',
   cursor: 'pointer',
-  borderBottom: '1px solid #222',
+  borderBottom: '1px solid var(--border-subtle)',
+  transition: 'var(--transition-fast)',
 };
 
 const titleStyle: React.CSSProperties = {
-  fontSize: '0.85rem',
-  color: '#ddd',
+  fontSize: 'var(--text-sm)',
+  color: 'var(--text-primary)',
   overflow: 'hidden',
   textOverflow: 'ellipsis',
   whiteSpace: 'nowrap',
 };
 
 const metaStyle: React.CSSProperties = {
-  fontSize: '0.7rem',
-  color: '#666',
-  marginTop: '0.15rem',
+  fontSize: 'var(--text-xs)',
+  color: 'var(--text-muted)',
+  marginTop: 'var(--space-1)',
   display: 'flex',
   justifyContent: 'space-between',
   alignItems: 'center',
@@ -142,8 +145,8 @@ const metaStyle: React.CSSProperties = {
 const deleteBtnStyle: React.CSSProperties = {
   background: 'none',
   border: 'none',
-  color: '#666',
+  color: 'var(--text-muted)',
   cursor: 'pointer',
-  fontSize: '0.75rem',
-  padding: '0 0.25rem',
+  fontSize: 'var(--text-xs)',
+  padding: '0 var(--space-1)',
 };

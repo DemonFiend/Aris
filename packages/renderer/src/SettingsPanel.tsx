@@ -55,7 +55,7 @@ export function SettingsPanel() {
   ];
 
   return (
-    <div style={{ padding: '1rem' }}>
+    <div style={{ padding: 'var(--space-4)' }}>
       <div style={tabBarStyle}>
         {tabs.map((t) => (
           <button
@@ -63,8 +63,8 @@ export function SettingsPanel() {
             onClick={() => setTab(t.key)}
             style={{
               ...tabBtnStyle,
-              borderBottom: tab === t.key ? '2px solid #2563eb' : '2px solid transparent',
-              color: tab === t.key ? '#fff' : '#888',
+              borderBottom: tab === t.key ? '2px solid var(--color-primary)' : '2px solid transparent',
+              color: tab === t.key ? 'var(--text-primary)' : 'var(--text-muted)',
             }}
           >
             {t.label}
@@ -120,17 +120,17 @@ export function SettingsPanel() {
           </p>
 
           <div style={{ ...rowStyle, marginTop: '1.5rem' }}>
-            <span style={{ color: '#e55' }}>Delete all data</span>
+            <span style={{ color: 'var(--color-error)' }}>Delete all data</span>
             {!confirmWipe ? (
               <button
                 onClick={() => setConfirmWipe(true)}
-                style={{ ...actionBtnStyle, background: '#522', color: '#e88' }}
+                style={{ ...actionBtnStyle, background: 'var(--color-error-bg)', color: 'var(--color-error)', border: '1px solid rgba(255,83,112,0.3)' }}
               >
                 Wipe
               </button>
             ) : (
-              <div style={{ display: 'flex', gap: '0.25rem' }}>
-                <button onClick={handleWipe} style={{ ...actionBtnStyle, background: '#a22', color: '#fff' }}>
+              <div style={{ display: 'flex', gap: 'var(--space-1)' }}>
+                <button onClick={handleWipe} style={{ ...actionBtnStyle, background: 'var(--color-error)', color: '#fff' }}>
                   Confirm Delete
                 </button>
                 <button onClick={() => setConfirmWipe(false)} style={actionBtnStyle}>
@@ -150,64 +150,67 @@ export function SettingsPanel() {
 
 const tabBarStyle: React.CSSProperties = {
   display: 'flex',
-  gap: '0.25rem',
-  marginBottom: '1rem',
-  borderBottom: '1px solid #333',
+  gap: 'var(--space-1)',
+  marginBottom: 'var(--space-4)',
+  borderBottom: '1px solid var(--border-subtle)',
 };
 
 const tabBtnStyle: React.CSSProperties = {
   background: 'none',
   border: 'none',
-  padding: '0.5rem 0.75rem',
+  padding: 'var(--space-2) var(--space-3)',
   cursor: 'pointer',
-  fontSize: '0.85rem',
-  fontWeight: 600,
+  fontSize: 'var(--text-sm)',
+  fontWeight: 'var(--font-semibold)' as any,
+  transition: 'var(--transition-fast)',
 };
 
 const sectionStyle: React.CSSProperties = {
-  padding: '0.5rem 0',
+  padding: 'var(--space-2) 0',
 };
 
 const headingStyle: React.CSSProperties = {
-  margin: '0 0 0.75rem',
-  fontSize: '1rem',
-  fontWeight: 600,
+  margin: '0 0 var(--space-3)',
+  fontSize: 'var(--text-md)',
+  fontWeight: 'var(--font-semibold)' as any,
 };
 
 const rowStyle: React.CSSProperties = {
   display: 'flex',
   justifyContent: 'space-between',
   alignItems: 'center',
-  padding: '0.4rem 0',
-  fontSize: '0.9rem',
+  padding: 'var(--space-1) 0',
+  fontSize: 'var(--text-base)',
 };
 
 const hintStyle: React.CSSProperties = {
-  fontSize: '0.75rem',
-  color: '#666',
-  margin: '0.15rem 0 0',
+  fontSize: 'var(--text-xs)',
+  color: 'var(--text-muted)',
+  margin: 'var(--space-1) 0 0',
 };
 
 const actionBtnStyle: React.CSSProperties = {
-  background: '#333',
-  color: '#eee',
-  border: '1px solid #555',
-  borderRadius: '4px',
-  padding: '0.25rem 0.6rem',
+  background: 'var(--bg-surface)',
+  color: 'var(--text-primary)',
+  border: '1px solid var(--border-default)',
+  borderRadius: 'var(--radius-sm)',
+  padding: 'var(--space-1) var(--space-3)',
   cursor: 'pointer',
-  fontSize: '0.8rem',
+  fontSize: 'var(--text-sm)',
+  transition: 'var(--transition-fast)',
 };
 
 function toggleBtnStyle(on: boolean): React.CSSProperties {
   return {
-    background: on ? '#2563eb' : '#333',
-    color: '#fff',
-    border: '1px solid ' + (on ? '#2563eb' : '#555'),
-    borderRadius: '4px',
-    padding: '0.25rem 0.6rem',
+    background: on ? 'var(--color-primary)' : 'var(--bg-surface)',
+    color: on ? 'var(--color-primary-on)' : 'var(--text-primary)',
+    border: '1px solid ' + (on ? 'var(--color-primary)' : 'var(--border-default)'),
+    borderRadius: 'var(--radius-sm)',
+    padding: 'var(--space-1) var(--space-3)',
     cursor: 'pointer',
-    fontSize: '0.8rem',
-    fontWeight: 600,
+    fontSize: 'var(--text-sm)',
+    fontWeight: 'var(--font-semibold)' as any,
     minWidth: '40px',
+    transition: 'var(--transition-fast)',
   };
 }
