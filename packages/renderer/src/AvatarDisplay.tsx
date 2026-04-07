@@ -1,5 +1,5 @@
 import { useRef, useEffect, useState, useCallback } from 'react';
-import { AvatarScene, IdleAnimation, IdleVariationManager, ExpressionController, GestureController, GazeController, sentimentToExpression } from '@aris/avatar';
+import { AvatarScene, IdleAnimation, IdleVariationManager, ExpressionController, GestureController, GazeController, BasePose, sentimentToExpression } from '@aris/avatar';
 import type { Expression, GestureType, DockHint } from '@aris/avatar';
 import type { AvatarInfo, CompanionConfig, PositionContext, VirtualSpaceConfig } from '@aris/shared';
 
@@ -76,6 +76,9 @@ export function AvatarDisplay({ lastAssistantMessage, streaming }: Props) {
           gaze.setVRM(vrm);
           gazeRef.current = gaze;
 
+          const basePose = new BasePose();
+          basePose.setVRM(vrm);
+
           // Fetch initial position context for gaze awareness
           window.aris.invoke('window:get-position-context').then((ctx) => {
             if (ctx) {
@@ -85,6 +88,7 @@ export function AvatarDisplay({ lastAssistantMessage, streaming }: Props) {
 
           scene.onFrame((delta: number) => {
             idle.resetBones();
+            basePose.apply();
             idle.update(delta);
             variations.update(delta);
             expr.update(delta);

@@ -12,3 +12,4 @@ export { IdleVariationManager } from './idle-variations';
 export type { IdleVariationType } from './idle-variations';
 export { GazeController } from './gaze';
 export type { GazeMode, DockHint } from './gaze';
+export { BasePose } from './base-pose';
