@@ -16,3 +16,5 @@ export { BasePose } from './base-pose';
 export { NonHumanoidAnimator } from './non-humanoid-animation';
 export { MicroExpressionController } from './micro-expressions';
 export { SurpriseAnimationController } from './surprise-animations';
+export { PoseController, sentimentToPose } from './pose-controller';
+export type { PoseType } from './pose-controller';

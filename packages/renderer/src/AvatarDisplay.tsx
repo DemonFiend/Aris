@@ -1,6 +1,6 @@
 import { useRef, useEffect, useState, useCallback } from 'react';
-import { AvatarScene, IdleAnimation, IdleVariationManager, ExpressionController, GestureController, GazeController, BasePose, NonHumanoidAnimator, MicroExpressionController, SurpriseAnimationController, sentimentToExpression } from '@aris/avatar';
-import type { Expression, GestureType, DockHint } from '@aris/avatar';
+import { AvatarScene, IdleAnimation, IdleVariationManager, ExpressionController, GestureController, GazeController, BasePose, NonHumanoidAnimator, MicroExpressionController, SurpriseAnimationController, PoseController, sentimentToExpression, sentimentToPose } from '@aris/avatar';
+import type { Expression, GestureType, DockHint, PoseType } from '@aris/avatar';
 import type { AvatarInfo, CompanionConfig, PositionContext, VirtualSpaceConfig } from '@aris/shared';
 
 interface Props {
@@ -20,6 +20,7 @@ export function AvatarDisplay({ lastAssistantMessage, streaming }: Props) {
   const gazeRef = useRef<GazeController | null>(null);
   const microExprRef = useRef<MicroExpressionController | null>(null);
   const surpriseRef = useRef<SurpriseAnimationController | null>(null);
+  const poseRef = useRef<PoseController | null>(null);
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -83,6 +84,10 @@ export function AvatarDisplay({ lastAssistantMessage, streaming }: Props) {
             const basePose = new BasePose();
             basePose.setVRM(vrm);
 
+            const pose = new PoseController();
+            pose.setVRM(vrm);
+            poseRef.current = pose;
+
             const microExpr = new MicroExpressionController();
             microExpr.setVRM(vrm);
             microExpr.setControllers(gesture, expr);
@@ -103,6 +108,7 @@ export function AvatarDisplay({ lastAssistantMessage, streaming }: Props) {
             scene.onFrame((delta: number) => {
               idle.resetBones();
               basePose.apply();
+              pose.update(delta);   // held pose blends in after basePose, before idle
               idle.update(delta);
               variations.update(delta);
               surprise.update(delta);   // AFK state + sleep head droop (additive bone)
@@ -168,6 +174,7 @@ export function AvatarDisplay({ lastAssistantMessage, streaming }: Props) {
       microExprRef.current = null;
       surpriseRef.current?.dispose();
       surpriseRef.current = null;
+      poseRef.current = null;
     };
   }, [initScene]);
 
@@ -175,6 +182,14 @@ export function AvatarDisplay({ lastAssistantMessage, streaming }: Props) {
   useEffect(() => {
     const cleanup = window.aris.on?.('avatar:gesture', (gesture: unknown) => {
       gestureRef.current?.play(gesture as GestureType);
+    });
+    return cleanup;
+  }, []);
+
+  // Listen for explicit pose changes from main process
+  useEffect(() => {
+    const cleanup = window.aris.on?.('avatar:pose', (pose: unknown) => {
+      poseRef.current?.setPose(pose as PoseType);
     });
     return cleanup;
   }, []);
@@ -235,11 +250,15 @@ export function AvatarDisplay({ lastAssistantMessage, streaming }: Props) {
     }
   }, [streaming]);
 
-  // Drive expressions from assistant messages
+  // Drive expressions and pose from assistant messages
   useEffect(() => {
-    if (!lastAssistantMessage || !exprRef.current) return;
-    const expression = sentimentToExpression(lastAssistantMessage);
-    exprRef.current.setExpression(expression as Expression);
+    if (!lastAssistantMessage) return;
+    if (exprRef.current) {
+      exprRef.current.setExpression(sentimentToExpression(lastAssistantMessage) as Expression);
+    }
+    if (poseRef.current) {
+      poseRef.current.setPose(sentimentToPose(lastAssistantMessage));
+    }
   }, [lastAssistantMessage]);
 
   // Apply live space config updates (only when VRM is loaded)
