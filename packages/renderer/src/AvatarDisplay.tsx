@@ -1,5 +1,5 @@
 import { useRef, useEffect, useState, useCallback } from 'react';
-import { AvatarScene, IdleAnimation, IdleVariationManager, ExpressionController, GestureController, GazeController, BasePose, NonHumanoidAnimator, sentimentToExpression } from '@aris/avatar';
+import { AvatarScene, IdleAnimation, IdleVariationManager, ExpressionController, GestureController, GazeController, BasePose, NonHumanoidAnimator, MicroExpressionController, SurpriseAnimationController, sentimentToExpression } from '@aris/avatar';
 import type { Expression, GestureType, DockHint } from '@aris/avatar';
 import type { AvatarInfo, CompanionConfig, PositionContext, VirtualSpaceConfig } from '@aris/shared';
 
@@ -18,6 +18,8 @@ export function AvatarDisplay({ lastAssistantMessage, streaming }: Props) {
   const exprRef = useRef<ExpressionController | null>(null);
   const gestureRef = useRef<GestureController | null>(null);
   const gazeRef = useRef<GazeController | null>(null);
+  const microExprRef = useRef<MicroExpressionController | null>(null);
+  const surpriseRef = useRef<SurpriseAnimationController | null>(null);
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -81,6 +83,15 @@ export function AvatarDisplay({ lastAssistantMessage, streaming }: Props) {
             const basePose = new BasePose();
             basePose.setVRM(vrm);
 
+            const microExpr = new MicroExpressionController();
+            microExpr.setVRM(vrm);
+            microExprRef.current = microExpr;
+
+            const surprise = new SurpriseAnimationController();
+            surprise.setVRM(vrm);
+            surprise.setControllers(expr, gesture);
+            surpriseRef.current = surprise;
+
             // Fetch initial position context for gaze awareness
             window.aris.invoke('window:get-position-context').then((ctx) => {
               if (ctx) {
@@ -93,7 +104,9 @@ export function AvatarDisplay({ lastAssistantMessage, streaming }: Props) {
               basePose.apply();
               idle.update(delta);
               variations.update(delta);
+              surprise.update(delta);   // AFK state + sleep head droop (additive bone)
               expr.update(delta);
+              microExpr.update(delta);  // additive blend-shape twitches (runs after expr)
               gesture.update(delta);
               gaze.update(delta);
             });
@@ -151,6 +164,9 @@ export function AvatarDisplay({ lastAssistantMessage, streaming }: Props) {
       exprRef.current = null;
       gestureRef.current = null;
       gazeRef.current = null;
+      microExprRef.current = null;
+      surpriseRef.current?.dispose();
+      surpriseRef.current = null;
     };
   }, [initScene]);
 
@@ -160,6 +176,19 @@ export function AvatarDisplay({ lastAssistantMessage, streaming }: Props) {
       gestureRef.current?.play(gesture as GestureType);
     });
     return cleanup;
+  }, []);
+
+  // Track user input for AFK detection (keyboard + mouse)
+  useEffect(() => {
+    const notify = () => surpriseRef.current?.notifyInput();
+    document.addEventListener('keydown', notify);
+    document.addEventListener('mousedown', notify);
+    document.addEventListener('mousemove', notify);
+    return () => {
+      document.removeEventListener('keydown', notify);
+      document.removeEventListener('mousedown', notify);
+      document.removeEventListener('mousemove', notify);
+    };
   }, []);
 
   // Resize handler — debounced so the model only repositions after resize ends.
@@ -231,6 +260,21 @@ export function AvatarDisplay({ lastAssistantMessage, streaming }: Props) {
     });
     return cleanup;
   }, []);
+
+  // Mouse-tracked gaze — pass normalized screen coords to gaze controller
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas || !loaded) return;
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!gazeRef.current) return;
+      const rect = canvas.getBoundingClientRect();
+      const x = (e.clientX - rect.left) / rect.width;
+      const y = (e.clientY - rect.top) / rect.height;
+      gazeRef.current.setMousePosition(x, y);
+    };
+    canvas.addEventListener('mousemove', handleMouseMove);
+    return () => canvas.removeEventListener('mousemove', handleMouseMove);
+  }, [loaded]);
 
   return (
     <div style={wrapperStyle}>

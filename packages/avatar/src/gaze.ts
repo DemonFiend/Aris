@@ -25,10 +25,18 @@ export class GazeController {
   private currentYaw = 0;
   private currentPitch = 0;
 
+  // Mouse-tracked gaze (normalized 0-1 screen coords, null = no mouse input)
+  private mouseX: number | null = null;
+  private mouseY: number | null = null;
+  private currentMouseYaw = 0;
+  private currentMousePitch = 0;
+
   setVRM(vrm: VRM): void {
     this.vrm = vrm;
     this.currentYaw = 0;
     this.currentPitch = 0;
+    this.currentMouseYaw = 0;
+    this.currentMousePitch = 0;
   }
 
   setMode(mode: GazeMode): void {
@@ -37,6 +45,12 @@ export class GazeController {
 
   setDockHint(dock: DockHint): void {
     this.dockHint = dock;
+  }
+
+  /** Accept normalized screen coordinates (0–1 range) for mouse-tracked gaze. */
+  setMousePosition(x: number, y: number): void {
+    this.mouseX = x;
+    this.mouseY = y;
   }
 
   update(delta: number): void {
@@ -86,11 +100,37 @@ export class GazeController {
     this.currentYaw += (targetYaw - this.currentYaw) * lerpFactor;
     this.currentPitch += (targetPitch - this.currentPitch) * lerpFactor;
 
+    // Smooth mouse-tracked gaze — lerp toward mouse target or decay to zero
+    if (this.mouseX !== null && this.mouseY !== null) {
+      const mouseTargetYaw = (this.mouseX - 0.5) * 0.15;
+      const mouseTargetPitch = (this.mouseY - 0.5) * 0.1;
+      const mouseLerp = 1 - Math.exp(-3 * delta);
+      this.currentMouseYaw += (mouseTargetYaw - this.currentMouseYaw) * mouseLerp;
+      this.currentMousePitch += (mouseTargetPitch - this.currentMousePitch) * mouseLerp;
+    } else {
+      const decayLerp = 1 - Math.exp(-2 * delta);
+      this.currentMouseYaw += (0 - this.currentMouseYaw) * decayLerp;
+      this.currentMousePitch += (0 - this.currentMousePitch) * decayLerp;
+    }
+
     // Apply additively — bones are reset to base each frame by resetBones()
+    // Head gets mode drift + mouse influence (1x)
     const head = this.vrm.humanoid?.getNormalizedBoneNode('head');
     if (head) {
-      head.rotation.y += this.currentYaw;
-      head.rotation.x += this.currentPitch;
+      head.rotation.y += this.currentYaw + this.currentMouseYaw;
+      head.rotation.x += this.currentPitch + this.currentMousePitch;
+    }
+
+    // Eyes get additional mouse layer (1x more) → 2:1 eye-to-head ratio in world-space
+    const leftEye = this.vrm.humanoid?.getNormalizedBoneNode('leftEye');
+    const rightEye = this.vrm.humanoid?.getNormalizedBoneNode('rightEye');
+    if (leftEye) {
+      leftEye.rotation.y += this.currentMouseYaw;
+      leftEye.rotation.x += this.currentMousePitch;
+    }
+    if (rightEye) {
+      rightEye.rotation.y += this.currentMouseYaw;
+      rightEye.rotation.x += this.currentMousePitch;
     }
   }
 
