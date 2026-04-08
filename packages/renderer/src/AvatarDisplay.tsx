@@ -85,6 +85,7 @@ export function AvatarDisplay({ lastAssistantMessage, streaming }: Props) {
 
             const microExpr = new MicroExpressionController();
             microExpr.setVRM(vrm);
+            microExpr.setControllers(gesture, expr);
             microExprRef.current = microExpr;
 
             const surprise = new SurpriseAnimationController();

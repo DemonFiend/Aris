@@ -1,4 +1,6 @@
 import type { VRM } from '@pixiv/three-vrm';
+import type { GestureController } from './gestures';
+import type { ExpressionController } from './expressions';
 
 type MicroExpressionType = 'halfSmile' | 'eyebrowRaise' | 'lipPurse' | 'noseWrinkle' | 'squint';
 
@@ -36,13 +38,23 @@ const MAX_INTERVAL = 20;
  * Tracks its previous frame contribution to cleanly undo it each frame,
  * preventing accumulation regardless of what ExpressionController does.
  */
+/** Expressions considered "strong" — micro-expressions should not fire during these. */
+const STRONG_EXPRESSIONS = new Set(['surprised', 'angry', 'sad', 'happy', 'relaxed']);
+
 export class MicroExpressionController {
   private vrm: VRM | null = null;
+  private gesture: GestureController | null = null;
+  private expr: ExpressionController | null = null;
   private nextFire = this.randomInterval();
   private elapsed = 0;
   private active: { def: MicroExpressionDef; elapsed: number } | null = null;
   /** Additive weight applied in the previous frame — subtracted each frame to prevent drift. */
   private prevContrib = 0;
+
+  setControllers(gesture: GestureController, expr: ExpressionController): void {
+    this.gesture = gesture;
+    this.expr = expr;
+  }
 
   setVRM(vrm: VRM): void {
     this.vrm = vrm;
@@ -81,8 +93,14 @@ export class MicroExpressionController {
     if (this.elapsed >= this.nextFire) {
       this.elapsed = 0;
       this.nextFire = this.randomInterval();
-      const type = MICRO_TYPES[Math.floor(Math.random() * MICRO_TYPES.length)];
-      this.active = { def: MICRO_EXPRESSIONS[type], elapsed: 0 };
+      // Suppress during active gestures or strong expressions
+      const suppressed =
+        (this.gesture?.isPlaying() ?? false) ||
+        STRONG_EXPRESSIONS.has(this.expr?.getExpression() ?? '');
+      if (!suppressed) {
+        const type = MICRO_TYPES[Math.floor(Math.random() * MICRO_TYPES.length)];
+        this.active = { def: MICRO_EXPRESSIONS[type], elapsed: 0 };
+      }
     }
   }
 
