@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import type { ChatChunk, StoredMessage, PositionContext, CompanionConfig, ScreenPositionState } from '@aris/shared';
+import type { ChatChunk, StoredMessage, PositionContext, CompanionConfig, ScreenPositionState, ProviderConfig } from '@aris/shared';
 import { buildPersonaSystemPrompt } from '@aris/shared';
 import { VoiceControls } from './VoiceControls';
 
@@ -206,8 +206,23 @@ export function ChatPanel({ conversationId, onConversationCreated, onAssistantMe
         // Screen position unavailable — continue without it
       }
 
+      let maxTokens: number | undefined;
+      try {
+        const activeId = (await window.aris.invoke('ai:get-active-provider')) as string | null;
+        if (activeId) {
+          const cfgs = (await window.aris.invoke('ai:get-provider-configs')) as ProviderConfig[] | undefined;
+          const activeCfg = cfgs?.find((c) => c.id === activeId);
+          if (activeCfg?.maxTokens !== undefined) {
+            maxTokens = activeCfg.maxTokens;
+          }
+        }
+      } catch {
+        // Provider config unavailable — use backend default
+      }
+
       await window.aris.invoke('ai:stream-chat', chatMessages, {
         systemPrompt,
+        ...(maxTokens !== undefined ? { maxTokens } : {}),
       });
 
       // Fallback: if the done signal was already handled by the stream listener,

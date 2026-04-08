@@ -30,6 +30,7 @@ export function ProviderSettings() {
   const [testStatus, setTestStatus] = useState<Record<string, 'idle' | 'testing' | 'ok' | 'fail'>>({});
   const [models, setModels] = useState<Record<string, ModelInfo[]>>({});
   const [loadingModels, setLoadingModels] = useState<Record<string, boolean>>({});
+  const [maxTokensInput, setMaxTokensInput] = useState('');
   const [saveError, setSaveError] = useState<string | null>(null);
 
   const loadConfigs = useCallback(async () => {
@@ -72,6 +73,7 @@ export function ProviderSettings() {
       setSelectedModel(currentModel);
       setCustomModelInput('');
       setUseCustomModel(false);
+      setMaxTokensInput(cfg?.maxTokens !== undefined ? String(cfg.maxTokens) : '');
 
       if (providers.some((p) => p.id === id)) {
         fetchModels(id);
@@ -88,12 +90,14 @@ export function ProviderSettings() {
   const saveConfig = async (id: string) => {
     const def = PROVIDER_DEFS.find((d) => d.id === id)!;
     const model = getEffectiveModel();
+    const parsedMaxTokens = maxTokensInput !== '' ? parseInt(maxTokensInput, 10) : undefined;
     const config: ProviderConfig = {
       id,
       enabled: true,
       ...(def.needsKey && apiKey ? { apiKey } : {}),
       ...(def.needsUrl ? { baseUrl } : {}),
       ...(model ? { defaultModel: model } : {}),
+      ...(parsedMaxTokens !== undefined && !isNaN(parsedMaxTokens) ? { maxTokens: parsedMaxTokens } : {}),
     };
     try {
       setSaveError(null);
@@ -103,6 +107,7 @@ export function ProviderSettings() {
       setSelectedModel('');
       setCustomModelInput('');
       setUseCustomModel(false);
+      setMaxTokensInput('');
       await loadConfigs();
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Failed to save provider config';
@@ -273,6 +278,20 @@ export function ProviderSettings() {
                       )}
                     </>
                   )}
+                </div>
+
+                {/* Max output tokens */}
+                <div style={fieldGroupStyle}>
+                  <label style={fieldLabelStyle}>Max Output Tokens</label>
+                  <input
+                    type="number"
+                    placeholder="8192"
+                    min={256}
+                    max={128000}
+                    value={maxTokensInput}
+                    onChange={(e) => setMaxTokensInput(e.target.value)}
+                    style={inputStyle}
+                  />
                 </div>
 
                 {/* Action buttons */}
