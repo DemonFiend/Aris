@@ -1,7 +1,7 @@
 import { app, BrowserWindow, Tray, Menu, nativeImage, ipcMain, protocol, net, shell } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs';
-import { APP_NAME } from '@aris/shared';
+import { APP_NAME, type WindowShakeEvent, type WindowShakeIntensity } from '@aris/shared';
 import { registerIpcHandlers, initProviders } from './ipc-handlers';
 import { registerVoiceHandlers } from './voice-handlers';
 import { registerAvatarHandlers } from './avatar-handlers';
@@ -29,6 +29,39 @@ protocol.registerSchemesAsPrivileged([
 let mainWindow: BrowserWindow | null = null;
 let tray: Tray | null = null;
 let isQuitting = false;
+
+// Shake detection state
+let shakeInterval: ReturnType<typeof setInterval> | null = null;
+let prevPos: [number, number] | null = null;
+
+function startShakePolling(): void {
+  if (shakeInterval !== null) return;
+  prevPos = null;
+  shakeInterval = setInterval(() => {
+    if (!mainWindow || mainWindow.isDestroyed()) return;
+    const pos = mainWindow.getPosition() as [number, number];
+    if (prevPos !== null) {
+      const dx = pos[0] - prevPos[0];
+      const dy = pos[1] - prevPos[1];
+      const magnitude = Math.sqrt(dx * dx + dy * dy);
+      if (magnitude >= 5) {
+        const intensity: WindowShakeIntensity =
+          magnitude >= 30 ? 'hard' : magnitude >= 15 ? 'medium' : 'light';
+        const payload: WindowShakeEvent = { intensity, velocityX: dx, velocityY: dy };
+        mainWindow.webContents.send('window:shake', payload);
+      }
+    }
+    prevPos = pos;
+  }, 16); // ~60fps
+}
+
+function stopShakePolling(): void {
+  if (shakeInterval !== null) {
+    clearInterval(shakeInterval);
+    shakeInterval = null;
+  }
+  prevPos = null;
+}
 
 function createWindow(): void {
   mainWindow = new BrowserWindow({
@@ -78,9 +111,16 @@ function createWindow(): void {
   mainWindow.on('enter-full-screen', emitPositionContext);
   mainWindow.on('leave-full-screen', emitPositionContext);
 
+  // Shake detection: poll position at ~60fps while window is visible
+  mainWindow.on('minimize', stopShakePolling);
+  mainWindow.on('hide', stopShakePolling);
+  mainWindow.on('show', startShakePolling);
+  mainWindow.on('restore', startShakePolling);
   mainWindow.on('closed', () => {
+    stopShakePolling();
     mainWindow = null;
   });
+  startShakePolling();
 }
 
 function buildTrayMenu(captureActive = false, sourceName?: string): Menu {

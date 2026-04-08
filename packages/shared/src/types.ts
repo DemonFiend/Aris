@@ -320,6 +320,16 @@ export interface ScreenPositionState {
   globalPosition: number | null;
 }
 
+/** Shake intensity reported in window:shake events */
+export type WindowShakeIntensity = 'light' | 'medium' | 'hard';
+
+/** Payload emitted on the window:shake IPC event */
+export interface WindowShakeEvent {
+  intensity: WindowShakeIntensity;
+  velocityX: number;
+  velocityY: number;
+}
+
 /** Dock position of the app window relative to screen edges */
 export type DockPosition = 'top' | 'bottom' | 'left' | 'right' | 'floating' | 'fullscreen';
 
