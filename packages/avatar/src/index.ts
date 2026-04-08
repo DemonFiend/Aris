@@ -18,3 +18,4 @@ export { MicroExpressionController } from './micro-expressions';
 export { SurpriseAnimationController } from './surprise-animations';
 export { PoseController, sentimentToPose } from './pose-controller';
 export type { PoseType } from './pose-controller';
+export { PhysicsReactionController } from './physics-reactions';

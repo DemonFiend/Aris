@@ -1,7 +1,7 @@
 import { useRef, useEffect, useState, useCallback } from 'react';
-import { AvatarScene, IdleAnimation, IdleVariationManager, ExpressionController, GestureController, GazeController, BasePose, NonHumanoidAnimator, MicroExpressionController, SurpriseAnimationController, PoseController, sentimentToExpression, sentimentToPose } from '@aris/avatar';
+import { AvatarScene, IdleAnimation, IdleVariationManager, ExpressionController, GestureController, GazeController, BasePose, NonHumanoidAnimator, MicroExpressionController, SurpriseAnimationController, PoseController, PhysicsReactionController, sentimentToExpression, sentimentToPose } from '@aris/avatar';
 import type { Expression, GestureType, DockHint, PoseType } from '@aris/avatar';
-import type { AvatarInfo, CompanionConfig, PositionContext, VirtualSpaceConfig } from '@aris/shared';
+import type { AvatarInfo, CompanionConfig, PositionContext, VirtualSpaceConfig, WindowShakeEvent } from '@aris/shared';
 
 interface Props {
   /** Text of latest assistant message — used to drive expressions */
@@ -21,6 +21,7 @@ export function AvatarDisplay({ lastAssistantMessage, streaming }: Props) {
   const microExprRef = useRef<MicroExpressionController | null>(null);
   const surpriseRef = useRef<SurpriseAnimationController | null>(null);
   const poseRef = useRef<PoseController | null>(null);
+  const physicsRef = useRef<PhysicsReactionController | null>(null);
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -98,6 +99,11 @@ export function AvatarDisplay({ lastAssistantMessage, streaming }: Props) {
             surprise.setControllers(expr, gesture);
             surpriseRef.current = surprise;
 
+            const physics = new PhysicsReactionController();
+            physics.setVRM(vrm);
+            physics.setExpressionController(expr);
+            physicsRef.current = physics;
+
             // Fetch initial position context for gaze awareness
             window.aris.invoke('window:get-position-context').then((ctx) => {
               if (ctx) {
@@ -111,6 +117,7 @@ export function AvatarDisplay({ lastAssistantMessage, streaming }: Props) {
               pose.update(delta);   // held pose blends in after basePose, before idle
               idle.update(delta);
               variations.update(delta);
+              physics.update(delta);    // window-shake physics reactions (additive bone)
               surprise.update(delta);   // AFK state + sleep head droop (additive bone)
               expr.update(delta);
               microExpr.update(delta);  // additive blend-shape twitches (runs after expr)
@@ -175,6 +182,7 @@ export function AvatarDisplay({ lastAssistantMessage, streaming }: Props) {
       surpriseRef.current?.dispose();
       surpriseRef.current = null;
       poseRef.current = null;
+      physicsRef.current = null;
     };
   }, [initScene]);
 
@@ -190,6 +198,14 @@ export function AvatarDisplay({ lastAssistantMessage, streaming }: Props) {
   useEffect(() => {
     const cleanup = window.aris.on?.('avatar:pose', (pose: unknown) => {
       poseRef.current?.setPose(pose as PoseType);
+    });
+    return cleanup;
+  }, []);
+
+  // Listen for window shake events — drive physics reactions
+  useEffect(() => {
+    const cleanup = window.aris.on?.('window:shake', (event: unknown) => {
+      physicsRef.current?.triggerShake(event as WindowShakeEvent);
     });
     return cleanup;
   }, []);
