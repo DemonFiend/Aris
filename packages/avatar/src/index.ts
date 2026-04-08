@@ -14,3 +14,5 @@ export { GazeController } from './gaze';
 export type { GazeMode, DockHint } from './gaze';
 export { BasePose } from './base-pose';
 export { NonHumanoidAnimator } from './non-humanoid-animation';
+export { MicroExpressionController } from './micro-expressions';
+export { SurpriseAnimationController } from './surprise-animations';
