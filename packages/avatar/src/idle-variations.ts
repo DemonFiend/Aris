@@ -1,4 +1,5 @@
 import type { VRM } from '@pixiv/three-vrm';
+import type { IdleProfile } from '@aris/shared';
 
 export type IdleVariationType = 'stretch' | 'glance' | 'settle' | 'deepBreath' | 'fidget' | 'stanceAdjust';
 
@@ -34,6 +35,9 @@ export class IdleVariationManager {
   private glanceDirection = 1;
   /** Side of the current stance adjust: 1 = right, -1 = left */
   private stanceDirection = 1;
+  // Personality-driven profile multipliers
+  private profileFreqMultiplier = 1.0;
+  private profileFidgetProbability = 0.4;
 
   private readonly variations: Record<IdleVariationType, VariationDef> = {
     stretch: {
@@ -132,6 +136,11 @@ export class IdleVariationManager {
     this.frequencyScale = Math.max(0, Math.min(1, scale));
   }
 
+  setIdleProfile(profile: IdleProfile): void {
+    this.profileFreqMultiplier = profile.variationFrequencyMultiplier;
+    this.profileFidgetProbability = profile.fidgetProbability;
+  }
+
   update(delta: number): void {
     if (!this.vrm) return;
 
@@ -153,6 +162,11 @@ export class IdleVariationManager {
     for (const [type, def] of Object.entries(this.variations) as [IdleVariationType, VariationDef][]) {
       const remaining = (this.timers.get(type) ?? 0) - delta;
       if (remaining <= 0) {
+        // Gate fidgets by profile probability
+        if (type === 'fidget' && Math.random() > this.profileFidgetProbability) {
+          this.timers.set(type, this.randomInterval(def));
+          continue;
+        }
         // Alternate glance direction each time
         if (type === 'glance') {
           this.glanceDirection = this.glanceDirection > 0 ? -1 : 1;
@@ -171,6 +185,7 @@ export class IdleVariationManager {
 
   private randomInterval(def: VariationDef): number {
     const base = def.minInterval + Math.random() * (def.maxInterval - def.minInterval);
-    return base / Math.max(this.frequencyScale, 0.1);
+    const effectiveScale = Math.max(this.frequencyScale * this.profileFreqMultiplier, 0.1);
+    return base / effectiveScale;
   }
 }

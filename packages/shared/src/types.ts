@@ -258,6 +258,86 @@ export interface CompanionIdleBehavior {
   variationFrequency: number;    // 0-1, how frequently idle variations fire (stretch, glance, settle)
 }
 
+/** Personality-driven multipliers for idle animation parameters. */
+export interface IdleProfile {
+  breathingMultiplier: number;          // scales breathing intensity
+  swayMultiplier: number;               // scales head sway
+  blinkFrequencyMultiplier: number;     // scales blink interval (>1 = slower blinks)
+  bodyMultiplier: number;               // scales full-body motions
+  variationFrequencyMultiplier: number; // scales variation fire rate (>1 = more frequent)
+  fidgetProbability: number;            // 0-1, likelihood of fidget variations
+}
+
+/** Default (neutral) profile — no scaling applied. */
+export const DEFAULT_IDLE_PROFILE: IdleProfile = {
+  breathingMultiplier: 1.0,
+  swayMultiplier: 1.0,
+  blinkFrequencyMultiplier: 1.0,
+  bodyMultiplier: 1.0,
+  variationFrequencyMultiplier: 1.0,
+  fidgetProbability: 0.4,
+};
+
+/** Preset idle profiles keyed by PersonaTone. */
+export const IDLE_PROFILE_PRESETS: Record<PersonaTone, IdleProfile> = {
+  cheerful: {
+    breathingMultiplier: 1.2,
+    swayMultiplier: 1.3,
+    blinkFrequencyMultiplier: 0.85,
+    bodyMultiplier: 1.2,
+    variationFrequencyMultiplier: 1.3,
+    fidgetProbability: 0.5,
+  },
+  warm: {
+    breathingMultiplier: 1.0,
+    swayMultiplier: 1.0,
+    blinkFrequencyMultiplier: 1.0,
+    bodyMultiplier: 1.0,
+    variationFrequencyMultiplier: 1.0,
+    fidgetProbability: 0.4,
+  },
+  calm: {
+    breathingMultiplier: 0.6,
+    swayMultiplier: 0.5,
+    blinkFrequencyMultiplier: 1.3,
+    bodyMultiplier: 0.5,
+    variationFrequencyMultiplier: 0.6,
+    fidgetProbability: 0.1,
+  },
+  playful: {
+    breathingMultiplier: 1.4,
+    swayMultiplier: 1.5,
+    blinkFrequencyMultiplier: 0.8,
+    bodyMultiplier: 1.4,
+    variationFrequencyMultiplier: 1.5,
+    fidgetProbability: 0.7,
+  },
+  professional: {
+    breathingMultiplier: 0.7,
+    swayMultiplier: 0.6,
+    blinkFrequencyMultiplier: 1.1,
+    bodyMultiplier: 0.7,
+    variationFrequencyMultiplier: 0.7,
+    fidgetProbability: 0.15,
+  },
+  dry: {
+    breathingMultiplier: 0.8,
+    swayMultiplier: 0.4,
+    blinkFrequencyMultiplier: 1.2,
+    bodyMultiplier: 0.6,
+    variationFrequencyMultiplier: 0.5,
+    fidgetProbability: 0.1,
+  },
+  dramatic: {
+    breathingMultiplier: 1.5,
+    swayMultiplier: 1.6,
+    blinkFrequencyMultiplier: 0.75,
+    bodyMultiplier: 1.5,
+    variationFrequencyMultiplier: 1.2,
+    fidgetProbability: 0.3,
+  },
+};
+
 /** Full companion config — extensible with sensible defaults */
 export interface CompanionConfig {
   personality: CompanionPersonality;

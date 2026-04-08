@@ -1,4 +1,5 @@
 import type { VRM } from '@pixiv/three-vrm';
+import type { IdleProfile } from '@aris/shared';
 
 /**
  * Idle animation controller that adds subtle life to the avatar:
@@ -47,6 +48,16 @@ export class IdleAnimation {
     bodyIntensity: 1,
   };
 
+  // Personality-driven profile multipliers
+  private profile: IdleProfile = {
+    breathingMultiplier: 1.0,
+    swayMultiplier: 1.0,
+    blinkFrequencyMultiplier: 1.0,
+    bodyMultiplier: 1.0,
+    variationFrequencyMultiplier: 1.0,
+    fidgetProbability: 0.4,
+  };
+
   // 2B: Weight shift state
   private weightShiftTimer = 8;
   private weightShiftTarget = 0;   // -1 = left, 0 = center, +1 = right
@@ -66,6 +77,10 @@ export class IdleAnimation {
 
   setConfig(config: Partial<IdleConfig>): void {
     Object.assign(this.config, config);
+  }
+
+  setIdleProfile(profile: IdleProfile): void {
+    this.profile = profile;
   }
 
   /**
@@ -90,17 +105,19 @@ export class IdleAnimation {
 
     this.time += delta;
 
-    // Breathing — gentle head bob (additive on reset base)
+    // Breathing — gentle head bob (additive on reset base), scaled by profile
+    const breathScale = this.config.breathingIntensity * this.profile.breathingMultiplier;
     const head = this.vrm.humanoid?.getNormalizedBoneNode('head');
     if (head) {
-      head.position.y += Math.sin(this.time * 1.5) * 0.003 * this.config.breathingIntensity;
+      head.position.y += Math.sin(this.time * 1.5) * 0.003 * breathScale;
     }
 
-    // Subtle head sway
+    // Subtle head sway, scaled by profile
+    const swayScale = this.config.swayIntensity * this.profile.swayMultiplier;
     const neck = this.vrm.humanoid?.getNormalizedBoneNode('neck');
     if (neck) {
-      neck.rotation.y += Math.sin(this.time * 0.3) * 0.02 * this.config.swayIntensity;
-      neck.rotation.z += Math.sin(this.time * 0.5) * 0.01 * this.config.swayIntensity;
+      neck.rotation.y += Math.sin(this.time * 0.3) * 0.02 * swayScale;
+      neck.rotation.z += Math.sin(this.time * 0.5) * 0.01 * swayScale;
     }
 
     // 2B: Update weight shift state each frame
@@ -132,7 +149,7 @@ export class IdleAnimation {
 
   private updateBody(): void {
     if (!this.vrm) return;
-    const bi = this.config.bodyIntensity;
+    const bi = this.config.bodyIntensity * this.profile.bodyMultiplier;
     if (bi <= 0) return;
 
     const t = this.time;
@@ -244,9 +261,10 @@ export class IdleAnimation {
         this.vrm.expressionManager.setValue('blink', 0);
         this.isBlinking = false;
         this.blinkTimer = 0;
-        // Blink interval varies around configured frequency
-        const half = this.config.blinkFrequency * 0.5;
-        this.nextBlink = this.config.blinkFrequency - half + Math.random() * half * 2;
+        // Blink interval varies around configured frequency, scaled by profile
+        const blinkFreq = this.config.blinkFrequency * this.profile.blinkFrequencyMultiplier;
+        const half = blinkFreq * 0.5;
+        this.nextBlink = blinkFreq - half + Math.random() * half * 2;
       }
     } else {
       this.nextBlink -= delta;
