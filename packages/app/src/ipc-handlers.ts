@@ -630,7 +630,12 @@ export function registerIpcHandlers(): void {
 
   ipcMain.handle('uninstall:execute', async (_event, ids: unknown) => {
     if (!Array.isArray(ids)) throw new Error('ids must be an array');
-    const validIds = ids as UninstallTargetId[];
+    const ALLOWED_TARGETS: ReadonlySet<string> = new Set<UninstallTargetId>([
+      'lmstudio', 'kokoro', 'whisper', 'ollama', 'aris-data',
+    ]);
+    const validIds = ids.filter((id): id is UninstallTargetId =>
+      typeof id === 'string' && ALLOWED_TARGETS.has(id),
+    );
 
     return performUninstall(validIds, (progress) => {
       for (const win of BrowserWindow.getAllWindows()) {

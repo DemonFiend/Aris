@@ -337,12 +337,14 @@ export function extractZip(zipPath: string, destDir: string): Promise<void> {
   }
   return new Promise((resolve, reject) => {
     fs.mkdirSync(destDir, { recursive: true });
-    // Single-quoted paths prevent injection; filenames come from our own manifest.
+    // Escape embedded single-quotes for PowerShell single-quoted strings (O'Brien → O''Brien)
+    const safeZipPath = zipPath.replace(/'/g, "''");
+    const safeDestDir = destDir.replace(/'/g, "''");
     const ps = spawn(
       'powershell',
       [
         '-NoProfile', '-NonInteractive', '-Command',
-        `Expand-Archive -Force -LiteralPath '${zipPath}' -DestinationPath '${destDir}'`,
+        `Expand-Archive -Force -LiteralPath '${safeZipPath}' -DestinationPath '${safeDestDir}'`,
       ],
       { stdio: 'inherit' },
     );
