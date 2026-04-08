@@ -43,6 +43,7 @@ interface StoredConfig {
   encryptedApiKey?: string;
   baseUrl?: string;
   defaultModel?: string;
+  maxTokens?: number;
 }
 
 export function loadProviderConfigs(): ProviderConfig[] {
@@ -59,6 +60,7 @@ export function loadProviderConfigs(): ProviderConfig[] {
       apiKey: s.encryptedApiKey ? decryptString(s.encryptedApiKey) : undefined,
       baseUrl: s.baseUrl,
       defaultModel: s.defaultModel,
+      maxTokens: s.maxTokens,
     }));
   } catch {
     return [];
@@ -83,6 +85,7 @@ export function saveProviderConfig(config: ProviderConfig): void {
     encryptedApiKey: c.apiKey ? encryptString(c.apiKey) : undefined,
     baseUrl: c.baseUrl,
     defaultModel: c.defaultModel,
+    maxTokens: c.maxTokens,
   }));
 
   fs.writeFileSync(configPath, JSON.stringify(stored, null, 2));

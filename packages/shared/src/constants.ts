@@ -19,7 +19,7 @@ export const HEARTBEAT_ENABLED_DEFAULT = false;
 export const HEARTBEAT_INTERVAL_SECONDS = 60;
 
 /** Default AI settings */
-export const DEFAULT_MAX_TOKENS = 2048;
+export const DEFAULT_MAX_TOKENS = 8192;
 export const DEFAULT_TEMPERATURE = 0.7;
 
 /** Data directory names */

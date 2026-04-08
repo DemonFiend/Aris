@@ -9,7 +9,7 @@ import {
   LMStudioProvider,
 } from '@aris/ai-core';
 import type { ChatMessage, ChatOptions, ProviderConfig } from '@aris/shared';
-import { loadProviderConfigs, saveProviderConfig, isEncryptionAvailable } from './key-store';
+import { loadProviderConfigs, saveProviderConfig, isEncryptionAvailable, getProviderConfig } from './key-store';
 import { getSetting, setSetting, deleteSetting, getAllSettings } from './settings-store';
 import {
   listConversations,
@@ -179,7 +179,10 @@ export function registerIpcHandlers(): void {
   ipcMain.handle('ai:chat', async (_event, messages: ChatMessage[], options?: ChatOptions) => {
     validateMessages(messages);
     const provider = registry.getActive();
-    return provider.chat(messages, options);
+    const activeId = registry.getActiveId();
+    const providerConfig = activeId ? getProviderConfig(activeId) : undefined;
+    const mergedOptions: ChatOptions = { ...options, maxTokens: options?.maxTokens ?? providerConfig?.maxTokens };
+    return provider.chat(messages, mergedOptions);
   });
 
   ipcMain.handle(
@@ -187,10 +190,13 @@ export function registerIpcHandlers(): void {
     async (event, messages: ChatMessage[], options?: ChatOptions) => {
       validateMessages(messages);
       const provider = registry.getActive();
+      const activeId = registry.getActiveId();
+      const providerConfig = activeId ? getProviderConfig(activeId) : undefined;
+      const mergedOptions: ChatOptions = { ...options, maxTokens: options?.maxTokens ?? providerConfig?.maxTokens };
       const sender = event.sender;
       try {
         let doneSent = false;
-        for await (const chunk of provider.streamChat(messages, options)) {
+        for await (const chunk of provider.streamChat(messages, mergedOptions)) {
           sender.send('ai:stream-chunk', chunk);
           if ((chunk as { done?: boolean }).done) doneSent = true;
         }
@@ -212,8 +218,11 @@ export function registerIpcHandlers(): void {
       validateString(imageBase64, 'imageBase64');
       validateString(prompt, 'prompt');
       const provider = registry.getActive();
+      const activeId = registry.getActiveId();
+      const providerConfig = activeId ? getProviderConfig(activeId) : undefined;
+      const mergedOptions: ChatOptions = { ...options, maxTokens: options?.maxTokens ?? providerConfig?.maxTokens };
       const image = Buffer.from(imageBase64, 'base64');
-      return provider.vision(image, prompt, options);
+      return provider.vision(image, prompt, mergedOptions);
     },
   );
 

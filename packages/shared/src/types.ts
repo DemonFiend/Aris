@@ -59,6 +59,7 @@ export interface ProviderConfig {
   apiKey?: string;
   baseUrl?: string;
   defaultModel?: string;
+  maxTokens?: number;
 }
 
 /** Conversation stored in database */
