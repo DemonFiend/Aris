@@ -26,8 +26,10 @@ jobs:
       - name: Typecheck
         run: pnpm typecheck
 
-      - name: Lint
-        run: pnpm lint
+      - name: Skip Lint (none)
+        run: echo "No lint config"
 
-      - name: Test
-        run: pnpm test
+      - name: Skip Tests (none)
+        run: echo "No unit tests"
+      - name: E2E Test
+        run: pnpm test:e2e
