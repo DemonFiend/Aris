@@ -73,6 +73,7 @@ import {
 import type { CaptureConfig, CaptureSettings, ScreenPositionMode } from '@aris/shared';
 import { getMonitorInfo, getScreenPositionState } from './screen-position';
 import { getContextState, initContextState } from './context-state';
+import { scanForRunningGames, getCachedRunningGames } from './process-scanner';
 
 const registry = new ProviderRegistry();
 
@@ -204,16 +205,23 @@ export function registerIpcHandlers(): void {
     async (event, messages: ChatMessage[], options?: ChatOptions) => {
       validateMessages(messages);
 
-      // Inject screen context into system prompt if available
+      // Inject screen context and running games into system prompt
       const screenCtx = getFreshScreenContext();
-      if (screenCtx) {
-        const ageMs = Date.now() - screenCtx.timestamp;
-        const ageLabel = ageMs < 60_000 ? 'just now' : `${Math.round(ageMs / 60_000)} min ago`;
-        const contextBlock = [
-          `[Screen Context — ${ageLabel}]`,
-          `Activity: ${screenCtx.analysis}`,
-          `Game detected: ${screenCtx.detectedGame ?? 'None detected'}`,
-        ].join('\n');
+      const runningGames = getCachedRunningGames();
+      const hasContext = screenCtx || runningGames.length > 0;
+      if (hasContext) {
+        const lines: string[] = [];
+        if (screenCtx) {
+          const ageMs = Date.now() - screenCtx.timestamp;
+          const ageLabel = ageMs < 60_000 ? 'just now' : `${Math.round(ageMs / 60_000)} min ago`;
+          lines.push(`[Screen Context — ${ageLabel}]`);
+          lines.push(`Activity: ${screenCtx.analysis}`);
+          lines.push(`Game detected: ${screenCtx.detectedGame ?? 'None detected'}`);
+        }
+        if (runningGames.length > 0) {
+          lines.push(`Running games/apps: ${runningGames.join(', ')}`);
+        }
+        const contextBlock = lines.join('\n');
 
         // Prepend as a system message or append to the first system message
         const sysIdx = messages.findIndex((m) => m.role === 'system');
@@ -738,6 +746,9 @@ export function registerIpcHandlers(): void {
     },
   );
 
+  // Process scanner handler
+  ipcMain.handle('system:get-running-games', async () => scanForRunningGames());
+
   // Context state handler
   ipcMain.handle('context:get-state', async () => getContextState());
 
@@ -754,6 +765,10 @@ export function registerIpcHandlers(): void {
       startScreenAnalysis(visionAnalyzeFrame);
     }
   }
+
+  // Start background process scanner (runs every 60s, populates cached game list)
+  scanForRunningGames().catch(() => {});
+  setInterval(() => { scanForRunningGames().catch(() => {}); }, 60_000);
 }
 
 export { registry };

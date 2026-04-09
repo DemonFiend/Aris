@@ -152,11 +152,6 @@ export interface CaptureSettings {
   aiAnalysisMaxWidth: number;
   aiAnalysisQuality: number;
 
-  // Video options
-  videoEnabled: boolean;
-  videoMaxDurationSeconds: number;
-  videoFps: number;
-  videoQuality: 'low' | 'medium' | 'high';
 }
 
 /** Screenshot file info returned from main process */
@@ -718,4 +713,5 @@ export type IpcChannel =
   | 'uninstall:execute'
   | 'context:get-state'
   | 'vision:get-screen-context'
-  | 'ai:chat-with-screenshot';
+  | 'ai:chat-with-screenshot'
+  | 'system:get-running-games';

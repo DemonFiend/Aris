@@ -49,10 +49,6 @@ export function getDefaultCaptureSettings(): CaptureSettings {
     aiAnalysisIntervalSeconds: AI_ANALYSIS_INTERVAL_SECONDS_DEFAULT,
     aiAnalysisMaxWidth: AI_ANALYSIS_MAX_WIDTH,
     aiAnalysisQuality: AI_ANALYSIS_JPEG_QUALITY,
-    videoEnabled: false,
-    videoMaxDurationSeconds: 300,
-    videoFps: 15,
-    videoQuality: 'medium',
   };
 }
 

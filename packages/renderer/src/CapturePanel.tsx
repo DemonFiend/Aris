@@ -298,33 +298,7 @@ export function CapturePanel() {
         <ToggleSwitch on={settings.heartbeatEnabled} onClick={() => updateSetting('heartbeatEnabled', !settings.heartbeatEnabled)} />
       </div>
       {settings.heartbeatEnabled && (
-        <SliderRow label="Interval" value={`${settings.heartbeatIntervalSeconds}s`} min={10} max={600} step={10} current={settings.heartbeatIntervalSeconds} onChange={(v) => updateSetting('heartbeatIntervalSeconds', v)} />
-      )}
-
-      <div style={dividerStyle} />
-
-      {/* Video */}
-      <SectionLabel>Video Capture</SectionLabel>
-      <div style={rowStyle}>
-        <span style={{ fontSize: 'var(--text-base)', fontWeight: 'var(--font-medium)' as any }}>Enabled</span>
-        <ToggleSwitch on={settings.videoEnabled} onClick={() => updateSetting('videoEnabled', !settings.videoEnabled)} />
-      </div>
-      {settings.videoEnabled && (
-        <>
-          <SliderRow label="Max Duration" value={`${Math.floor(settings.videoMaxDurationSeconds / 60)}m`} min={30} max={1800} step={30} current={settings.videoMaxDurationSeconds} onChange={(v) => updateSetting('videoMaxDurationSeconds', v)} />
-          <SliderRow label="Video FPS" value={`${settings.videoFps} fps`} min={5} max={60} step={5} current={settings.videoFps} onChange={(v) => updateSetting('videoFps', v)} />
-          <div style={{ marginTop: 'var(--space-1)' }}>
-            <span style={{ fontSize: 'var(--text-xs)', color: 'var(--text-secondary)', marginRight: 'var(--space-2)' }}>Quality</span>
-            <div style={{ display: 'inline-flex', gap: 'var(--space-1)' }}>
-              {(['low', 'medium', 'high'] as const).map((q) => (
-                <PillButton key={q} active={settings.videoQuality === q} onClick={() => updateSetting('videoQuality', q)}>
-                  {q.charAt(0).toUpperCase() + q.slice(1)}
-                </PillButton>
-              ))}
-            </div>
-          </div>
-          <p style={hintStyle}>Video capture is experimental. Uses the same source as screenshot capture.</p>
-        </>
+        <SliderRow label="Interval" value={settings.heartbeatIntervalSeconds >= 60 ? `${Math.round(settings.heartbeatIntervalSeconds / 60)}m` : `${settings.heartbeatIntervalSeconds}s`} min={30} max={28800} step={30} current={settings.heartbeatIntervalSeconds} onChange={(v) => updateSetting('heartbeatIntervalSeconds', v)} />
       )}
 
       {/* Footer */}
