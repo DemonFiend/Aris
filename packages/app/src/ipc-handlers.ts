@@ -57,6 +57,10 @@ import {
   getStatus,
   getLatestFrame,
   startHeartbeat,
+  getScreenContext,
+  getFreshScreenContext,
+  startScreenAnalysis,
+  stopScreenAnalysis,
 } from './capture-service';
 import {
   loadCaptureSettings,
@@ -176,6 +180,15 @@ export function initProviders(): void {
   }
 }
 
+/** Callback for capture-service to call provider.vision() without circular dependency */
+async function visionAnalyzeFrame(frame: Buffer, prompt: string): Promise<{ text: string }> {
+  const provider = registry.getActive();
+  if (!provider.supportsVision) {
+    throw new Error('Active provider does not support vision');
+  }
+  return provider.vision(frame, prompt);
+}
+
 export function registerIpcHandlers(): void {
   ipcMain.handle('ai:chat', async (_event, messages: ChatMessage[], options?: ChatOptions) => {
     validateMessages(messages);
@@ -190,6 +203,29 @@ export function registerIpcHandlers(): void {
     'ai:stream-chat',
     async (event, messages: ChatMessage[], options?: ChatOptions) => {
       validateMessages(messages);
+
+      // Inject screen context into system prompt if available
+      const screenCtx = getFreshScreenContext();
+      if (screenCtx) {
+        const ageMs = Date.now() - screenCtx.timestamp;
+        const ageLabel = ageMs < 60_000 ? 'just now' : `${Math.round(ageMs / 60_000)} min ago`;
+        const contextBlock = [
+          `[Screen Context — ${ageLabel}]`,
+          `Activity: ${screenCtx.analysis}`,
+          `Game detected: ${screenCtx.detectedGame ?? 'None detected'}`,
+        ].join('\n');
+
+        // Prepend as a system message or append to the first system message
+        const sysIdx = messages.findIndex((m) => m.role === 'system');
+        if (sysIdx >= 0) {
+          messages = messages.map((m, i) =>
+            i === sysIdx ? { ...m, content: m.content + '\n\n' + contextBlock } : m,
+          );
+        } else {
+          messages = [{ role: 'system', content: contextBlock }, ...messages];
+        }
+      }
+
       const provider = registry.getActive();
       const activeId = registry.getActiveId();
       const providerConfig = activeId ? getProviderConfig(activeId) : undefined;
@@ -457,6 +493,12 @@ export function registerIpcHandlers(): void {
       startHeartbeat();
       notifyCaptureStarted();
     }
+    // Restart or stop screen analysis based on new settings
+    if (settings.screenCaptureConsented && settings.heartbeatEnabled && settings.aiScreenAnalysisEnabled) {
+      startScreenAnalysis(visionAnalyzeFrame);
+    } else {
+      stopScreenAnalysis();
+    }
     return true;
   });
 
@@ -650,6 +692,52 @@ export function registerIpcHandlers(): void {
 
   ipcMain.handle('setup:mark-complete', async () => setSetting('hasCompletedSetup', 'true'));
 
+  // Screen analysis context handler
+  ipcMain.handle('vision:get-screen-context', async () => getScreenContext());
+
+  // Chat-with-screenshot handler — attaches latest frame as image
+  ipcMain.handle(
+    'ai:chat-with-screenshot',
+    async (event, messages: ChatMessage[], options?: ChatOptions) => {
+      validateMessages(messages);
+      const frame = getLatestFrame();
+      if (!frame) throw new Error('No captured frame available for screenshot chat');
+
+      const provider = registry.getActive();
+      if (!provider.supportsVision) {
+        throw new Error('Active AI provider does not support vision. Please select a vision-capable provider.');
+      }
+
+      const activeId = registry.getActiveId();
+      const providerConfig = activeId ? getProviderConfig(activeId) : undefined;
+      const mergedOptions: ChatOptions = { ...options, maxTokens: options?.maxTokens ?? providerConfig?.maxTokens };
+
+      // Attach the screenshot to the last user message
+      const augmented = messages.map((m, i) => {
+        if (i === messages.length - 1 && m.role === 'user') {
+          return { ...m, images: [frame] };
+        }
+        return m;
+      });
+
+      const sender = event.sender;
+      try {
+        let doneSent = false;
+        for await (const chunk of provider.streamChat(augmented, mergedOptions)) {
+          sender.send('ai:stream-chunk', chunk);
+          if ((chunk as { done?: boolean }).done) doneSent = true;
+        }
+        if (!doneSent) {
+          sender.send('ai:stream-chunk', { text: '', done: true });
+        }
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        console.error('[ai:chat-with-screenshot] Error:', msg);
+        throw err;
+      }
+    },
+  );
+
   // Context state handler
   ipcMain.handle('context:get-state', async () => getContextState());
 
@@ -661,6 +749,10 @@ export function registerIpcHandlers(): void {
   const captureSettings = loadCaptureSettings();
   if (captureSettings.heartbeatEnabled && captureSettings.screenCaptureConsented) {
     startHeartbeat();
+    // Start screen analysis if enabled
+    if (captureSettings.aiScreenAnalysisEnabled) {
+      startScreenAnalysis(visionAnalyzeFrame);
+    }
   }
 }
 

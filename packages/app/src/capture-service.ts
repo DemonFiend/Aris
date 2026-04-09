@@ -1,11 +1,12 @@
 import { desktopCapturer, nativeImage, BrowserWindow } from 'electron';
 import { EventEmitter } from 'events';
-import type { CaptureSource, CaptureConfig, CaptureStatus } from '@aris/shared';
+import type { CaptureSource, CaptureConfig, CaptureStatus, ScreenAnalysisContext } from '@aris/shared';
 import {
   CAPTURE_FPS_DEFAULT,
   CAPTURE_MAX_WIDTH,
   CAPTURE_MAX_HEIGHT,
   CAPTURE_JPEG_QUALITY,
+  AI_ANALYSIS_STALE_SECONDS,
 } from '@aris/shared';
 import { detectGameFromTitle } from '@aris/vision';
 import { loadCaptureSettings, saveScreenshot, pruneScreenshots } from './screenshot-store';
@@ -15,12 +16,18 @@ export const captureEvents = new EventEmitter();
 
 let captureInterval: ReturnType<typeof setInterval> | null = null;
 let heartbeatInterval: ReturnType<typeof setInterval> | null = null;
+let analysisInterval: ReturnType<typeof setInterval> | null = null;
 let frameCount = 0;
 let currentConfig: CaptureConfig | null = null;
 let currentSourceName: string | null = null;
 let detectedGame: string | undefined;
 let latestFrameBuffer: Buffer | null = null;
 let savedScreenshotCount = 0;
+
+/** Latest AI screen analysis result */
+let latestScreenContext: ScreenAnalysisContext | null = null;
+/** Whether an analysis call is currently in-flight */
+let analysisInFlight = false;
 
 export async function getSources(): Promise<CaptureSource[]> {
   const sources = await desktopCapturer.getSources({
@@ -163,7 +170,13 @@ async function captureHeartbeatFrame(): Promise<void> {
   }
 
   const buffer = img.toJPEG(settings.jpegQuality);
+
+  // Fix: update latestFrameBuffer so vision:analyze-frame and
+  // ai:chat-with-screenshot always have a recent frame
+  latestFrameBuffer = buffer;
+
   const game = detectGameFromTitle(source.name);
+  if (game) detectedGame = game;
   saveScreenshot(buffer, game ?? 'heartbeat');
   pruneScreenshots();
 }
@@ -231,4 +244,102 @@ async function captureFrame(): Promise<void> {
       sourceName: currentSourceName,
     });
   }
+}
+
+// --- Screen Analysis Pipeline ---
+
+/** Get the latest screen analysis context (null if none or stale). */
+export function getScreenContext(): ScreenAnalysisContext | null {
+  return latestScreenContext;
+}
+
+/** Get non-stale screen context for system prompt injection. */
+export function getFreshScreenContext(): ScreenAnalysisContext | null {
+  if (!latestScreenContext) return null;
+  const ageSeconds = (Date.now() - latestScreenContext.timestamp) / 1000;
+  if (ageSeconds > AI_ANALYSIS_STALE_SECONDS) return null;
+  return latestScreenContext;
+}
+
+/**
+ * Start the screen analysis timer. Runs independently of heartbeat capture.
+ * Requires a `analyzeFrame` callback injected from ipc-handlers to avoid
+ * circular dependency with the provider registry.
+ */
+export function startScreenAnalysis(
+  analyzeFrame: (frame: Buffer, prompt: string) => Promise<{ text: string }>,
+): void {
+  stopScreenAnalysis();
+  const settings = loadCaptureSettings();
+
+  if (
+    !settings.screenCaptureConsented ||
+    !settings.heartbeatEnabled ||
+    !settings.aiScreenAnalysisEnabled
+  ) {
+    return;
+  }
+
+  const intervalMs = Math.max(30_000, settings.aiAnalysisIntervalSeconds * 1000);
+
+  const runAnalysis = async () => {
+    if (analysisInFlight) return;
+    const frame = latestFrameBuffer;
+    if (!frame) return;
+
+    const s = loadCaptureSettings();
+    if (!s.aiScreenAnalysisEnabled) return;
+
+    // Resize for AI: lower resolution + quality to save tokens
+    let img = nativeImage.createFromBuffer(frame);
+    const size = img.getSize();
+    if (size.width > s.aiAnalysisMaxWidth) {
+      const scale = s.aiAnalysisMaxWidth / size.width;
+      img = img.resize({
+        width: Math.round(size.width * scale),
+        height: Math.round(size.height * scale),
+      });
+    }
+    const compressed = img.toJPEG(s.aiAnalysisQuality);
+
+    analysisInFlight = true;
+    try {
+      const result = await analyzeFrame(
+        compressed,
+        'Describe what is on screen. Identify any game, application, or activity visible. Note anything notable happening. Be concise (2-3 sentences max).',
+      );
+
+      latestScreenContext = {
+        analysis: result.text,
+        detectedGame: detectedGame ?? null,
+        timestamp: Date.now(),
+      };
+
+      // Broadcast to renderer
+      for (const win of BrowserWindow.getAllWindows()) {
+        win.webContents.send('vision:context-update', latestScreenContext);
+      }
+    } catch (err) {
+      // Skip silently — will retry at next interval
+      console.warn('[screen-analysis] Analysis failed:', err instanceof Error ? err.message : err);
+    } finally {
+      analysisInFlight = false;
+    }
+  };
+
+  // Run first analysis after a short delay (let heartbeat capture a frame first)
+  setTimeout(() => { runAnalysis().catch(() => {}); }, 5000);
+
+  analysisInterval = setInterval(() => {
+    runAnalysis().catch(() => {});
+  }, intervalMs);
+}
+
+export function stopScreenAnalysis(): void {
+  if (analysisInterval) {
+    clearInterval(analysisInterval);
+    analysisInterval = null;
+  }
+  latestScreenContext = null;
+  analysisInFlight = false;
 }

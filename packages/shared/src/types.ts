@@ -146,6 +146,12 @@ export interface CaptureSettings {
   // Privacy consent
   screenCaptureConsented: boolean;
 
+  // AI screen analysis
+  aiScreenAnalysisEnabled: boolean;
+  aiAnalysisIntervalSeconds: number;
+  aiAnalysisMaxWidth: number;
+  aiAnalysisQuality: number;
+
   // Video options
   videoEnabled: boolean;
   videoMaxDurationSeconds: number;
@@ -556,6 +562,13 @@ export interface InstallResult {
   error: string | null;
 }
 
+/** Latest screen analysis result from AI vision */
+export interface ScreenAnalysisContext {
+  analysis: string;
+  detectedGame: string | null;
+  timestamp: number;
+}
+
 /** Time period based on system clock hour */
 export type TimeOfDay = 'morning' | 'afternoon' | 'evening' | 'night';
 
@@ -703,4 +716,6 @@ export type IpcChannel =
   | 'setup:mark-complete'
   | 'uninstall:scan'
   | 'uninstall:execute'
-  | 'context:get-state';
+  | 'context:get-state'
+  | 'vision:get-screen-context'
+  | 'ai:chat-with-screenshot';

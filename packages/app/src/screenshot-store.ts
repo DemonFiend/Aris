@@ -13,6 +13,10 @@ import {
   CAPTURE_JPEG_QUALITY,
   HEARTBEAT_ENABLED_DEFAULT,
   HEARTBEAT_INTERVAL_SECONDS,
+  AI_SCREEN_ANALYSIS_ENABLED_DEFAULT,
+  AI_ANALYSIS_INTERVAL_SECONDS_DEFAULT,
+  AI_ANALYSIS_MAX_WIDTH,
+  AI_ANALYSIS_JPEG_QUALITY,
 } from '@aris/shared';
 import type { CaptureSettings, ScreenshotFolderStats } from '@aris/shared';
 import { getSetting, setSetting } from './settings-store';
@@ -41,6 +45,10 @@ export function getDefaultCaptureSettings(): CaptureSettings {
     heartbeatEnabled: HEARTBEAT_ENABLED_DEFAULT,
     heartbeatIntervalSeconds: HEARTBEAT_INTERVAL_SECONDS,
     screenCaptureConsented: false,
+    aiScreenAnalysisEnabled: AI_SCREEN_ANALYSIS_ENABLED_DEFAULT,
+    aiAnalysisIntervalSeconds: AI_ANALYSIS_INTERVAL_SECONDS_DEFAULT,
+    aiAnalysisMaxWidth: AI_ANALYSIS_MAX_WIDTH,
+    aiAnalysisQuality: AI_ANALYSIS_JPEG_QUALITY,
     videoEnabled: false,
     videoMaxDurationSeconds: 300,
     videoFps: 15,

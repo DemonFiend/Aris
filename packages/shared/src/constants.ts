@@ -16,7 +16,16 @@ export const SCREENSHOTS_FOLDER_SIZE_LIMIT_MB = 500;
 
 /** Heartbeat capture defaults */
 export const HEARTBEAT_ENABLED_DEFAULT = false;
-export const HEARTBEAT_INTERVAL_SECONDS = 60;
+export const HEARTBEAT_INTERVAL_SECONDS = 300;
+
+/** Screen analysis defaults */
+export const AI_SCREEN_ANALYSIS_ENABLED_DEFAULT = false;
+export const AI_ANALYSIS_INTERVAL_SECONDS_DEFAULT = 300;
+export const AI_ANALYSIS_INTERVAL_SECONDS_MIN = 30;
+export const AI_ANALYSIS_INTERVAL_SECONDS_MAX = 28800;
+export const AI_ANALYSIS_MAX_WIDTH = 1024;
+export const AI_ANALYSIS_JPEG_QUALITY = 60;
+export const AI_ANALYSIS_STALE_SECONDS = 300;
 
 /** Default AI settings */
 export const DEFAULT_MAX_TOKENS = 8192;
