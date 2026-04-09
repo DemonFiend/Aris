@@ -1,5 +1,12 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import type { ChatChunk, StoredMessage, PositionContext, CompanionConfig, ScreenPositionState, ProviderConfig } from '@aris/shared';
+import type {
+  ChatChunk,
+  StoredMessage,
+  PositionContext,
+  CompanionConfig,
+  ScreenPositionState,
+  ProviderConfig,
+} from '@aris/shared';
 import { buildPersonaSystemPrompt } from '@aris/shared';
 import { VoiceControls } from './VoiceControls';
 
@@ -17,7 +24,14 @@ interface Props {
   onToggleExpand: () => void;
 }
 
-export function ChatPanel({ conversationId, onConversationCreated, onAssistantMessage, onStreamingChange, expanded, onToggleExpand }: Props) {
+export function ChatPanel({
+  conversationId,
+  onConversationCreated,
+  onAssistantMessage,
+  onStreamingChange,
+  expanded,
+  onToggleExpand,
+}: Props) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [streaming, setStreaming] = useState(false);
@@ -27,7 +41,7 @@ export function ChatPanel({ conversationId, onConversationCreated, onAssistantMe
   const streamBufferRef = useRef('');
   const activeConvRef = useRef<string | null>(conversationId);
   const savedRef = useRef(false);
-  const streamGenRef = useRef(0);        // generation counter — ignores stale done signals
+  const streamGenRef = useRef(0); // generation counter — ignores stale done signals
 
   const scrollToBottom = useCallback(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -58,7 +72,9 @@ export function ChatPanel({ conversationId, onConversationCreated, onAssistantMe
     }
     if (streaming) return; // Don't overwrite in-progress streaming messages
     (async () => {
-      const stored = (await window.aris.invoke('messages:list', conversationId)) as StoredMessage[] | undefined;
+      const stored = (await window.aris.invoke('messages:list', conversationId)) as
+        | StoredMessage[]
+        | undefined;
       if (activeConvRef.current === conversationId) {
         setMessages(
           (stored ?? [])
@@ -100,7 +116,8 @@ export function ChatPanel({ conversationId, onConversationCreated, onAssistantMe
           onAssistantMessage?.(finalContent);
           // Save then reload from DB — this is the single source of truth
           // and makes the state immune to any React batching edge-cases.
-          window.aris.invoke('messages:add', convId, 'assistant', finalContent)
+          window.aris
+            .invoke('messages:add', convId, 'assistant', finalContent)
             .then(() => window.aris.invoke('messages:list', convId) as Promise<StoredMessage[]>)
             .then((stored) => {
               // Only reload if still on the same conversation and no new stream started
@@ -108,7 +125,10 @@ export function ChatPanel({ conversationId, onConversationCreated, onAssistantMe
                 setMessages(
                   (stored ?? [])
                     .filter((m: StoredMessage) => m.role !== 'system')
-                    .map((m: StoredMessage) => ({ role: m.role as 'user' | 'assistant', content: m.content })),
+                    .map((m: StoredMessage) => ({
+                      role: m.role as 'user' | 'assistant',
+                      content: m.content,
+                    })),
                 );
               }
             });
@@ -177,23 +197,43 @@ export function ChatPanel({ conversationId, onConversationCreated, onAssistantMe
           'You are Aris, a friendly and knowledgeable AI gaming companion. You help players with tips, strategies, lore, and conversation. Be concise and enthusiastic.';
       }
       try {
-        const posCtx = (await window.aris.invoke('window:get-position-context')) as PositionContext | null;
+        const posCtx = (await window.aris.invoke(
+          'window:get-position-context',
+        )) as PositionContext | null;
         if (posCtx) {
-          const position = posCtx.dockPosition === 'center' ? 'floating on screen' : `on the ${posCtx.dockPosition} side of the screen`;
-          systemPrompt += `\n\n[You are ${position}${posCtx.overlayMode ? ', overlaying on top of the player\'s game' : ''}. You may subtly reference this when it feels natural, but NEVER mention window dimensions, pixels, or technical details like "docked" — just be aware of where you are.]`;
+          // DockPosition uses 'floating' for undocked center windows in shared types
+          const position =
+            posCtx.dockPosition === 'floating'
+              ? 'floating on screen'
+              : `on the ${posCtx.dockPosition} side of the screen`;
+          systemPrompt += `\n\n[You are ${position}${posCtx.overlayMode ? ", overlaying on top of the player's game" : ''}. You may subtly reference this when it feels natural, but NEVER mention window dimensions, pixels, or technical details like "docked" — just be aware of where you are.]`;
         }
       } catch {
         // Position context unavailable — continue without it
       }
       try {
-        const screenState = (await window.aris.invoke('screen:get-position-state')) as ScreenPositionState | null;
-        if (screenState && screenState.mode !== 'disabled' && screenState.activeMonitorIndex !== null) {
-          const monitor = screenState.monitors.find((m) => m.index === screenState.activeMonitorIndex);
+        const screenState = (await window.aris.invoke(
+          'screen:get-position-state',
+        )) as ScreenPositionState | null;
+        if (
+          screenState &&
+          screenState.mode !== 'disabled' &&
+          screenState.activeMonitorIndex !== null
+        ) {
+          const monitor = screenState.monitors.find(
+            (m) => m.index === screenState.activeMonitorIndex,
+          );
           if (monitor) {
             const cellDescriptions: Record<number, string> = {
-              1: 'top-left', 2: 'top-center', 3: 'top-right',
-              4: 'middle-left', 5: 'center', 6: 'middle-right',
-              7: 'bottom-left', 8: 'bottom-center', 9: 'bottom-right',
+              1: 'top-left',
+              2: 'top-center',
+              3: 'top-right',
+              4: 'middle-left',
+              5: 'center',
+              6: 'middle-right',
+              7: 'bottom-left',
+              8: 'bottom-center',
+              9: 'bottom-right',
             };
             const cellDesc = cellDescriptions[screenState.activeGridCell ?? 5] ?? 'center';
             const monitorN = screenState.activeMonitorIndex + 1;
@@ -210,7 +250,9 @@ export function ChatPanel({ conversationId, onConversationCreated, onAssistantMe
       try {
         const activeId = (await window.aris.invoke('ai:get-active-provider')) as string | null;
         if (activeId) {
-          const cfgs = (await window.aris.invoke('ai:get-provider-configs')) as ProviderConfig[] | undefined;
+          const cfgs = (await window.aris.invoke('ai:get-provider-configs')) as
+            | ProviderConfig[]
+            | undefined;
           const activeCfg = cfgs?.find((c) => c.id === activeId);
           if (activeCfg?.maxTokens !== undefined) {
             maxTokens = activeCfg.maxTokens;
@@ -263,23 +305,29 @@ export function ChatPanel({ conversationId, onConversationCreated, onAssistantMe
     }
   };
 
-  const handleVoiceTranscript = useCallback((transcript: string) => {
-    if (transcript && !streaming) {
-      setInput(transcript);
-    }
-  }, [streaming]);
+  const handleVoiceTranscript = useCallback(
+    (transcript: string) => {
+      if (transcript && !streaming) {
+        setInput(transcript);
+      }
+    },
+    [streaming],
+  );
 
   return (
     <div style={containerStyle}>
       {/* ── Collapsible Message History Toggle ─── */}
-      <button
-        onClick={onToggleExpand}
-        style={historyToggleStyle}
-      >
+      <button onClick={onToggleExpand} style={historyToggleStyle}>
         <span style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
           <svg
-            width="12" height="12" viewBox="0 0 24 24" fill="none"
-            stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
+            width="12"
+            height="12"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
             style={{
               transform: expanded ? 'rotate(180deg)' : 'rotate(0deg)',
               transition: 'var(--transition-normal)',
@@ -288,9 +336,7 @@ export function ChatPanel({ conversationId, onConversationCreated, onAssistantMe
             <polyline points="18 15 12 9 6 15" />
           </svg>
           Messages
-          {messages.length > 0 && (
-            <span style={badgeStyle}>{messages.length}</span>
-          )}
+          {messages.length > 0 && <span style={badgeStyle}>{messages.length}</span>}
         </span>
         <span style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)' }}>
           {expanded ? 'Collapse' : 'Expand'}
@@ -307,7 +353,13 @@ export function ChatPanel({ conversationId, onConversationCreated, onAssistantMe
         <div style={messageListStyle}>
           {messages.length === 0 && (
             <div style={emptyStyle}>
-              <p style={{ fontSize: 'var(--text-lg)', margin: '0 0 var(--space-1)', color: 'var(--text-primary)' }}>
+              <p
+                style={{
+                  fontSize: 'var(--text-lg)',
+                  margin: '0 0 var(--space-1)',
+                  color: 'var(--text-primary)',
+                }}
+              >
                 Hey! I'm Aris.
               </p>
               <p style={{ color: 'var(--text-muted)', margin: 0, fontSize: 'var(--text-sm)' }}>
@@ -330,11 +382,13 @@ export function ChatPanel({ conversationId, onConversationCreated, onAssistantMe
       {/* ── Input Bar ────────────────────────── */}
       <div style={inputBarStyle}>
         <VoiceControls onTranscript={handleVoiceTranscript} />
-        <div style={{
-          ...inputWrapperStyle,
-          borderColor: inputFocused ? 'var(--border-strong)' : 'var(--border-default)',
-          boxShadow: inputFocused ? 'var(--shadow-glow-sm)' : 'none',
-        }}>
+        <div
+          style={{
+            ...inputWrapperStyle,
+            borderColor: inputFocused ? 'var(--border-strong)' : 'var(--border-default)',
+            boxShadow: inputFocused ? 'var(--shadow-glow-sm)' : 'none',
+          }}
+        >
           <textarea
             ref={inputRef}
             value={input}
@@ -356,7 +410,16 @@ export function ChatPanel({ conversationId, onConversationCreated, onAssistantMe
             opacity: streaming || !input.trim() ? 0.4 : 1,
           }}
         >
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <svg
+            width="18"
+            height="18"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
             <line x1="22" y1="2" x2="11" y2="13" />
             <polygon points="22 2 15 22 11 13 2 9 22 2" />
           </svg>

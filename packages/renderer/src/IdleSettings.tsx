@@ -8,11 +8,14 @@ export function IdleSettings() {
   const load = useCallback(async () => {
     const config = (await window.aris.invoke('companion:get-config')) as CompanionConfig | null;
     if (config?.idle) {
-      // Back-compat: fill in new fields with defaults if missing
+      // Back-compat: merge stored idle settings and ensure required fields
+      // are present. Spread stored values first then apply safe defaults for
+      // any missing fields to avoid duplicate-property errors in TS.
+      const stored = config.idle ?? ({} as any);
       setIdle({
-        enabled: true,
-        mode: 'beginner',
-        ...config.idle,
+        ...stored,
+        enabled: stored.enabled ?? true,
+        mode: stored.mode ?? 'beginner',
       });
     }
   }, []);
