@@ -68,6 +68,7 @@ import {
 } from './screenshot-store';
 import type { CaptureConfig, CaptureSettings, ScreenPositionMode } from '@aris/shared';
 import { getMonitorInfo, getScreenPositionState } from './screen-position';
+import { getContextState, initContextState } from './context-state';
 
 const registry = new ProviderRegistry();
 
@@ -648,6 +649,12 @@ export function registerIpcHandlers(): void {
   ipcMain.handle('setup:is-complete', async () => getSetting('hasCompletedSetup') === 'true');
 
   ipcMain.handle('setup:mark-complete', async () => setSetting('hasCompletedSetup', 'true'));
+
+  // Context state handler
+  ipcMain.handle('context:get-state', async () => getContextState());
+
+  // Initialize context state tracking (listens to capture events, pushes to renderer)
+  initContextState();
 
   // Initialize prune schedule and heartbeat on startup
   startPruneSchedule();

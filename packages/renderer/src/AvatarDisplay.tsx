@@ -1,7 +1,8 @@
 import { useRef, useEffect, useState, useCallback } from 'react';
-import { AvatarScene, IdleAnimation, IdleVariationManager, ExpressionController, GestureController, GazeController, BasePose, NonHumanoidAnimator, MicroExpressionController, SurpriseAnimationController, PoseController, PhysicsReactionController, sentimentToExpression, sentimentToPose } from '@aris/avatar';
+import { AvatarScene, IdleAnimation, IdleVariationManager, ExpressionController, GestureController, GazeController, BasePose, NonHumanoidAnimator, MicroExpressionController, SurpriseAnimationController, PoseController, PhysicsReactionController, ContextIdleController, sentimentToExpression, sentimentToPose } from '@aris/avatar';
 import type { Expression, GestureType, DockHint, PoseType } from '@aris/avatar';
-import type { AvatarInfo, CompanionConfig, PositionContext, VirtualSpaceConfig, WindowShakeEvent } from '@aris/shared';
+import type { AvatarInfo, CompanionConfig, PositionContext, VirtualSpaceConfig, WindowShakeEvent, UserContextSignals } from '@aris/shared';
+import { IDLE_PROFILE_PRESETS } from '@aris/shared';
 
 interface Props {
   /** Text of latest assistant message — used to drive expressions */
@@ -22,6 +23,7 @@ export function AvatarDisplay({ lastAssistantMessage, streaming }: Props) {
   const surpriseRef = useRef<SurpriseAnimationController | null>(null);
   const poseRef = useRef<PoseController | null>(null);
   const physicsRef = useRef<PhysicsReactionController | null>(null);
+  const contextIdleRef = useRef<ContextIdleController | null>(null);
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -104,6 +106,23 @@ export function AvatarDisplay({ lastAssistantMessage, streaming }: Props) {
             physics.setExpressionController(expr);
             physicsRef.current = physics;
 
+            // Context-aware idle state machine
+            const contextIdle = new ContextIdleController();
+            contextIdle.setControllers(idle, variations, gaze);
+            // Apply personality-driven base profile
+            if (companionConfig?.personality?.tone) {
+              const profile = IDLE_PROFILE_PRESETS[companionConfig.personality.tone];
+              if (profile) contextIdle.setPersonalityProfile(profile);
+            }
+            contextIdleRef.current = contextIdle;
+
+            // Fetch initial context state from main process
+            window.aris.invoke('context:get-state').then((state) => {
+              if (state) {
+                contextIdle.updateCaptureState((state as UserContextSignals).captureActive);
+              }
+            });
+
             // Fetch initial position context for gaze awareness
             window.aris.invoke('window:get-position-context').then((ctx) => {
               if (ctx) {
@@ -112,6 +131,7 @@ export function AvatarDisplay({ lastAssistantMessage, streaming }: Props) {
             });
 
             scene.onFrame((delta: number) => {
+              contextIdle.update(delta); // tick AFK timer + time-of-day check (before profile consumers)
               idle.resetBones();
               basePose.apply();
               pose.update(delta);   // held pose blends in after basePose, before idle
@@ -183,6 +203,7 @@ export function AvatarDisplay({ lastAssistantMessage, streaming }: Props) {
       surpriseRef.current = null;
       poseRef.current = null;
       physicsRef.current = null;
+      contextIdleRef.current = null;
     };
   }, [initScene]);
 
@@ -210,9 +231,12 @@ export function AvatarDisplay({ lastAssistantMessage, streaming }: Props) {
     return cleanup;
   }, []);
 
-  // Track user input for AFK detection (keyboard + mouse)
+  // Track user input for AFK detection (keyboard + mouse) — feeds both surprise and context controllers
   useEffect(() => {
-    const notify = () => surpriseRef.current?.notifyInput();
+    const notify = () => {
+      surpriseRef.current?.notifyInput();
+      contextIdleRef.current?.notifyInput();
+    };
     document.addEventListener('keydown', notify);
     document.addEventListener('mousedown', notify);
     document.addEventListener('mousemove', notify);
@@ -221,6 +245,16 @@ export function AvatarDisplay({ lastAssistantMessage, streaming }: Props) {
       document.removeEventListener('mousedown', notify);
       document.removeEventListener('mousemove', notify);
     };
+  }, []);
+
+  // Listen for context state changes from main process (capture start/stop)
+  useEffect(() => {
+    const cleanup = window.aris.on?.('context:state-changed', (state: unknown) => {
+      if (state && contextIdleRef.current) {
+        contextIdleRef.current.updateCaptureState((state as UserContextSignals).captureActive);
+      }
+    });
+    return cleanup;
   }, []);
 
   // Resize handler — debounced so the model only repositions after resize ends.
@@ -256,13 +290,13 @@ export function AvatarDisplay({ lastAssistantMessage, streaming }: Props) {
     return cleanup;
   }, []);
 
-  // Switch gaze mode based on streaming state
+  // Feed streaming state into context controller (manages gaze mode + idle profile)
   useEffect(() => {
-    if (!gazeRef.current) return;
-    if (streaming) {
-      gazeRef.current.setMode('speaking');
-    } else {
-      gazeRef.current.setMode('idle');
+    if (contextIdleRef.current) {
+      contextIdleRef.current.updateConversationState(!!streaming);
+    } else if (gazeRef.current) {
+      // Fallback for non-humanoid: direct gaze control
+      gazeRef.current.setMode(streaming ? 'speaking' : 'idle');
     }
   }, [streaming]);
 

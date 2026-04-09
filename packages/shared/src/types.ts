@@ -556,6 +556,53 @@ export interface InstallResult {
   error: string | null;
 }
 
+/** Time period based on system clock hour */
+export type TimeOfDay = 'morning' | 'afternoon' | 'evening' | 'night';
+
+/** Active context mode that determines idle behavior (priority order: conversation > gaming > afk > default) */
+export type ContextIdleMode = 'default' | 'afk' | 'gaming' | 'conversation';
+
+/** Context signals pushed from main process to renderer */
+export interface UserContextSignals {
+  captureActive: boolean;
+  detectedGame?: string;
+}
+
+/** Per-field multipliers applied on top of personality idle profile per context mode */
+export interface ContextModifiers {
+  breathing: number;
+  sway: number;
+  blinkFrequency: number;
+  body: number;
+  variationFrequency: number;
+  fidget: number;
+}
+
+/** Context mode modifier presets — multiplied against personality IdleProfile values */
+export const CONTEXT_MODE_MODIFIERS: Record<ContextIdleMode, ContextModifiers> = {
+  default:      { breathing: 1.0, sway: 1.0, blinkFrequency: 1.0, body: 1.0, variationFrequency: 1.0, fidget: 1.0 },
+  afk:          { breathing: 0.7, sway: 0.5, blinkFrequency: 1.4, body: 0.6, variationFrequency: 1.8, fidget: 1.5 },
+  gaming:       { breathing: 1.3, sway: 0.4, blinkFrequency: 0.7, body: 0.8, variationFrequency: 0.5, fidget: 0.5 },
+  conversation: { breathing: 0.8, sway: 0.3, blinkFrequency: 0.9, body: 0.4, variationFrequency: 0.3, fidget: 0.2 },
+};
+
+/** Time-of-day multipliers overlaid on the context mode profile */
+export const TIME_OF_DAY_MODIFIERS: Record<TimeOfDay, ContextModifiers> = {
+  morning:   { breathing: 1.0, sway: 1.0, blinkFrequency: 1.0, body: 1.0, variationFrequency: 1.0, fidget: 1.0 },
+  afternoon: { breathing: 1.1, sway: 1.05, blinkFrequency: 0.95, body: 1.1, variationFrequency: 1.1, fidget: 1.2 },
+  evening:   { breathing: 0.9, sway: 0.9, blinkFrequency: 1.1, body: 0.9, variationFrequency: 0.9, fidget: 0.8 },
+  night:     { breathing: 0.7, sway: 0.6, blinkFrequency: 1.3, body: 0.7, variationFrequency: 0.7, fidget: 0.5 },
+};
+
+/** Compute TimeOfDay from current system hour */
+export function computeTimeOfDay(): TimeOfDay {
+  const hour = new Date().getHours();
+  if (hour >= 6 && hour < 12) return 'morning';
+  if (hour >= 12 && hour < 17) return 'afternoon';
+  if (hour >= 17 && hour < 22) return 'evening';
+  return 'night';
+}
+
 /** IPC channel names for main <-> renderer communication */
 export type IpcChannel =
   | 'ai:chat'
@@ -655,4 +702,5 @@ export type IpcChannel =
   | 'setup:is-complete'
   | 'setup:mark-complete'
   | 'uninstall:scan'
-  | 'uninstall:execute';
+  | 'uninstall:execute'
+  | 'context:get-state';
