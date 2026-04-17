@@ -61,6 +61,7 @@ import {
   getFreshScreenContext,
   startScreenAnalysis,
   stopScreenAnalysis,
+  captureEvents,
 } from './capture-service';
 import {
   loadCaptureSettings,
@@ -74,6 +75,8 @@ import type { CaptureConfig, CaptureSettings, ScreenPositionMode } from '@aris/s
 import { getMonitorInfo, getScreenPositionState } from './screen-position';
 import { getContextState, initContextState } from './context-state';
 import { scanForRunningGames, getCachedRunningGames } from './process-scanner';
+import { initScreenReactions, onScreenContextUpdate } from './screen-reaction';
+import type { ScreenAnalysisContext } from '@aris/shared';
 
 const registry = new ProviderRegistry();
 
@@ -769,6 +772,22 @@ export function registerIpcHandlers(): void {
   // Start background process scanner (runs every 60s, populates cached game list)
   scanForRunningGames().catch(() => {});
   setInterval(() => { scanForRunningGames().catch(() => {}); }, 60_000);
+
+  // Initialize proactive screen reactions (personality-driven game announcements)
+  initScreenReactions(
+    async (prompt: string) => {
+      const provider = registry.getActive();
+      return provider.chat([{ role: 'user', content: prompt }], { maxTokens: 150 });
+    },
+    (_text: string) => {
+      // Message delivery is handled via the ai:proactive-message event in screen-reaction.ts
+    },
+  );
+
+  // Forward screen context updates to reaction system
+  captureEvents.on('screen-context-update', (ctx: ScreenAnalysisContext) => {
+    onScreenContextUpdate(ctx);
+  });
 }
 
 export { registry };

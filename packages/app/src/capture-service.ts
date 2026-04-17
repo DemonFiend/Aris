@@ -315,10 +315,11 @@ export function startScreenAnalysis(
         timestamp: Date.now(),
       };
 
-      // Broadcast to renderer
+      // Broadcast to renderer and reaction system
       for (const win of BrowserWindow.getAllWindows()) {
         win.webContents.send('vision:context-update', latestScreenContext);
       }
+      captureEvents.emit('screen-context-update', latestScreenContext);
     } catch (err) {
       // Skip silently — will retry at next interval
       console.warn('[screen-analysis] Analysis failed:', err instanceof Error ? err.message : err);

@@ -142,6 +142,23 @@ export function ChatPanel({
     return cleanup;
   }, []);
 
+  // Listen for proactive messages from screen reaction system
+  useEffect(() => {
+    const cleanup = window.aris.on('ai:proactive-message', (data: unknown) => {
+      const { text } = data as { text: string; trigger: string; game: string };
+      if (text) {
+        setMessages((prev) => [...prev, { role: 'assistant', content: text }]);
+        // Save to conversation if one exists
+        const convId = activeConvRef.current;
+        if (convId) {
+          window.aris.invoke('messages:add', convId, 'assistant', text).catch(() => {});
+        }
+        onAssistantMessage?.(text);
+      }
+    });
+    return cleanup;
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Listen for screen analysis context updates
   useEffect(() => {
     // Load initial context
