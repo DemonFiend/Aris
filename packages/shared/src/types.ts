@@ -339,6 +339,14 @@ export const IDLE_PROFILE_PRESETS: Record<PersonaTone, IdleProfile> = {
   },
 };
 
+/** Beat reactivity — avatar reacts to system audio (music/game sounds). */
+export interface BeatReactivityConfig {
+  /** Master on/off. Off by default for privacy (capture requires consent). */
+  enabled: boolean;
+  /** Scales motion amplitude (0..2). 1.0 = default, 0 = no motion even if enabled. */
+  sensitivity: number;
+}
+
 /** Full companion config — extensible with sensible defaults */
 export interface CompanionConfig {
   personality: CompanionPersonality;
@@ -346,6 +354,8 @@ export interface CompanionConfig {
   defaultAvatar: string | null;
   ttsVoice: string | null;
   wakeWord: string | null;
+  /** Optional — avatar reacts to system audio. Off by default. */
+  beatReactivity?: BeatReactivityConfig;
 }
 
 export const DEFAULT_COMPANION_CONFIG: CompanionConfig = {
@@ -377,6 +387,10 @@ export const DEFAULT_COMPANION_CONFIG: CompanionConfig = {
   defaultAvatar: null,
   ttsVoice: null,
   wakeWord: null,
+  beatReactivity: {
+    enabled: false,
+    sensitivity: 1.0,
+  },
 };
 
 /** Screen position awareness mode */
@@ -563,6 +577,9 @@ export interface ScreenAnalysisContext {
   detectedGame: string | null;
   timestamp: number;
 }
+
+/** Click reaction escalation levels */
+export type ClickReactionType = 'surprised' | 'giggle' | 'annoyed' | 'pushback';
 
 /** Time period based on system clock hour */
 export type TimeOfDay = 'morning' | 'afternoon' | 'evening' | 'night';

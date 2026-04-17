@@ -301,6 +301,55 @@ export function CapturePanel() {
         <SliderRow label="Interval" value={settings.heartbeatIntervalSeconds >= 60 ? `${Math.round(settings.heartbeatIntervalSeconds / 60)}m` : `${settings.heartbeatIntervalSeconds}s`} min={30} max={28800} step={30} current={settings.heartbeatIntervalSeconds} onChange={(v) => updateSetting('heartbeatIntervalSeconds', v)} />
       )}
 
+      {/* AI Screen Analysis — only show when heartbeat is enabled */}
+      {settings.heartbeatEnabled && (
+        <>
+          <div style={dividerStyle} />
+          <SectionLabel>AI Screen Analysis</SectionLabel>
+          <p style={hintStyle}>
+            Let Aris analyze your screen periodically so she knows what you're doing.
+            Screenshots are sent to your configured AI provider for analysis.
+            No images are stored — only the text analysis is kept in memory.
+          </p>
+          <div style={rowStyle}>
+            <span style={{ fontSize: 'var(--text-base)', fontWeight: 'var(--font-medium)' as any }}>Enabled</span>
+            <ToggleSwitch on={settings.aiScreenAnalysisEnabled} onClick={() => updateSetting('aiScreenAnalysisEnabled', !settings.aiScreenAnalysisEnabled)} />
+          </div>
+          {settings.aiScreenAnalysisEnabled && (
+            <>
+              <SliderRow
+                label="Analysis Interval"
+                value={settings.aiAnalysisIntervalSeconds >= 60 ? `${Math.round(settings.aiAnalysisIntervalSeconds / 60)}m` : `${settings.aiAnalysisIntervalSeconds}s`}
+                min={30}
+                max={28800}
+                step={30}
+                current={settings.aiAnalysisIntervalSeconds}
+                onChange={(v) => updateSetting('aiAnalysisIntervalSeconds', v)}
+              />
+              <SliderRow
+                label="Analysis Resolution"
+                value={`${settings.aiAnalysisMaxWidth}px`}
+                min={320}
+                max={1920}
+                step={64}
+                current={settings.aiAnalysisMaxWidth}
+                onChange={(v) => updateSetting('aiAnalysisMaxWidth', v)}
+              />
+              <SliderRow
+                label="Analysis Quality"
+                value={`${settings.aiAnalysisQuality}%`}
+                min={20}
+                max={100}
+                step={5}
+                current={settings.aiAnalysisQuality}
+                onChange={(v) => updateSetting('aiAnalysisQuality', v)}
+              />
+              <p style={hintStyle}>Lower resolution and quality reduces AI token costs.</p>
+            </>
+          )}
+        </>
+      )}
+
       {/* Footer */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 'var(--space-4)' }}>
         <button onClick={revokeConsent} style={{ ...chipBtnStyle, color: 'var(--text-muted)' }}>

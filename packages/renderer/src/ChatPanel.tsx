@@ -6,6 +6,7 @@ import type {
   CompanionConfig,
   ScreenPositionState,
   ProviderConfig,
+  ScreenAnalysisContext,
 } from '@aris/shared';
 import { buildPersonaSystemPrompt } from '@aris/shared';
 import { VoiceControls } from './VoiceControls';
@@ -36,6 +37,9 @@ export function ChatPanel({
   const [input, setInput] = useState('');
   const [streaming, setStreaming] = useState(false);
   const [inputFocused, setInputFocused] = useState(false);
+  const [screenContext, setScreenContext] = useState<ScreenAnalysisContext | null>(null);
+  const [screenContextExpanded, setScreenContextExpanded] = useState(false);
+  const [includeScreenshot, setIncludeScreenshot] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const streamBufferRef = useRef('');
@@ -134,6 +138,19 @@ export function ChatPanel({
             });
         }
       }
+    });
+    return cleanup;
+  }, []);
+
+  // Listen for screen analysis context updates
+  useEffect(() => {
+    // Load initial context
+    window.aris.invoke('vision:get-screen-context').then((ctx) => {
+      if (ctx) setScreenContext(ctx as ScreenAnalysisContext);
+    }).catch(() => {});
+
+    const cleanup = window.aris.on('vision:context-update', (ctx: unknown) => {
+      setScreenContext(ctx as ScreenAnalysisContext);
     });
     return cleanup;
   }, []);
@@ -262,7 +279,8 @@ export function ChatPanel({
         // Provider config unavailable — use backend default
       }
 
-      await window.aris.invoke('ai:stream-chat', chatMessages, {
+      const chatChannel = includeScreenshot ? 'ai:chat-with-screenshot' : 'ai:stream-chat';
+      await window.aris.invoke(chatChannel, chatMessages, {
         systemPrompt,
         ...(maxTokens !== undefined ? { maxTokens } : {}),
       });
@@ -379,9 +397,59 @@ export function ChatPanel({
         </div>
       </div>
 
+      {/* ── Screen Context Indicator ────────── */}
+      {screenContext && (
+        <button
+          onClick={() => setScreenContextExpanded((p) => !p)}
+          style={screenContextBtnStyle}
+        >
+          <span style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-1)' }}>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+              <circle cx="12" cy="12" r="3" />
+            </svg>
+            <span>Watching your screen</span>
+            {screenContext.detectedGame && (
+              <span style={{ color: 'var(--text-accent)', fontWeight: 'var(--font-semibold)' as any }}>
+                — {screenContext.detectedGame}
+              </span>
+            )}
+          </span>
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ transform: screenContextExpanded ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'var(--transition-fast)' }}>
+            <polyline points="6 9 12 15 18 9" />
+          </svg>
+        </button>
+      )}
+      {screenContext && screenContextExpanded && (
+        <div style={screenContextDetailStyle}>
+          <p style={{ margin: 0, fontSize: 'var(--text-xs)', color: 'var(--text-secondary)', lineHeight: 'var(--leading-relaxed)' }}>
+            {screenContext.analysis}
+          </p>
+          <span style={{ fontSize: '0.6rem', color: 'var(--text-muted)', marginTop: 'var(--space-1)', display: 'block' }}>
+            Updated {Math.round((Date.now() - screenContext.timestamp) / 60_000)} min ago
+          </span>
+        </div>
+      )}
+
       {/* ── Input Bar ────────────────────────── */}
       <div style={inputBarStyle}>
         <VoiceControls onTranscript={handleVoiceTranscript} />
+        {/* Screenshot toggle button */}
+        <button
+          onClick={() => setIncludeScreenshot((p) => !p)}
+          title={includeScreenshot ? 'Screenshot attached — click to remove' : 'Include screenshot with message'}
+          style={{
+            ...screenshotBtnStyle,
+            background: includeScreenshot ? 'var(--color-primary-subtle)' : 'transparent',
+            color: includeScreenshot ? 'var(--color-primary)' : 'var(--text-muted)',
+          }}
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+            <circle cx="8.5" cy="8.5" r="1.5" />
+            <polyline points="21 15 16 10 5 21" />
+          </svg>
+        </button>
         <div
           style={{
             ...inputWrapperStyle,
@@ -570,4 +638,38 @@ const sendBtnStyle: React.CSSProperties = {
   transition: 'var(--transition-fast)',
   flexShrink: 0,
   boxShadow: 'var(--shadow-glow-sm)',
+};
+
+const screenContextBtnStyle: React.CSSProperties = {
+  width: '100%',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+  padding: 'var(--space-1) var(--space-4)',
+  background: 'var(--bg-elevated)',
+  border: 'none',
+  borderTop: '1px solid var(--border-subtle)',
+  color: 'var(--text-muted)',
+  fontSize: 'var(--text-xs)',
+  cursor: 'pointer',
+  transition: 'var(--transition-fast)',
+};
+
+const screenContextDetailStyle: React.CSSProperties = {
+  padding: 'var(--space-2) var(--space-4)',
+  background: 'var(--bg-elevated)',
+  borderTop: '1px solid var(--border-subtle)',
+};
+
+const screenshotBtnStyle: React.CSSProperties = {
+  border: 'none',
+  borderRadius: 'var(--radius-md)',
+  width: 32,
+  height: 32,
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  cursor: 'pointer',
+  transition: 'var(--transition-fast)',
+  flexShrink: 0,
 };
