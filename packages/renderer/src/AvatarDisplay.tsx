@@ -1,8 +1,10 @@
 import { useRef, useEffect, useState, useCallback } from 'react';
-import { AvatarScene, IdleAnimation, IdleVariationManager, ExpressionController, GestureController, GazeController, BasePose, NonHumanoidAnimator, MicroExpressionController, SurpriseAnimationController, PoseController, PhysicsReactionController, ContextIdleController, sentimentToExpression, sentimentToPose } from '@aris/avatar';
+import * as THREE from 'three';
+import { AvatarScene, IdleAnimation, IdleVariationManager, ExpressionController, GestureController, GazeController, BasePose, NonHumanoidAnimator, MicroExpressionController, SurpriseAnimationController, PoseController, PhysicsReactionController, ContextIdleController, ClickReactionController, BeatReactionController, sentimentToExpression, sentimentToPose } from '@aris/avatar';
 import type { Expression, GestureType, DockHint, PoseType } from '@aris/avatar';
 import type { AvatarInfo, CompanionConfig, PositionContext, VirtualSpaceConfig, WindowShakeEvent, UserContextSignals } from '@aris/shared';
 import { IDLE_PROFILE_PRESETS } from '@aris/shared';
+import { AudioAnalyzer } from './audio-analyzer';
 
 interface Props {
   /** Text of latest assistant message — used to drive expressions */
@@ -24,6 +26,9 @@ export function AvatarDisplay({ lastAssistantMessage, streaming }: Props) {
   const poseRef = useRef<PoseController | null>(null);
   const physicsRef = useRef<PhysicsReactionController | null>(null);
   const contextIdleRef = useRef<ContextIdleController | null>(null);
+  const clickReactionRef = useRef<ClickReactionController | null>(null);
+  const beatReactionRef = useRef<BeatReactionController | null>(null);
+  const audioAnalyzerRef = useRef<AudioAnalyzer | null>(null);
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -116,6 +121,21 @@ export function AvatarDisplay({ lastAssistantMessage, streaming }: Props) {
             }
             contextIdleRef.current = contextIdle;
 
+            const clickReaction = new ClickReactionController();
+            clickReaction.setVRM(vrm);
+            clickReaction.setControllers(expr, gesture);
+            clickReactionRef.current = clickReaction;
+
+            const beatReaction = new BeatReactionController();
+            beatReaction.setVRM(vrm);
+            if (companionConfig?.beatReactivity) {
+              beatReaction.setSensitivity(companionConfig.beatReactivity.sensitivity);
+              // Controller stays disabled until the analyzer is running, so
+              // a stale "enabled=true" config without capture consent never
+              // produces phantom motion.
+            }
+            beatReactionRef.current = beatReaction;
+
             // Fetch initial context state from main process
             window.aris.invoke('context:get-state').then((state) => {
               if (state) {
@@ -138,10 +158,17 @@ export function AvatarDisplay({ lastAssistantMessage, streaming }: Props) {
               idle.update(delta);
               variations.update(delta);
               physics.update(delta);    // window-shake physics reactions (additive bone)
+              // Beat reactivity — poll analyzer and feed controller (additive bone).
+              // Controller is a no-op unless enabled + analyzer is running.
+              if (audioAnalyzerRef.current?.isRunning()) {
+                beatReaction.setBeatFrame(audioAnalyzerRef.current.getCurrentFrame());
+              }
+              beatReaction.update(delta);
               surprise.update(delta);   // AFK state + sleep head droop (additive bone)
               expr.update(delta);
               microExpr.update(delta);  // additive blend-shape twitches (runs after expr)
               gesture.update(delta);
+              clickReaction.update(delta);  // click-on-avatar escalating reactions (additive bone)
               gaze.update(delta);
             });
           } else {
@@ -204,8 +231,58 @@ export function AvatarDisplay({ lastAssistantMessage, streaming }: Props) {
       poseRef.current = null;
       physicsRef.current = null;
       contextIdleRef.current = null;
+      clickReactionRef.current = null;
+      beatReactionRef.current?.setEnabled(false);
+      beatReactionRef.current = null;
+      audioAnalyzerRef.current?.stop().catch(() => {});
+      audioAnalyzerRef.current = null;
     };
   }, [initScene]);
+
+  // Start/stop system audio capture when companion config toggles beat reactivity.
+  // Controller stays in sync with capture state — if capture fails, the
+  // controller stays disabled so no phantom motion runs.
+  useEffect(() => {
+    if (!loaded) return;
+    let cancelled = false;
+
+    const applyConfig = async (cfg: CompanionConfig | null) => {
+      const beat = cfg?.beatReactivity;
+      const ctrl = beatReactionRef.current;
+      if (!ctrl) return;
+
+      if (beat?.enabled) {
+        ctrl.setSensitivity(beat.sensitivity);
+        if (!audioAnalyzerRef.current) {
+          audioAnalyzerRef.current = new AudioAnalyzer();
+        }
+        if (!audioAnalyzerRef.current.isRunning()) {
+          try {
+            await audioAnalyzerRef.current.start();
+            if (!cancelled) ctrl.setEnabled(true);
+          } catch (err) {
+            console.warn('[beat-reactivity] audio capture failed', err);
+            ctrl.setEnabled(false);
+          }
+        } else {
+          ctrl.setEnabled(true);
+        }
+      } else {
+        ctrl.setEnabled(false);
+        if (audioAnalyzerRef.current?.isRunning()) {
+          await audioAnalyzerRef.current.stop();
+        }
+      }
+    };
+
+    window.aris.invoke('companion:get-config').then((cfg) => {
+      if (!cancelled) void applyConfig(cfg as CompanionConfig | null);
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [loaded]);
 
   // Listen for gesture triggers from main process
   useEffect(() => {
@@ -330,6 +407,46 @@ export function AvatarDisplay({ lastAssistantMessage, streaming }: Props) {
     });
     return cleanup;
   }, []);
+
+  // Click-on-avatar raycast — triggers escalating reactions
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    const scene = sceneRef.current;
+    if (!canvas || !scene || !loaded) return;
+
+    const raycaster = new THREE.Raycaster();
+    const pointer = new THREE.Vector2();
+
+    const handleClick = (e: MouseEvent) => {
+      if (!clickReactionRef.current) return;
+
+      const vrm = scene.getVRM();
+      if (!vrm) return;
+
+      // Compute normalized device coordinates from click position
+      const rect = canvas.getBoundingClientRect();
+      pointer.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+      pointer.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+
+      raycaster.setFromCamera(pointer, scene.camera);
+
+      // Collect SkinnedMesh children of the VRM scene for raycast targets
+      const meshes: THREE.Object3D[] = [];
+      vrm.scene.traverse((obj) => {
+        if (obj instanceof THREE.SkinnedMesh || obj instanceof THREE.Mesh) {
+          meshes.push(obj);
+        }
+      });
+
+      const hits = raycaster.intersectObjects(meshes, false);
+      if (hits.length > 0) {
+        clickReactionRef.current.trigger();
+      }
+    };
+
+    canvas.addEventListener('click', handleClick);
+    return () => canvas.removeEventListener('click', handleClick);
+  }, [loaded]);
 
   // Mouse-tracked gaze — pass normalized screen coords to gaze controller
   useEffect(() => {

@@ -20,3 +20,6 @@ export { PoseController, sentimentToPose } from './pose-controller';
 export type { PoseType } from './pose-controller';
 export { PhysicsReactionController } from './physics-reactions';
 export { ContextIdleController } from './context-idle';
+export { ClickReactionController } from './click-reaction';
+export { BeatReactionController } from './beat-reaction';
+export type { BeatFrame } from './beat-reaction';
