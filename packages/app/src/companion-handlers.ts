@@ -16,6 +16,10 @@ function getCompanionConfig(): CompanionConfig {
       ...saved,
       personality: { ...DEFAULT_COMPANION_CONFIG.personality, ...saved.personality },
       idle: { ...DEFAULT_COMPANION_CONFIG.idle, ...saved.idle },
+      beatReactivity: {
+        ...DEFAULT_COMPANION_CONFIG.beatReactivity!,
+        ...(saved.beatReactivity ?? {}),
+      },
     };
   } catch {
     return { ...DEFAULT_COMPANION_CONFIG };
@@ -34,6 +38,10 @@ export function registerCompanionHandlers(): void {
       ...config,
       personality: { ...current.personality, ...(config.personality ?? {}) },
       idle: { ...current.idle, ...(config.idle ?? {}) },
+      beatReactivity: {
+        ...current.beatReactivity!,
+        ...(config.beatReactivity ?? {}),
+      },
     };
     setSetting(COMPANION_CONFIG_KEY, JSON.stringify(merged));
     return merged;
