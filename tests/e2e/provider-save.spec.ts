@@ -120,6 +120,42 @@ test.describe('Provider save', () => {
     await electronApp2.close();
   });
 
+  test('should keep provider active when re-saving its config', async () => {
+    const electronApp = await electron.launch({ args: [appPath] });
+    const window = await electronApp.firstWindow();
+    await window.waitForLoadState('domcontentloaded');
+
+    const result = await window.evaluate(async () => {
+      try {
+        await (window as any).aris.invoke('ai:save-provider-config', {
+          id: 'ollama',
+          enabled: true,
+          baseUrl: 'http://127.0.0.1:11434',
+          defaultModel: 'llama3',
+        });
+        await (window as any).aris.invoke('ai:set-provider', 'ollama');
+        const before = await (window as any).aris.invoke('ai:get-active-provider');
+
+        await (window as any).aris.invoke('ai:save-provider-config', {
+          id: 'ollama',
+          enabled: true,
+          baseUrl: 'http://127.0.0.1:11434',
+          defaultModel: 'llama3.1',
+        });
+        const after = await (window as any).aris.invoke('ai:get-active-provider');
+
+        return { before, after };
+      } catch (err: any) {
+        return { error: err.message };
+      }
+    });
+
+    expect(result.before).toBe('ollama');
+    expect(result.after).toBe('ollama');
+
+    await electronApp.close();
+  });
+
   test('should reject non-HTTPS remote URL for any provider', async () => {
     const electronApp = await electron.launch({ args: [appPath] });
     const window = await electronApp.firstWindow();

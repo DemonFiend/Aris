@@ -131,6 +131,9 @@ function validateProviderUrl(url: string): void {
 function initProviderFromConfig(config: ProviderConfig): void {
   if (!config.enabled) return;
 
+  // Preserve active state across re-register: unregister clears activeId if it
+  // matches, so we restore it after the new instance is in place.
+  const wasActive = registry.getActiveId() === config.id;
   registry.unregister(config.id);
 
   switch (config.id) {
@@ -164,6 +167,10 @@ function initProviderFromConfig(config: ProviderConfig): void {
       if (config.baseUrl) validateProviderUrl(config.baseUrl);
       registry.register(new LMStudioProvider(config.baseUrl, config.defaultModel));
       break;
+  }
+
+  if (wasActive && registry.get(config.id)) {
+    registry.setActive(config.id);
   }
 }
 
