@@ -407,6 +407,24 @@ function defaultInstallDir(): string {
 }
 
 /**
+ * Locate PowerShell on Windows. Electron's spawn PATH doesn't always include
+ * System32, so a bare `powershell.exe` lookup fails with ENOENT. Try the
+ * canonical install path first, then PowerShell 7 (pwsh) as fallback.
+ */
+function resolvePowerShell(): string {
+  const sysRoot = process.env['SystemRoot'] ?? 'C:\\Windows';
+  const wps = path.join(sysRoot, 'System32', 'WindowsPowerShell', 'v1.0', 'powershell.exe');
+  if (fs.existsSync(wps)) return wps;
+
+  // PowerShell 7 (pwsh) — commonly under Program Files\PowerShell\7
+  const pwsh = path.join(process.env['ProgramFiles'] ?? 'C:\\Program Files', 'PowerShell', '7', 'pwsh.exe');
+  if (fs.existsSync(pwsh)) return pwsh;
+
+  // Last resort: hope it's on PATH (typical for dev shells)
+  return 'powershell.exe';
+}
+
+/**
  * Run the Quick Install script for a service. Streams progress events via
  * the supplied callback and resolves with success/failure when the child
  * exits. Errors thrown by spawning are surfaced as a final 'error' event.
@@ -425,6 +443,16 @@ export async function runQuickInstall(
 
   const gpuBackend = await pickGpuBackend();
 
+  // Make sure the install root exists before we hand it to the child as cwd —
+  // spawn otherwise blows up with ENOENT on the directory itself.
+  try {
+    fs.mkdirSync(installDir, { recursive: true });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    onProgress({ service: name, stage: 'error', percent: 100, message: `Could not create install dir: ${msg}`, line: '' });
+    return { service: name, success: false, exitCode: null, error: msg };
+  }
+
   onProgress({
     service: name,
     stage: 'starting',
@@ -437,7 +465,7 @@ export async function runQuickInstall(
   let cmd: string;
   let args: string[];
   if (meta.ext === 'ps1') {
-    cmd = 'powershell.exe';
+    cmd = resolvePowerShell();
     args = [
       '-ExecutionPolicy', 'Bypass',
       '-NoProfile',
