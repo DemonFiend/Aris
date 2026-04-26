@@ -704,6 +704,7 @@ export type IpcChannel =
   | 'tts:test-connection'
   | 'tts:get-voices'
   | 'tts:synth'
+  | 'tts:rescan'
   | 'hardware:gpu-runtime'
   | 'vision:start-capture'
   | 'vision:stop-capture'

@@ -110,14 +110,34 @@ export function TTSProviderSettings() {
     });
   }, []);
 
-  // While an install is in flight, poll the registry every few seconds so the
-  // newly-installed provider appears as Active without a manual refresh.
+  // Poll the main process to rescan + refresh the registry so the newly-
+  // installed provider appears without an app restart. We keep polling for
+  // ~60 seconds *after* the script finishes too — the F5-TTS server takes
+  // 20-40s to load the model on first launch, longer than the install itself.
   useEffect(() => {
-    if (!installing || installing.result) return;
-    installRefreshTimer.current = setInterval(() => {
-      void refresh();
-    }, 4000);
+    if (!installing) return;
+    const startedAfterCompletion = installing.result ? Date.now() : null;
+    let cancelled = false;
+
+    const tick = async () => {
+      if (cancelled) return;
+      try {
+        await window.aris.invoke('tts:rescan');
+      } catch {
+        // ignore — best-effort
+      }
+      await refresh();
+      if (!cancelled && installing.result && startedAfterCompletion) {
+        const elapsed = Date.now() - startedAfterCompletion;
+        if (elapsed > 60_000) return; // give up; user can re-open the panel later
+      }
+    };
+
+    installRefreshTimer.current = setInterval(() => { void tick(); }, 4000);
+    void tick();
+
     return () => {
+      cancelled = true;
       if (installRefreshTimer.current) {
         clearInterval(installRefreshTimer.current);
         installRefreshTimer.current = null;
@@ -205,9 +225,23 @@ export function TTSProviderSettings() {
     return true;
   };
 
+  const rescan = async () => {
+    try {
+      await window.aris.invoke('tts:rescan');
+    } catch {
+      // ignore
+    }
+    await refresh();
+  };
+
   return (
     <div style={containerStyle}>
-      <h3 style={headingStyle}>TTS Provider</h3>
+      <div style={headerRowStyle}>
+        <h3 style={headingStyle}>TTS Provider</h3>
+        <button onClick={() => void rescan()} style={secondaryBtnStyle} title="Re-detect TTS services">
+          Rescan
+        </button>
+      </div>
       {gpu && <GpuStatusBanner gpu={gpu} />}
 
       {KNOWN_PROVIDERS.map((known) => {
@@ -417,6 +451,13 @@ const headingStyle: React.CSSProperties = {
   fontSize: 'var(--text-md)',
   fontWeight: 600,
   color: 'var(--text-primary)',
+};
+
+const headerRowStyle: React.CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+  gap: 'var(--space-2)',
 };
 
 function cardStyle(active: boolean): React.CSSProperties {

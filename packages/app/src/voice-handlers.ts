@@ -56,6 +56,56 @@ function unregisterPushToTalkShortcut(): void {
 }
 
 /**
+ * Re-scan local TTS services and (un)register providers based on what's
+ * currently reachable. Called once at startup and on demand from the
+ * renderer (tts:rescan) so that newly-installed services show up without
+ * an app restart — used by the Quick Install post-completion polling.
+ */
+export async function refreshTTSProviders(): Promise<void> {
+  // Kokoro
+  try {
+    const kokoro = await detectService('kokoro');
+    if (kokoro.running && kokoro.endpoint) {
+      ttsRegistry.replace(new KokoroProvider(kokoro.endpoint));
+    } else if (ttsRegistry.get('kokoro')) {
+      ttsRegistry.unregister('kokoro');
+    }
+  } catch (err) {
+    console.warn(`[refreshTTSProviders] Kokoro: ${err instanceof Error ? err.message : err}`);
+  }
+
+  // F5-TTS
+  try {
+    const f5 = await detectService('f5-tts');
+    if (f5.running && f5.endpoint) {
+      ttsRegistry.replace(new F5TTSProvider(f5.endpoint));
+    } else if (ttsRegistry.get('f5-tts')) {
+      ttsRegistry.unregister('f5-tts');
+    }
+  } catch (err) {
+    console.warn(`[refreshTTSProviders] F5-TTS: ${err instanceof Error ? err.message : err}`);
+  }
+
+  // Sesame CSM
+  try {
+    const sesame = await detectService('sesame-csm');
+    if (sesame.running && sesame.endpoint) {
+      ttsRegistry.replace(new SesameCSMProvider(sesame.endpoint));
+    } else if (ttsRegistry.get('sesame-csm')) {
+      ttsRegistry.unregister('sesame-csm');
+    }
+  } catch (err) {
+    console.warn(`[refreshTTSProviders] Sesame CSM: ${err instanceof Error ? err.message : err}`);
+  }
+
+  // Re-apply persisted active provider in case it was just (re)registered.
+  const savedActiveId = getSetting('activeTTSProviderId');
+  if (savedActiveId && ttsRegistry.get(savedActiveId) && ttsRegistry.getActiveId() !== savedActiveId) {
+    ttsRegistry.setActive(savedActiveId);
+  }
+}
+
+/**
  * Initialise TTS providers based on detected/configured services. Run once
  * during main-process startup before handlers are wired so the registry is
  * populated before any IPC call lands.
@@ -177,6 +227,11 @@ export function registerVoiceHandlers(): void {
 
   ipcMain.handle('tts:get-active-provider', async () => {
     return ttsRegistry.getActiveId();
+  });
+
+  ipcMain.handle('tts:rescan', async () => {
+    await refreshTTSProviders();
+    return ttsRegistry.getAll().map((p) => p.id);
   });
 
   ipcMain.handle('tts:set-provider', async (_event, providerId: string) => {
