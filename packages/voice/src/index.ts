@@ -13,3 +13,4 @@ export { WebSpeechTTS } from './web-speech-tts';
 export { VolumeVAD } from './vad';
 export { TTSRegistry } from './tts-registry';
 export { KokoroProvider } from './kokoro-provider';
+export { FishSpeechProvider } from './fish-speech-provider';

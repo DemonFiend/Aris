@@ -1,6 +1,6 @@
 import { ipcMain, BrowserWindow, globalShortcut } from 'electron';
 import type { VoiceConfig } from '@aris/shared';
-import { TTSRegistry, KokoroProvider } from '@aris/voice';
+import { TTSRegistry, KokoroProvider, FishSpeechProvider } from '@aris/voice';
 import type { TTSOptions } from '@aris/voice';
 import { getSetting, setSetting, deleteSetting } from './settings-store';
 import { detectService } from './service-detector';
@@ -69,6 +69,17 @@ export async function initTTSProviders(): Promise<void> {
     }
   } catch (err) {
     console.warn(`[initTTSProviders] Kokoro detection failed: ${err instanceof Error ? err.message : err}`);
+  }
+
+  // Fish Speech: same pattern — register if the user is already running the
+  // api_server. They start the Python service themselves; we just connect.
+  try {
+    const fish = await detectService('fish-speech');
+    if (fish.running && fish.endpoint) {
+      ttsRegistry.register(new FishSpeechProvider(fish.endpoint));
+    }
+  } catch (err) {
+    console.warn(`[initTTSProviders] Fish Speech detection failed: ${err instanceof Error ? err.message : err}`);
   }
 
   // Restore the active provider from persistent settings.
