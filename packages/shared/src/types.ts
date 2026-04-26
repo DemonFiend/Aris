@@ -503,6 +503,39 @@ export interface ServiceInstallInfo {
   installSteps: string[];
   /** Extra advisory shown after install (e.g. model download reminder), or null */
   modelNote: string | null;
+  /** True when a Quick Install script is bundled for this service.
+   *  Renderer renders the one-click button when set. */
+  hasQuickInstall?: boolean;
+}
+
+/** Per-platform script paths for one-click install. Resolved relative to
+ *  the bundled install-scripts resources directory. */
+export interface QuickInstallScripts {
+  win32?: string;
+  darwin?: string;
+  linux?: string;
+}
+
+/** Streaming event emitted while a Quick Install script runs. */
+export interface QuickInstallProgress {
+  service: ServiceName;
+  /** Coarse milestone the script is currently in. */
+  stage: 'starting' | 'checking' | 'cloning' | 'venv' | 'deps' | 'weights' | 'wrapper' | 'launching' | 'done' | 'error';
+  /** 0-100 — only advances; terminal states fire {percent: 100} */
+  percent: number;
+  /** Short human-readable status (replaces the modal subtitle). */
+  message: string;
+  /** Raw stdout/stderr line for the live log; empty on synthetic events. */
+  line: string;
+}
+
+/** Result returned by install:run-quick-install when the script exits. */
+export interface QuickInstallResult {
+  service: ServiceName;
+  success: boolean;
+  exitCode: number | null;
+  /** Final error message if the script failed. */
+  error: string | null;
 }
 
 /** Detection result for a single local service */
@@ -747,6 +780,7 @@ export type IpcChannel =
   | 'install:launch-installer'
   | 'install:extract'
   | 'install:start-service'
+  | 'install:run-quick-install'
   | 'setup:is-complete'
   | 'setup:mark-complete'
   | 'uninstall:scan'

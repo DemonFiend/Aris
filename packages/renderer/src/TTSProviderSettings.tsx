@@ -1,5 +1,5 @@
-import { useState, useEffect, useCallback } from 'react';
-import type { GpuRuntime, ServiceInstallInfo } from '@aris/shared';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import type { GpuRuntime, ServiceInstallInfo, ServiceName, QuickInstallProgress, QuickInstallResult } from '@aris/shared';
 
 interface TTSProviderInfo {
   id: string;
@@ -49,6 +49,19 @@ export function TTSProviderSettings() {
   const [testStatus, setTestStatus] = useState<Record<string, 'idle' | 'testing' | 'ok' | 'fail'>>({});
   const [setupOpen, setSetupOpen] = useState<string | null>(null);
   const [setupInfo, setSetupInfo] = useState<ServiceInstallInfo | null>(null);
+  const [installInfos, setInstallInfos] = useState<Partial<Record<string, ServiceInstallInfo>>>({});
+
+  // Quick Install state — null when no install is in flight.
+  const [installing, setInstalling] = useState<{
+    serviceName: ServiceName;
+    displayName: string;
+    percent: number;
+    stage: string;
+    message: string;
+    log: string[];
+    result: QuickInstallResult | null;
+  } | null>(null);
+  const installRefreshTimer = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const refresh = useCallback(async () => {
     const list = (await window.aris.invoke('tts:list-providers')) as TTSProviderInfo[];
@@ -66,8 +79,51 @@ export function TTSProviderSettings() {
       } catch {
         // hardware probe unavailable — UI degrades gracefully
       }
+      // Eagerly fetch install info so the Quick Install button renders without
+      // waiting for the user to expand a card.
+      const infos: Partial<Record<string, ServiceInstallInfo>> = {};
+      for (const known of KNOWN_PROVIDERS) {
+        try {
+          const info = (await window.aris.invoke('install:get-info', known.serviceName)) as ServiceInstallInfo;
+          infos[known.id] = info;
+        } catch {
+          // ignore — provider just won't show a Quick Install button
+        }
+      }
+      setInstallInfos(infos);
     })();
   }, [refresh]);
+
+  // Listen for streaming Quick Install progress events from the main process.
+  useEffect(() => {
+    return window.aris.on('install:quick-install-progress', (raw: unknown) => {
+      const p = raw as QuickInstallProgress;
+      setInstalling((curr) => {
+        if (!curr || curr.serviceName !== p.service) return curr;
+        const log = p.line ? [...curr.log, p.line].slice(-200) : curr.log;
+        // Sentinel `-1` means "no percent change, log line only"
+        const percent = (p.percent as number) >= 0 ? p.percent : curr.percent;
+        const stage = p.stage && p.percent >= 0 ? p.stage : curr.stage;
+        const message = p.message || curr.message;
+        return { ...curr, percent, stage, message, log };
+      });
+    });
+  }, []);
+
+  // While an install is in flight, poll the registry every few seconds so the
+  // newly-installed provider appears as Active without a manual refresh.
+  useEffect(() => {
+    if (!installing || installing.result) return;
+    installRefreshTimer.current = setInterval(() => {
+      void refresh();
+    }, 4000);
+    return () => {
+      if (installRefreshTimer.current) {
+        clearInterval(installRefreshTimer.current);
+        installRefreshTimer.current = null;
+      }
+    };
+  }, [installing, refresh]);
 
   const isRegistered = (id: string) => registered.some((p) => p.id === id);
 
@@ -90,6 +146,33 @@ export function TTSProviderSettings() {
     await window.aris.invoke('tts:clear-provider');
     await refresh();
   };
+
+  const startQuickInstall = async (serviceName: ServiceName, displayName: string) => {
+    setInstalling({
+      serviceName,
+      displayName,
+      percent: 0,
+      stage: 'starting',
+      message: 'Preparing install...',
+      log: [],
+      result: null,
+    });
+    try {
+      const result = (await window.aris.invoke('install:run-quick-install', serviceName)) as QuickInstallResult;
+      setInstalling((curr) => (curr && curr.serviceName === serviceName ? { ...curr, result, percent: 100 } : curr));
+      // Final refresh — once the script started the server, detection will pick it up.
+      void refresh();
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      setInstalling((curr) =>
+        curr && curr.serviceName === serviceName
+          ? { ...curr, result: { service: serviceName, success: false, exitCode: null, error: msg }, percent: 100 }
+          : curr,
+      );
+    }
+  };
+
+  const dismissInstaller = () => setInstalling(null);
 
   const openSetup = async (id: string, serviceName: 'kokoro' | 'f5-tts' | 'sesame-csm') => {
     if (setupOpen === id) {
@@ -162,9 +245,19 @@ export function TTSProviderSettings() {
                     )}
                   </>
                 ) : (
-                  <button onClick={() => openSetup(known.id, known.serviceName)} style={secondaryBtnStyle}>
-                    {setupOpen === known.id ? 'Hide setup' : 'Setup'}
-                  </button>
+                  <>
+                    {installInfos[known.id]?.hasQuickInstall && (
+                      <button
+                        onClick={() => startQuickInstall(known.serviceName, known.name)}
+                        style={quickInstallBtnStyle}
+                      >
+                        Quick Install
+                      </button>
+                    )}
+                    <button onClick={() => openSetup(known.id, known.serviceName)} style={secondaryBtnStyle}>
+                      {setupOpen === known.id ? 'Hide setup' : 'Manual setup'}
+                    </button>
+                  </>
                 )}
               </div>
             </div>
@@ -177,6 +270,13 @@ export function TTSProviderSettings() {
           </div>
         );
       })}
+
+      {installing && (
+        <QuickInstallModal
+          state={installing}
+          onDismiss={dismissInstaller}
+        />
+      )}
     </div>
   );
 }
@@ -208,6 +308,75 @@ function GpuStatusBanner({ gpu }: { gpu: GpuRuntime }) {
           GPU-class providers (Fish Speech) require CUDA, Metal, or ROCm.
         </span>
       )}
+    </div>
+  );
+}
+
+interface QuickInstallState {
+  serviceName: ServiceName;
+  displayName: string;
+  percent: number;
+  stage: string;
+  message: string;
+  log: string[];
+  result: QuickInstallResult | null;
+}
+
+function QuickInstallModal({
+  state,
+  onDismiss,
+}: {
+  state: QuickInstallState;
+  onDismiss: () => void;
+}) {
+  const inFlight = !state.result;
+  const succeeded = state.result?.success === true;
+  const failed = state.result && !state.result.success;
+  const logRef = useRef<HTMLPreElement | null>(null);
+
+  useEffect(() => {
+    if (logRef.current) logRef.current.scrollTop = logRef.current.scrollHeight;
+  }, [state.log.length]);
+
+  return (
+    <div style={modalBackdropStyle}>
+      <div style={modalCardStyle}>
+        <div style={modalHeaderStyle}>
+          <h3 style={modalTitleStyle}>Installing {state.displayName}</h3>
+          {!inFlight && (
+            <button onClick={onDismiss} style={secondaryBtnStyle}>Close</button>
+          )}
+        </div>
+
+        <div style={progressBarOuterStyle}>
+          <div
+            style={{
+              ...progressBarInnerStyle,
+              width: `${Math.max(0, Math.min(100, state.percent))}%`,
+              background: failed ? 'var(--color-error)' : 'var(--color-primary)',
+            }}
+          />
+        </div>
+        <div style={modalStatusStyle}>
+          <span>{state.message}</span>
+          <span style={{ color: 'var(--text-muted)' }}>{state.percent}%</span>
+        </div>
+
+        {succeeded && (
+          <p style={modalSuccessStyle}>
+            ✓ Install complete. Aris should detect the server within a few seconds — refresh the page if needed.
+          </p>
+        )}
+        {failed && state.result && (
+          <p style={modalErrorStyle}>
+            ✗ {state.result.error ?? 'Install failed.'} Check the log below or use Manual setup.
+          </p>
+        )}
+
+        <pre ref={logRef} style={modalLogStyle}>
+          {state.log.join('\n')}
+        </pre>
+      </div>
     </div>
   );
 }
@@ -426,4 +595,110 @@ const stepsListStyle: React.CSSProperties = {
 
 const stepItemStyle: React.CSSProperties = {
   marginBottom: 4,
+};
+
+const quickInstallBtnStyle: React.CSSProperties = {
+  background: 'var(--color-primary)',
+  color: '#fff',
+  border: 'none',
+  borderRadius: 'var(--radius-md)',
+  padding: 'var(--space-1) var(--space-3)',
+  cursor: 'pointer',
+  fontSize: 'var(--text-xs)',
+  fontWeight: 600,
+};
+
+const modalBackdropStyle: React.CSSProperties = {
+  position: 'fixed',
+  inset: 0,
+  background: 'rgba(0,0,0,0.6)',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  zIndex: 1000,
+  padding: 'var(--space-4)',
+};
+
+const modalCardStyle: React.CSSProperties = {
+  background: 'var(--bg-surface)',
+  border: '1px solid var(--border-default)',
+  borderRadius: 'var(--radius-xl)',
+  padding: 'var(--space-4)',
+  width: '100%',
+  maxWidth: 640,
+  maxHeight: '80vh',
+  display: 'flex',
+  flexDirection: 'column',
+  gap: 'var(--space-2)',
+  boxShadow: 'var(--shadow-lg)',
+};
+
+const modalHeaderStyle: React.CSSProperties = {
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+};
+
+const modalTitleStyle: React.CSSProperties = {
+  margin: 0,
+  fontSize: 'var(--text-md)',
+  fontWeight: 600,
+  color: 'var(--text-primary)',
+};
+
+const progressBarOuterStyle: React.CSSProperties = {
+  width: '100%',
+  height: 8,
+  background: 'var(--bg-overlay)',
+  borderRadius: 'var(--radius-full)',
+  overflow: 'hidden',
+};
+
+const progressBarInnerStyle: React.CSSProperties = {
+  height: '100%',
+  transition: 'width 0.2s ease',
+};
+
+const modalStatusStyle: React.CSSProperties = {
+  display: 'flex',
+  justifyContent: 'space-between',
+  fontSize: 'var(--text-xs)',
+  color: 'var(--text-secondary)',
+};
+
+const modalSuccessStyle: React.CSSProperties = {
+  margin: 0,
+  padding: 'var(--space-2)',
+  background: 'rgba(123,224,123,0.1)',
+  border: '1px solid rgba(123,224,123,0.3)',
+  color: '#7be07b',
+  borderRadius: 'var(--radius-md)',
+  fontSize: 'var(--text-xs)',
+};
+
+const modalErrorStyle: React.CSSProperties = {
+  margin: 0,
+  padding: 'var(--space-2)',
+  background: 'var(--color-error-bg)',
+  border: '1px solid rgba(255,83,112,0.3)',
+  color: 'var(--color-error)',
+  borderRadius: 'var(--radius-md)',
+  fontSize: 'var(--text-xs)',
+};
+
+const modalLogStyle: React.CSSProperties = {
+  margin: 0,
+  flex: 1,
+  minHeight: 120,
+  maxHeight: 300,
+  overflow: 'auto',
+  padding: 'var(--space-2)',
+  background: 'var(--bg-overlay)',
+  border: '1px solid var(--border-subtle)',
+  borderRadius: 'var(--radius-md)',
+  fontSize: '0.7rem',
+  fontFamily: 'var(--font-mono, "JetBrains Mono", monospace)',
+  color: 'var(--text-muted)',
+  whiteSpace: 'pre-wrap',
+  wordBreak: 'break-word',
 };

@@ -13,7 +13,10 @@ import type {
   InstallProgress,
   InstallResult,
   InstallManifest,
+  QuickInstallProgress,
+  QuickInstallResult,
 } from '@aris/shared';
+import { getGpuRuntime } from './hardware-detect';
 
 const OS = platform();
 
@@ -224,6 +227,7 @@ function f5ttsInfo(): ServiceInstallInfo {
     downloadUrl: DOWNLOAD_URLS['f5-tts'],
     installSteps,
     modelNote: 'F5-TTS_Base weights are downloaded automatically on first run. Voice cloning works from a 6-30s reference clip.',
+    hasQuickInstall: true,
   };
 }
 
@@ -338,6 +342,190 @@ export async function verifyInstall(name: ServiceName): Promise<ServiceDetection
 /** Return the version manifest for UI display. */
 export function getManifest(): InstallManifest {
   return MANIFEST;
+}
+
+// ---------------------------------------------------------------------------
+// Quick Install — runs a bundled per-service script (PowerShell on Windows,
+// bash on macOS / Linux) that automates clone + venv + pip + launch.
+// ---------------------------------------------------------------------------
+
+/** Resolve the install-scripts resources dir for both dev and packaged builds. */
+function getInstallScriptsRoot(): string {
+  // Packaged: extra-resources land under process.resourcesPath/install-scripts.
+  const packaged = path.join(process.resourcesPath ?? '', 'install-scripts');
+  if (fs.existsSync(packaged)) return packaged;
+
+  // Dev: scripts live alongside the source under packages/app/resources.
+  // app.getAppPath() points at packages/app at dev time.
+  const dev = path.join(app.getAppPath(), 'resources', 'install-scripts');
+  if (fs.existsSync(dev)) return dev;
+
+  // Fallback: relative to compiled JS (packages/app/dist/install-orchestrator.js)
+  return path.join(__dirname, '..', 'resources', 'install-scripts');
+}
+
+/** Per-service Quick Install metadata — null when no script is bundled. */
+function getQuickInstallScript(name: ServiceName): { script: string; ext: 'ps1' | 'sh' } | null {
+  const root = getInstallScriptsRoot();
+  const ext: 'ps1' | 'sh' = OS === 'win32' ? 'ps1' : 'sh';
+  const candidate = path.join(root, name, `install.${ext}`);
+  if (!fs.existsSync(candidate)) return null;
+  return { script: candidate, ext };
+}
+
+/** Map detected GPU runtime to the backend flag passed to the script. */
+async function pickGpuBackend(): Promise<'cuda' | 'directml' | 'rocm' | 'cpu'> {
+  try {
+    const gpu = await getGpuRuntime();
+    if (gpu.cuda) return 'cuda';
+    if (gpu.rocm) return 'rocm';
+    if (OS === 'win32' && gpu.hasGpu) return 'directml';
+    return 'cpu';
+  } catch {
+    return 'cpu';
+  }
+}
+
+const PROGRESS_PREFIX = '[ARIS-PROGRESS]';
+
+function parseProgressLine(line: string, name: ServiceName): QuickInstallProgress | null {
+  const idx = line.indexOf(PROGRESS_PREFIX);
+  if (idx === -1) return null;
+  const payload = line.slice(idx + PROGRESS_PREFIX.length).trim();
+  // Format: "<pct>|<stage>|<message>"
+  const parts = payload.split('|');
+  if (parts.length < 3) return null;
+  const percent = Math.max(0, Math.min(100, parseInt(parts[0], 10) || 0));
+  const stage = parts[1].trim() as QuickInstallProgress['stage'];
+  const message = parts.slice(2).join('|').trim();
+  return { service: name, stage, percent, message, line: '' };
+}
+
+/** Default install root: ~/.aris/services/<name>. Caller may override. */
+function defaultInstallDir(): string {
+  return path.join(app.getPath('userData'), 'services');
+}
+
+/**
+ * Run the Quick Install script for a service. Streams progress events via
+ * the supplied callback and resolves with success/failure when the child
+ * exits. Errors thrown by spawning are surfaced as a final 'error' event.
+ */
+export async function runQuickInstall(
+  name: ServiceName,
+  onProgress: (p: QuickInstallProgress) => void,
+  installDir: string = defaultInstallDir(),
+): Promise<QuickInstallResult> {
+  const meta = getQuickInstallScript(name);
+  if (!meta) {
+    const err = `No Quick Install script bundled for ${name}`;
+    onProgress({ service: name, stage: 'error', percent: 100, message: err, line: '' });
+    return { service: name, success: false, exitCode: null, error: err };
+  }
+
+  const gpuBackend = await pickGpuBackend();
+
+  onProgress({
+    service: name,
+    stage: 'starting',
+    percent: 0,
+    message: `Starting Quick Install (GPU backend: ${gpuBackend})`,
+    line: '',
+  });
+
+  // Build the command + args per platform.
+  let cmd: string;
+  let args: string[];
+  if (meta.ext === 'ps1') {
+    cmd = 'powershell.exe';
+    args = [
+      '-ExecutionPolicy', 'Bypass',
+      '-NoProfile',
+      '-File', meta.script,
+      '-InstallDir', installDir,
+      '-GpuBackend', gpuBackend,
+    ];
+  } else {
+    cmd = 'bash';
+    args = [meta.script, '--install-dir', installDir, '--gpu-backend', gpuBackend];
+  }
+
+  return new Promise<QuickInstallResult>((resolve) => {
+    let resolved = false;
+    let lastErrorLine = '';
+
+    const child = spawn(cmd, args, {
+      cwd: installDir,
+      env: process.env,
+      shell: false,
+    });
+
+    const handleLine = (raw: string, isStderr: boolean) => {
+      const line = raw.replace(/\r$/, '');
+      if (!line) return;
+
+      const parsed = parseProgressLine(line, name);
+      if (parsed) {
+        onProgress(parsed);
+        return;
+      }
+      if (isStderr) lastErrorLine = line;
+      // Forward non-progress lines as raw log output for the install modal.
+      onProgress({
+        service: name,
+        stage: 'deps',
+        percent: -1 as unknown as number, // sentinel: "no percent change"
+        message: '',
+        line: isStderr ? `! ${line}` : line,
+      });
+    };
+
+    let stdoutBuf = '';
+    let stderrBuf = '';
+    child.stdout.on('data', (chunk: Buffer) => {
+      stdoutBuf += chunk.toString('utf8');
+      const lines = stdoutBuf.split('\n');
+      stdoutBuf = lines.pop() ?? '';
+      for (const l of lines) handleLine(l, false);
+    });
+    child.stderr.on('data', (chunk: Buffer) => {
+      stderrBuf += chunk.toString('utf8');
+      const lines = stderrBuf.split('\n');
+      stderrBuf = lines.pop() ?? '';
+      for (const l of lines) handleLine(l, true);
+    });
+
+    child.on('error', (err) => {
+      if (resolved) return;
+      resolved = true;
+      onProgress({ service: name, stage: 'error', percent: 100, message: err.message, line: '' });
+      resolve({ service: name, success: false, exitCode: null, error: err.message });
+    });
+
+    child.on('close', (code) => {
+      if (resolved) return;
+      resolved = true;
+      if (stdoutBuf) handleLine(stdoutBuf, false);
+      if (stderrBuf) handleLine(stderrBuf, true);
+
+      const success = code === 0;
+      if (!success) {
+        onProgress({
+          service: name,
+          stage: 'error',
+          percent: 100,
+          message: lastErrorLine || `Install failed (exit ${code ?? '?'})`,
+          line: '',
+        });
+      }
+      resolve({
+        service: name,
+        success,
+        exitCode: code,
+        error: success ? null : lastErrorLine || `Exit code ${code}`,
+      });
+    });
+  });
 }
 
 // ---------------------------------------------------------------------------
