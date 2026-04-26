@@ -53,11 +53,37 @@ export interface TTSVoice {
  * Mirrors the shape of @aris/ai-core's AIProvider so the registry follows the
  * same lifecycle (register → setActive → synth).
  */
+/**
+ * Hardware class a TTS provider is designed for. Used by the settings UI to
+ * group providers, label them with badges, and gate GPU-class providers when
+ * the user's machine doesn't have a compatible runtime.
+ *
+ * - 'cpu'    — light enough to run alongside a game on integrated graphics
+ *              (Kokoro, Piper)
+ * - 'gpu'    — needs a discrete GPU with several GB of VRAM
+ *              (Fish Speech, XTTS-v2)
+ * - 'cloud'  — hosted; latency + per-request cost in exchange for quality
+ *              (reserved — no providers ship in this class yet)
+ */
+export type TTSHardwareClass = 'cpu' | 'gpu' | 'cloud';
+
+/** Optional minimum-requirement hints surfaced in the UI's badge tooltip. */
+export interface TTSHardwareRequirements {
+  /** Minimum total VRAM needed in MB (GPU providers only). */
+  minVramMb?: number;
+  /** Whether the provider needs CUDA / Metal / ROCm (GPU providers only). */
+  needsGpuRuntime?: boolean;
+}
+
 export interface TTSProvider {
   readonly id: string;
   readonly name: string;
   /** True if synthesis happens on the user's machine (no network leaves the box) */
   readonly isLocal: boolean;
+  /** Which class of hardware this provider is built for */
+  readonly hardwareClass: TTSHardwareClass;
+  /** Optional minimum requirements — used by UI gating + recommendation */
+  readonly requirements?: TTSHardwareRequirements;
 
   /** Synthesize text → audio buffer (WAV/MP3, depends on provider). */
   synth(text: string, options?: TTSOptions): Promise<TTSSynthResult>;

@@ -147,6 +147,8 @@ export function registerVoiceHandlers(): void {
       id: p.id,
       name: p.name,
       isLocal: p.isLocal,
+      hardwareClass: p.hardwareClass,
+      requirements: p.requirements ?? null,
     }));
   });
 

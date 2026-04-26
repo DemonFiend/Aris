@@ -12,6 +12,7 @@ export class KokoroProvider implements TTSProvider {
   readonly id = 'kokoro';
   readonly name = 'Kokoro TTS';
   readonly isLocal = true;
+  readonly hardwareClass = 'cpu' as const;
 
   private baseUrl: string;
   private defaultVoice: string;
