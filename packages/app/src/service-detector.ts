@@ -262,6 +262,39 @@ async function detectOllama(): Promise<ServiceDetectionResult> {
 }
 
 // ---------------------------------------------------------------------------
+// Fish Speech (GPU TTS, fishaudio/fish-speech api_server)
+// ---------------------------------------------------------------------------
+
+const FISH_SPEECH_CANDIDATES = [
+  { base: 'http://127.0.0.1:8080', probe: 'http://127.0.0.1:8080/v1/health' },
+  { base: 'http://127.0.0.1:7860', probe: 'http://127.0.0.1:7860/' },
+];
+
+async function detectFishSpeech(): Promise<ServiceDetectionResult> {
+  let runningBase: string | null = null;
+
+  for (const { base, probe } of FISH_SPEECH_CANDIDATES) {
+    const result = await probeUrl(probe);
+    if (result.ok) {
+      runningBase = base;
+      break;
+    }
+  }
+
+  // No canonical install path — Fish Speech is Python source. Detection
+  // relies on the API server being reachable.
+  return {
+    name: 'fish-speech',
+    installed: runningBase !== null,
+    running: runningBase !== null,
+    version: null,
+    path: null,
+    endpoint: runningBase,
+    error: null,
+  };
+}
+
+// ---------------------------------------------------------------------------
 // Public API
 // ---------------------------------------------------------------------------
 
@@ -270,6 +303,7 @@ const DETECTORS: Record<ServiceName, () => Promise<ServiceDetectionResult>> = {
   kokoro: detectKokoro,
   whisper: detectWhisper,
   ollama: detectOllama,
+  'fish-speech': detectFishSpeech,
 };
 
 export async function detectService(name: ServiceName): Promise<ServiceDetectionResult> {

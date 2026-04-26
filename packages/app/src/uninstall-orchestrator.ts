@@ -36,6 +36,10 @@ const TARGET_META: Record<
     displayName: 'Whisper STT',
     description: 'Whisper speech-to-text server.',
   },
+  'fish-speech': {
+    displayName: 'Fish Speech',
+    description: 'Fish Speech GPU text-to-speech server (Python install).',
+  },
   'aris-data': {
     displayName: 'Aris Data',
     description:
@@ -71,7 +75,7 @@ function getRemovalPath(detectedPath: string): string {
  * to remove. The Aris data target is always included (it's always "installed").
  */
 export async function getUninstallTargets(): Promise<UninstallTarget[]> {
-  const serviceNames: ServiceName[] = ['lmstudio', 'ollama', 'kokoro', 'whisper'];
+  const serviceNames: ServiceName[] = ['lmstudio', 'ollama', 'kokoro', 'whisper', 'fish-speech'];
   const detections = await detectAllServices();
 
   const targets: UninstallTarget[] = serviceNames.map((name) => {

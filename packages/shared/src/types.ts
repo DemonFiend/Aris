@@ -490,7 +490,7 @@ export const DEFAULT_VIRTUAL_SPACE_CONFIG: VirtualSpaceConfig = {
 };
 
 /** Identifiers for locally-hosted AI services */
-export type ServiceName = 'lmstudio' | 'kokoro' | 'whisper' | 'ollama';
+export type ServiceName = 'lmstudio' | 'kokoro' | 'whisper' | 'ollama' | 'fish-speech';
 
 /** Platform-specific install guidance for a local service */
 export interface ServiceInstallInfo {

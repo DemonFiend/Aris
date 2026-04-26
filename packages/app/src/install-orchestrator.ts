@@ -63,6 +63,15 @@ const MANIFEST: InstallManifest = {
     darwin: null,
     linux: null,
   },
+  // Fish Speech ships as Python source + HuggingFace weights with no native
+  // installer; auto-install requires a managed venv (separate epic). For now
+  // the orchestrator falls through to the manual-install guide.
+  'fish-speech': {
+    version: 'latest',
+    win32: null,
+    darwin: null,
+    linux: null,
+  },
 };
 
 // ---------------------------------------------------------------------------
@@ -75,6 +84,7 @@ const DOWNLOAD_URLS: Record<ServiceName, string> = {
   ollama: 'https://ollama.com/download',
   kokoro: 'https://github.com/remsky/Kokoro-FastAPI/releases/latest',
   whisper: 'https://github.com/ggerganov/whisper.cpp/releases/latest',
+  'fish-speech': 'https://github.com/fishaudio/fish-speech',
 };
 
 // ---------------------------------------------------------------------------
@@ -178,6 +188,49 @@ function kokoroInfo(): ServiceInstallInfo {
   };
 }
 
+function fishSpeechInfo(): ServiceInstallInfo {
+  let installSteps: string[];
+  switch (OS) {
+    case 'win32':
+      installSteps = [
+        'Install Python 3.10+ and a CUDA-capable PyTorch build (NVIDIA GPU recommended)',
+        'Clone the repo: git clone https://github.com/fishaudio/fish-speech.git',
+        'In the repo: pip install -e .[stable]',
+        'Download model weights: huggingface-cli download fishaudio/fish-speech-1.5 --local-dir checkpoints/fish-speech-1.5',
+        'Start the API server: python -m tools.api_server --listen 127.0.0.1:8080 --llama-checkpoint-path checkpoints/fish-speech-1.5',
+        'Aris will detect the server at http://127.0.0.1:8080',
+      ];
+      break;
+    case 'darwin':
+      installSteps = [
+        'Install Python 3.10+ and a Metal-enabled PyTorch build',
+        'Clone the repo: git clone https://github.com/fishaudio/fish-speech.git',
+        'In the repo: pip install -e .[stable]',
+        'Download model weights: huggingface-cli download fishaudio/fish-speech-1.5 --local-dir checkpoints/fish-speech-1.5',
+        'Start the API server: python -m tools.api_server --listen 127.0.0.1:8080 --llama-checkpoint-path checkpoints/fish-speech-1.5',
+        'Aris will detect the server at http://127.0.0.1:8080',
+      ];
+      break;
+    default:
+      installSteps = [
+        'Install Python 3.10+ and a CUDA or ROCm PyTorch build',
+        'Clone the repo: git clone https://github.com/fishaudio/fish-speech.git',
+        'In the repo: pip install -e .[stable]',
+        'Download model weights: huggingface-cli download fishaudio/fish-speech-1.5 --local-dir checkpoints/fish-speech-1.5',
+        'Start the API server: python -m tools.api_server --listen 127.0.0.1:8080 --llama-checkpoint-path checkpoints/fish-speech-1.5',
+        'Aris will detect the server at http://127.0.0.1:8080',
+      ];
+  }
+  return {
+    name: 'fish-speech',
+    displayName: 'Fish Speech',
+    description: 'High-quality, expressive local TTS with voice cloning. Requires a GPU (~6GB VRAM minimum).',
+    downloadUrl: DOWNLOAD_URLS['fish-speech'],
+    installSteps,
+    modelNote: 'fish-speech-1.5 is the recommended weights set. Smaller variants (e.g. 1.4) work on lower-VRAM GPUs.',
+  };
+}
+
 function whisperInfo(): ServiceInstallInfo {
   let installSteps: string[];
   switch (OS) {
@@ -220,6 +273,7 @@ const INFO_BUILDERS: Record<ServiceName, () => ServiceInstallInfo> = {
   ollama: ollamaInfo,
   kokoro: kokoroInfo,
   whisper: whisperInfo,
+  'fish-speech': fishSpeechInfo,
 };
 
 // ---------------------------------------------------------------------------

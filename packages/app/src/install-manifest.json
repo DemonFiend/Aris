@@ -37,5 +37,11 @@
     "win32": null,
     "darwin": null,
     "linux": null
+  },
+  "fish-speech": {
+    "version": "latest",
+    "win32": null,
+    "darwin": null,
+    "linux": null
   }
 }
