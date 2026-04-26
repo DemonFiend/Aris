@@ -65,14 +65,14 @@ Emit-Progress 22 'venv' 'Creating Python virtual environment...'
 
 $venvPython = Join-Path $repoDir 'venv\Scripts\python.exe'
 if (-not (Test-Path $venvPython)) {
-  Write-Error "venv creation failed — $venvPython not found"
+  Write-Error ('venv creation failed - ' + $venvPython + ' not found')
   exit 1
 }
 
 Emit-Progress 30 'deps' 'Upgrading pip...'
 & $venvPython -m pip install --upgrade pip
 
-Emit-Progress 40 'deps' "Installing PyTorch ($GpuBackend backend) - this may take 5-10 minutes..."
+Emit-Progress 40 'deps' ('Installing PyTorch (' + $GpuBackend + ' backend) - this may take 5-10 minutes...')
 switch ($GpuBackend) {
   'cuda' {
     & $venvPython -m pip install torch torchaudio --index-url https://download.pytorch.org/whl/cu121
@@ -101,14 +101,14 @@ $apiSource = Join-Path $PSScriptRoot 'api_server.py'
 $apiDest = Join-Path $repoDir 'api_server.py'
 Copy-Item $apiSource $apiDest -Force
 
-$launcher = @"
-@echo off
-cd /d "%~dp0"
-call venv\Scripts\activate.bat
-python -m uvicorn api_server:app --host 127.0.0.1 --port 7860
-"@
+$launcherLines = @(
+  '@echo off',
+  'cd /d "%~dp0"',
+  'call venv\Scripts\activate.bat',
+  'python -m uvicorn api_server:app --host 127.0.0.1 --port 7860'
+)
 $launcherPath = Join-Path $repoDir 'start.bat'
-$launcher | Out-File -FilePath $launcherPath -Encoding ASCII -Force
+[System.IO.File]::WriteAllText($launcherPath, ($launcherLines -join "`r`n"), [System.Text.Encoding]::ASCII)
 
 Emit-Progress 95 'launching' 'Starting F5-TTS server on http://127.0.0.1:7860 ...'
 Start-Process -FilePath $launcherPath -WindowStyle Minimized -WorkingDirectory $repoDir
