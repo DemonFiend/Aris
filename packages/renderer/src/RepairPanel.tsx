@@ -6,8 +6,9 @@ type ScanState = 'scanning' | 'done';
 const SERVICE_DISPLAY: Record<ServiceName, { label: string; role: string }> = {
   lmstudio: { label: 'LM Studio', role: 'AI provider (local models)' },
   ollama: { label: 'Ollama', role: 'AI provider (local models)' },
-  kokoro: { label: 'Kokoro TTS', role: 'Text-to-speech voice' },
+  kokoro: { label: 'Kokoro TTS', role: 'Text-to-speech voice (CPU)' },
   whisper: { label: 'Whisper STT', role: 'Speech-to-text recognition' },
+  'fish-speech': { label: 'Fish Speech', role: 'Text-to-speech voice (GPU)' },
 };
 
 export function RepairPanel() {
@@ -102,7 +103,10 @@ export function RepairPanel() {
 
       {current?.map((result) => {
         const { name, running, installed } = result;
-        const display = SERVICE_DISPLAY[name];
+        // Fall back gracefully if a new ServiceName was added without a
+        // matching SERVICE_DISPLAY entry — vite skips type-checking so the
+        // missing key only manifests at render time.
+        const display = SERVICE_DISPLAY[name] ?? { label: name, role: 'Local service' };
         const expanded = expandedService === name;
         const installInfo = installInfos[name];
         const baseResult = baseline?.find((r) => r.name === name);
