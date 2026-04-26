@@ -171,6 +171,21 @@ export interface ScreenshotFolderStats {
   newestFile?: string;
 }
 
+/** Local GPU/runtime capabilities, used to gate GPU-class TTS providers */
+export interface GpuRuntime {
+  hasGpu: boolean;
+  /** Detected GPU vendors, deduped + lowercased: 'nvidia' | 'amd' | 'intel' | 'apple' | ... */
+  vendors: string[];
+  /** Total VRAM across discrete GPUs, MB. null = unknown. */
+  vramMb: number | null;
+  /** CUDA toolkit / driver reachable */
+  cuda: boolean;
+  /** Apple Metal — true on darwin */
+  metal: boolean;
+  /** AMD ROCm reachable */
+  rocm: boolean;
+}
+
 /** Voice pipeline configuration */
 export interface VoiceConfig {
   sttEngine: 'web-speech' | 'whisper-local' | 'cloud';
@@ -656,6 +671,7 @@ export type IpcChannel =
   | 'tts:test-connection'
   | 'tts:get-voices'
   | 'tts:synth'
+  | 'hardware:gpu-runtime'
   | 'vision:start-capture'
   | 'vision:stop-capture'
   | 'vision:get-sources'

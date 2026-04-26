@@ -4,6 +4,7 @@ import { TTSRegistry, KokoroProvider } from '@aris/voice';
 import type { TTSOptions } from '@aris/voice';
 import { getSetting, setSetting, deleteSetting } from './settings-store';
 import { detectService } from './service-detector';
+import { getGpuRuntime } from './hardware-detect';
 
 const DEFAULT_VOICE_CONFIG: VoiceConfig = {
   sttEngine: 'web-speech',
@@ -189,6 +190,15 @@ export function registerVoiceHandlers(): void {
       audio: Buffer.from(result.audio),
       mediaType: result.mediaType,
     };
+  });
+
+  // -------------------------------------------------------------------------
+  // Hardware probe — used by the TTS settings UI to recommend a default
+  // provider and gate the GPU-class Activate button when no GPU is present.
+  // -------------------------------------------------------------------------
+
+  ipcMain.handle('hardware:gpu-runtime', async () => {
+    return getGpuRuntime();
   });
 
   // Initialize push-to-talk if configured
