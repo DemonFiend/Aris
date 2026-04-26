@@ -262,18 +262,19 @@ async function detectOllama(): Promise<ServiceDetectionResult> {
 }
 
 // ---------------------------------------------------------------------------
-// Fish Speech (GPU TTS, fishaudio/fish-speech api_server)
+// F5-TTS (GPU TTS, SWivid/F5-TTS via a community OpenAI-compatible wrapper)
 // ---------------------------------------------------------------------------
 
-const FISH_SPEECH_CANDIDATES = [
-  { base: 'http://127.0.0.1:8080', probe: 'http://127.0.0.1:8080/v1/health' },
+const F5_TTS_CANDIDATES = [
+  { base: 'http://127.0.0.1:7860', probe: 'http://127.0.0.1:7860/v1/voices' },
   { base: 'http://127.0.0.1:7860', probe: 'http://127.0.0.1:7860/' },
+  { base: 'http://127.0.0.1:8000', probe: 'http://127.0.0.1:8000/v1/voices' },
 ];
 
-async function detectFishSpeech(): Promise<ServiceDetectionResult> {
+async function detectF5TTS(): Promise<ServiceDetectionResult> {
   let runningBase: string | null = null;
 
-  for (const { base, probe } of FISH_SPEECH_CANDIDATES) {
+  for (const { base, probe } of F5_TTS_CANDIDATES) {
     const result = await probeUrl(probe);
     if (result.ok) {
       runningBase = base;
@@ -281,10 +282,10 @@ async function detectFishSpeech(): Promise<ServiceDetectionResult> {
     }
   }
 
-  // No canonical install path — Fish Speech is Python source. Detection
-  // relies on the API server being reachable.
+  // No canonical install path — F5-TTS is Python source. Detection relies
+  // on the wrapper server being reachable.
   return {
-    name: 'fish-speech',
+    name: 'f5-tts',
     installed: runningBase !== null,
     running: runningBase !== null,
     version: null,
@@ -303,7 +304,7 @@ const DETECTORS: Record<ServiceName, () => Promise<ServiceDetectionResult>> = {
   kokoro: detectKokoro,
   whisper: detectWhisper,
   ollama: detectOllama,
-  'fish-speech': detectFishSpeech,
+  'f5-tts': detectF5TTS,
 };
 
 export async function detectService(name: ServiceName): Promise<ServiceDetectionResult> {

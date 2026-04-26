@@ -63,10 +63,10 @@ const MANIFEST: InstallManifest = {
     darwin: null,
     linux: null,
   },
-  // Fish Speech ships as Python source + HuggingFace weights with no native
+  // F5-TTS ships as Python source + HuggingFace weights with no native
   // installer; auto-install requires a managed venv (separate epic). For now
   // the orchestrator falls through to the manual-install guide.
-  'fish-speech': {
+  'f5-tts': {
     version: 'latest',
     win32: null,
     darwin: null,
@@ -84,7 +84,7 @@ const DOWNLOAD_URLS: Record<ServiceName, string> = {
   ollama: 'https://ollama.com/download',
   kokoro: 'https://github.com/remsky/Kokoro-FastAPI/releases/latest',
   whisper: 'https://github.com/ggerganov/whisper.cpp/releases/latest',
-  'fish-speech': 'https://github.com/fishaudio/fish-speech',
+  'f5-tts': 'https://github.com/SWivid/F5-TTS',
 };
 
 // ---------------------------------------------------------------------------
@@ -188,46 +188,34 @@ function kokoroInfo(): ServiceInstallInfo {
   };
 }
 
-function fishSpeechInfo(): ServiceInstallInfo {
-  let installSteps: string[];
-  switch (OS) {
-    case 'win32':
-      installSteps = [
-        'Install Python 3.10+ and a CUDA-capable PyTorch build (NVIDIA GPU recommended)',
-        'Clone the repo: git clone https://github.com/fishaudio/fish-speech.git',
-        'In the repo: pip install -e .[stable]',
-        'Download model weights: huggingface-cli download fishaudio/fish-speech-1.5 --local-dir checkpoints/fish-speech-1.5',
-        'Start the API server: python -m tools.api_server --listen 127.0.0.1:8080 --llama-checkpoint-path checkpoints/fish-speech-1.5',
-        'Aris will detect the server at http://127.0.0.1:8080',
-      ];
-      break;
-    case 'darwin':
-      installSteps = [
-        'Install Python 3.10+ and a Metal-enabled PyTorch build',
-        'Clone the repo: git clone https://github.com/fishaudio/fish-speech.git',
-        'In the repo: pip install -e .[stable]',
-        'Download model weights: huggingface-cli download fishaudio/fish-speech-1.5 --local-dir checkpoints/fish-speech-1.5',
-        'Start the API server: python -m tools.api_server --listen 127.0.0.1:8080 --llama-checkpoint-path checkpoints/fish-speech-1.5',
-        'Aris will detect the server at http://127.0.0.1:8080',
-      ];
-      break;
-    default:
-      installSteps = [
-        'Install Python 3.10+ and a CUDA or ROCm PyTorch build',
-        'Clone the repo: git clone https://github.com/fishaudio/fish-speech.git',
-        'In the repo: pip install -e .[stable]',
-        'Download model weights: huggingface-cli download fishaudio/fish-speech-1.5 --local-dir checkpoints/fish-speech-1.5',
-        'Start the API server: python -m tools.api_server --listen 127.0.0.1:8080 --llama-checkpoint-path checkpoints/fish-speech-1.5',
-        'Aris will detect the server at http://127.0.0.1:8080',
-      ];
-  }
+function f5ttsInfo(): ServiceInstallInfo {
+  // F5-TTS upstream provides a Gradio demo + inference CLI. The most common
+  // way to expose it as an OpenAI-compatible endpoint Aris can talk to is via
+  // a community wrapper (e.g. F5-TTS_Server). The steps below assume that
+  // wrapper convention; the Quick Install script (separate bead) automates it.
+  const ptHint =
+    OS === 'darwin'
+      ? 'a Metal-enabled PyTorch build'
+      : OS === 'win32'
+        ? 'a PyTorch build matching your GPU (CUDA for NVIDIA, DirectML for AMD/Intel)'
+        : 'a PyTorch build matching your GPU (CUDA for NVIDIA, ROCm for AMD)';
+
+  const installSteps = [
+    `Install Python 3.10+ and ${ptHint}`,
+    'Clone the repo: git clone https://github.com/SWivid/F5-TTS.git',
+    'In the repo: pip install -e .',
+    'Pull a community OpenAI-compatible wrapper, e.g. pip install f5-tts-mlx (Apple) or follow F5-TTS_Server',
+    'Start the server bound to 127.0.0.1:7860',
+    'Aris will detect the server at http://127.0.0.1:7860',
+  ];
+
   return {
-    name: 'fish-speech',
-    displayName: 'Fish Speech',
-    description: 'High-quality, expressive local TTS with voice cloning. Requires a GPU (~6GB VRAM minimum).',
-    downloadUrl: DOWNLOAD_URLS['fish-speech'],
+    name: 'f5-tts',
+    displayName: 'F5-TTS',
+    description: 'High-quality local TTS with strong prosody and voice cloning. Runs on NVIDIA, AMD, and Apple GPUs via PyTorch (~4GB VRAM minimum).',
+    downloadUrl: DOWNLOAD_URLS['f5-tts'],
     installSteps,
-    modelNote: 'fish-speech-1.5 is the recommended weights set. Smaller variants (e.g. 1.4) work on lower-VRAM GPUs.',
+    modelNote: 'F5-TTS_Base weights are downloaded automatically on first run. Voice cloning works from a 6-30s reference clip.',
   };
 }
 
@@ -273,7 +261,7 @@ const INFO_BUILDERS: Record<ServiceName, () => ServiceInstallInfo> = {
   ollama: ollamaInfo,
   kokoro: kokoroInfo,
   whisper: whisperInfo,
-  'fish-speech': fishSpeechInfo,
+  'f5-tts': f5ttsInfo,
 };
 
 // ---------------------------------------------------------------------------

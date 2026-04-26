@@ -1,6 +1,6 @@
 import { ipcMain, BrowserWindow, globalShortcut } from 'electron';
 import type { VoiceConfig } from '@aris/shared';
-import { TTSRegistry, KokoroProvider, FishSpeechProvider } from '@aris/voice';
+import { TTSRegistry, KokoroProvider, F5TTSProvider } from '@aris/voice';
 import type { TTSOptions } from '@aris/voice';
 import { getSetting, setSetting, deleteSetting } from './settings-store';
 import { detectService } from './service-detector';
@@ -71,15 +71,16 @@ export async function initTTSProviders(): Promise<void> {
     console.warn(`[initTTSProviders] Kokoro detection failed: ${err instanceof Error ? err.message : err}`);
   }
 
-  // Fish Speech: same pattern — register if the user is already running the
-  // api_server. They start the Python service themselves; we just connect.
+  // F5-TTS: same pattern — register when a community OpenAI-compatible
+  // wrapper is reachable. PyTorch backend means it works on NVIDIA (CUDA),
+  // AMD (ROCm or DirectML), and Apple Silicon (Metal).
   try {
-    const fish = await detectService('fish-speech');
-    if (fish.running && fish.endpoint) {
-      ttsRegistry.register(new FishSpeechProvider(fish.endpoint));
+    const f5 = await detectService('f5-tts');
+    if (f5.running && f5.endpoint) {
+      ttsRegistry.register(new F5TTSProvider(f5.endpoint));
     }
   } catch (err) {
-    console.warn(`[initTTSProviders] Fish Speech detection failed: ${err instanceof Error ? err.message : err}`);
+    console.warn(`[initTTSProviders] F5-TTS detection failed: ${err instanceof Error ? err.message : err}`);
   }
 
   // Restore the active provider from persistent settings.

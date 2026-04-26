@@ -14,7 +14,7 @@ const KNOWN_PROVIDERS: Array<{
   id: string;
   name: string;
   hardwareClass: 'cpu' | 'gpu';
-  serviceName: 'kokoro' | 'fish-speech';
+  serviceName: 'kokoro' | 'f5-tts';
   description: string;
 }> = [
   {
@@ -25,11 +25,11 @@ const KNOWN_PROVIDERS: Array<{
     description: 'Lightweight local TTS — runs on CPU alongside your game.',
   },
   {
-    id: 'fish-speech',
-    name: 'Fish Speech',
+    id: 'f5-tts',
+    name: 'F5-TTS',
     hardwareClass: 'gpu',
-    serviceName: 'fish-speech',
-    description: 'Higher-quality, more expressive local TTS with voice cloning. Needs a GPU.',
+    serviceName: 'f5-tts',
+    description: 'High-quality local TTS with voice cloning. Runs on NVIDIA, AMD, or Apple GPUs.',
   },
 ];
 
@@ -82,7 +82,7 @@ export function TTSProviderSettings() {
     await refresh();
   };
 
-  const openSetup = async (id: string, serviceName: 'kokoro' | 'fish-speech') => {
+  const openSetup = async (id: string, serviceName: 'kokoro' | 'f5-tts') => {
     if (setupOpen === id) {
       setSetupOpen(null);
       setSetupInfo(null);

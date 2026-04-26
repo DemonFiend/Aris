@@ -8,7 +8,7 @@ const SERVICE_DISPLAY: Record<ServiceName, { label: string; role: string }> = {
   ollama: { label: 'Ollama', role: 'AI provider (local models)' },
   kokoro: { label: 'Kokoro TTS', role: 'Text-to-speech voice (CPU)' },
   whisper: { label: 'Whisper STT', role: 'Speech-to-text recognition' },
-  'fish-speech': { label: 'Fish Speech', role: 'Text-to-speech voice (GPU)' },
+  'f5-tts': { label: 'F5-TTS', role: 'Text-to-speech voice (GPU)' },
 };
 
 export function RepairPanel() {
