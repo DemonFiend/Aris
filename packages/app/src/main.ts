@@ -3,7 +3,7 @@ import * as path from 'path';
 import * as fs from 'fs';
 import { APP_NAME, type WindowShakeEvent, type WindowShakeIntensity } from '@aris/shared';
 import { registerIpcHandlers, initProviders } from './ipc-handlers';
-import { registerVoiceHandlers } from './voice-handlers';
+import { registerVoiceHandlers, initTTSProviders } from './voice-handlers';
 import { registerAvatarHandlers } from './avatar-handlers';
 import { registerCompanionHandlers } from './companion-handlers';
 import { captureEvents } from './capture-service';
@@ -296,6 +296,10 @@ app.whenReady().then(() => {
   }
   registerIpcHandlers();
   registerVoiceHandlers();
+  // Populate the TTS registry from detected services. Fire-and-forget — chat
+  // works without TTS, and Kokoro detection is a network probe that shouldn't
+  // block the window from opening.
+  void initTTSProviders();
   registerAvatarHandlers();
   registerCompanionHandlers();
   registerWindowHandlers();

@@ -1,6 +1,9 @@
 import { ipcMain, BrowserWindow, globalShortcut } from 'electron';
 import type { VoiceConfig } from '@aris/shared';
-import { getSetting, setSetting } from './settings-store';
+import { TTSRegistry, KokoroProvider } from '@aris/voice';
+import type { TTSOptions } from '@aris/voice';
+import { getSetting, setSetting, deleteSetting } from './settings-store';
+import { detectService } from './service-detector';
 
 const DEFAULT_VOICE_CONFIG: VoiceConfig = {
   sttEngine: 'web-speech',
@@ -15,6 +18,7 @@ const DEFAULT_VOICE_CONFIG: VoiceConfig = {
 };
 
 let pushToTalkRegistered = false;
+const ttsRegistry = new TTSRegistry();
 
 function getVoiceConfig(): VoiceConfig {
   const stored = getSetting('voice-config');
@@ -47,6 +51,29 @@ function unregisterPushToTalkShortcut(): void {
   if (pushToTalkRegistered) {
     globalShortcut.unregisterAll();
     pushToTalkRegistered = false;
+  }
+}
+
+/**
+ * Initialise TTS providers based on detected/configured services. Run once
+ * during main-process startup before handlers are wired so the registry is
+ * populated before any IPC call lands.
+ */
+export async function initTTSProviders(): Promise<void> {
+  // Kokoro: auto-register if a local FastAPI server is reachable on a known port.
+  try {
+    const kokoro = await detectService('kokoro');
+    if (kokoro.running && kokoro.endpoint) {
+      ttsRegistry.register(new KokoroProvider(kokoro.endpoint));
+    }
+  } catch (err) {
+    console.warn(`[initTTSProviders] Kokoro detection failed: ${err instanceof Error ? err.message : err}`);
+  }
+
+  // Restore the active provider from persistent settings.
+  const savedActiveId = getSetting('activeTTSProviderId');
+  if (savedActiveId && ttsRegistry.get(savedActiveId)) {
+    ttsRegistry.setActive(savedActiveId);
   }
 }
 
@@ -108,6 +135,60 @@ export function registerVoiceHandlers(): void {
     // Voices are enumerated in the renderer; this triggers enumeration
     broadcastToRenderers('voice:command', 'get-voices');
     return [];
+  });
+
+  // -------------------------------------------------------------------------
+  // TTS provider registry — mirrors the AI provider registry surface.
+  // -------------------------------------------------------------------------
+
+  ipcMain.handle('tts:list-providers', async () => {
+    return ttsRegistry.getAll().map((p) => ({
+      id: p.id,
+      name: p.name,
+      isLocal: p.isLocal,
+    }));
+  });
+
+  ipcMain.handle('tts:get-active-provider', async () => {
+    return ttsRegistry.getActiveId();
+  });
+
+  ipcMain.handle('tts:set-provider', async (_event, providerId: string) => {
+    ttsRegistry.setActive(providerId);
+    setSetting('activeTTSProviderId', providerId);
+    return true;
+  });
+
+  ipcMain.handle('tts:clear-provider', async () => {
+    ttsRegistry.clearActive();
+    deleteSetting('activeTTSProviderId');
+    return true;
+  });
+
+  ipcMain.handle('tts:test-connection', async (_event, providerId?: string) => {
+    const provider = providerId ? ttsRegistry.get(providerId) : ttsRegistry.getActive();
+    if (!provider) throw new Error(`TTS provider "${providerId}" not found`);
+    return provider.testConnection();
+  });
+
+  ipcMain.handle('tts:get-voices', async (_event, providerId?: string) => {
+    const provider = providerId ? ttsRegistry.get(providerId) : ttsRegistry.getActive();
+    if (!provider) throw new Error(`TTS provider "${providerId}" not found`);
+    return provider.getVoices();
+  });
+
+  /**
+   * Synthesize via the active TTS provider and return the audio bytes to the
+   * renderer for playback. If no provider is active, callers should fall back
+   * to the existing voice:speak broadcast (which drives Web Speech).
+   */
+  ipcMain.handle('tts:synth', async (_event, text: string, options?: TTSOptions) => {
+    const provider = ttsRegistry.getActive();
+    const result = await provider.synth(text, options);
+    return {
+      audio: Buffer.from(result.audio),
+      mediaType: result.mediaType,
+    };
   });
 
   // Initialize push-to-talk if configured

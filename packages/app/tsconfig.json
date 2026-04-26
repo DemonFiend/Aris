@@ -8,5 +8,10 @@
     "moduleResolution": "node"
   },
   "include": ["src", "src/**/*.json"],
-  "references": [{ "path": "../shared" }, { "path": "../ai-core" }, { "path": "../vision" }]
+  "references": [
+    { "path": "../shared" },
+    { "path": "../ai-core" },
+    { "path": "../vision" },
+    { "path": "../voice" }
+  ]
 }

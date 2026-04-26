@@ -68,6 +68,9 @@ importers:
       '@aris/vision':
         specifier: workspace:*
         version: link:../vision
+      '@aris/voice':
+        specifier: workspace:*
+        version: link:../voice
       better-sqlite3:
         specifier: ^12.8.0
         version: 12.8.0
