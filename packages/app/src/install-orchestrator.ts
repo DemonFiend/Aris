@@ -72,6 +72,13 @@ const MANIFEST: InstallManifest = {
     darwin: null,
     linux: null,
   },
+  // Sesame CSM — same Python+venv shape, advanced setup tier.
+  'sesame-csm': {
+    version: 'latest',
+    win32: null,
+    darwin: null,
+    linux: null,
+  },
 };
 
 // ---------------------------------------------------------------------------
@@ -85,6 +92,7 @@ const DOWNLOAD_URLS: Record<ServiceName, string> = {
   kokoro: 'https://github.com/remsky/Kokoro-FastAPI/releases/latest',
   whisper: 'https://github.com/ggerganov/whisper.cpp/releases/latest',
   'f5-tts': 'https://github.com/SWivid/F5-TTS',
+  'sesame-csm': 'https://github.com/SesameAILabs/csm',
 };
 
 // ---------------------------------------------------------------------------
@@ -219,6 +227,37 @@ function f5ttsInfo(): ServiceInstallInfo {
   };
 }
 
+function sesameCsmInfo(): ServiceInstallInfo {
+  // Sesame CSM has no canonical HTTP server upstream. We document the
+  // common community wrapper convention (FastAPI on :8000) so the
+  // SesameCSMProvider can auto-detect once the user gets it running.
+  // Quick Install scripting (separate bead) automates the dance.
+  const ptHint =
+    OS === 'darwin'
+      ? 'a Metal-enabled PyTorch build'
+      : OS === 'win32'
+        ? 'a PyTorch build matching your GPU (CUDA for NVIDIA; DirectML for AMD/Intel — note: torchao quantization may need a small DirectML patch)'
+        : 'a PyTorch build matching your GPU (CUDA for NVIDIA, ROCm for AMD)';
+
+  const installSteps = [
+    `Install Python 3.11+ and ${ptHint}`,
+    'Clone the repo: git clone https://github.com/SesameAILabs/csm.git',
+    'In the repo: pip install -r requirements.txt',
+    'Pull the 1B base weights: huggingface-cli download sesame/csm-1b --local-dir checkpoints/csm-1b',
+    'Run a community FastAPI wrapper bound to 127.0.0.1:8000 (POST /synthesize)',
+    'Aris will detect the server at http://127.0.0.1:8000',
+  ];
+
+  return {
+    name: 'sesame-csm',
+    displayName: 'Sesame CSM',
+    description: 'Conversational Speech Model with emotional inflection — purpose-built for AI companions. Heavier setup; runs on any PyTorch backend (~8GB VRAM minimum).',
+    downloadUrl: DOWNLOAD_URLS['sesame-csm'],
+    installSteps,
+    modelNote: 'The open 1B base release is excellent but trails the closed cloud version. Pairs especially well with Aris’s avatar expression system.',
+  };
+}
+
 function whisperInfo(): ServiceInstallInfo {
   let installSteps: string[];
   switch (OS) {
@@ -262,6 +301,7 @@ const INFO_BUILDERS: Record<ServiceName, () => ServiceInstallInfo> = {
   kokoro: kokoroInfo,
   whisper: whisperInfo,
   'f5-tts': f5ttsInfo,
+  'sesame-csm': sesameCsmInfo,
 };
 
 // ---------------------------------------------------------------------------

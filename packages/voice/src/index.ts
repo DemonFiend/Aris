@@ -14,3 +14,4 @@ export { VolumeVAD } from './vad';
 export { TTSRegistry } from './tts-registry';
 export { KokoroProvider } from './kokoro-provider';
 export { F5TTSProvider } from './f5tts-provider';
+export { SesameCSMProvider } from './sesame-csm-provider';

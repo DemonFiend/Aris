@@ -1,6 +1,6 @@
 import { ipcMain, BrowserWindow, globalShortcut } from 'electron';
 import type { VoiceConfig } from '@aris/shared';
-import { TTSRegistry, KokoroProvider, F5TTSProvider } from '@aris/voice';
+import { TTSRegistry, KokoroProvider, F5TTSProvider, SesameCSMProvider } from '@aris/voice';
 import type { TTSOptions } from '@aris/voice';
 import { getSetting, setSetting, deleteSetting } from './settings-store';
 import { detectService } from './service-detector';
@@ -81,6 +81,17 @@ export async function initTTSProviders(): Promise<void> {
     }
   } catch (err) {
     console.warn(`[initTTSProviders] F5-TTS detection failed: ${err instanceof Error ? err.message : err}`);
+  }
+
+  // Sesame CSM: advanced/expressive provider. Same auto-register pattern;
+  // user runs the Python wrapper themselves until Quick Install lands.
+  try {
+    const sesame = await detectService('sesame-csm');
+    if (sesame.running && sesame.endpoint) {
+      ttsRegistry.register(new SesameCSMProvider(sesame.endpoint));
+    }
+  } catch (err) {
+    console.warn(`[initTTSProviders] Sesame CSM detection failed: ${err instanceof Error ? err.message : err}`);
   }
 
   // Restore the active provider from persistent settings.

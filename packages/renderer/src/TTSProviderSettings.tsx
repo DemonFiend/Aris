@@ -14,8 +14,9 @@ const KNOWN_PROVIDERS: Array<{
   id: string;
   name: string;
   hardwareClass: 'cpu' | 'gpu';
-  serviceName: 'kokoro' | 'f5-tts';
+  serviceName: 'kokoro' | 'f5-tts' | 'sesame-csm';
   description: string;
+  badge?: string;
 }> = [
   {
     id: 'kokoro',
@@ -30,6 +31,14 @@ const KNOWN_PROVIDERS: Array<{
     hardwareClass: 'gpu',
     serviceName: 'f5-tts',
     description: 'High-quality local TTS with voice cloning. Runs on NVIDIA, AMD, or Apple GPUs.',
+  },
+  {
+    id: 'sesame-csm',
+    name: 'Sesame CSM',
+    hardwareClass: 'gpu',
+    serviceName: 'sesame-csm',
+    description: 'Conversational speech model with emotional inflection — pairs with the avatar expression system. Heavier setup.',
+    badge: 'ADVANCED',
   },
 ];
 
@@ -82,7 +91,7 @@ export function TTSProviderSettings() {
     await refresh();
   };
 
-  const openSetup = async (id: string, serviceName: 'kokoro' | 'f5-tts') => {
+  const openSetup = async (id: string, serviceName: 'kokoro' | 'f5-tts' | 'sesame-csm') => {
     if (setupOpen === id) {
       setSetupOpen(null);
       setSetupInfo(null);
@@ -130,6 +139,7 @@ export function TTSProviderSettings() {
               <div style={cardLeftStyle}>
                 <span style={providerNameStyle}>{known.name}</span>
                 <HardwareBadge hwClass={known.hardwareClass} />
+                {known.badge && <span style={tierBadgeStyle}>{known.badge}</span>}
                 {isActive && <span style={activePillStyle}>Active</span>}
               </div>
               <div style={cardRightStyle}>
@@ -318,6 +328,16 @@ const activePillStyle: React.CSSProperties = {
   fontWeight: 700,
   borderRadius: 'var(--radius-full)',
   padding: '2px 8px',
+};
+
+const tierBadgeStyle: React.CSSProperties = {
+  background: 'rgba(255,180,80,0.12)',
+  color: '#ffb84d',
+  fontSize: '0.6rem',
+  fontWeight: 700,
+  borderRadius: 'var(--radius-full)',
+  padding: '2px 6px',
+  letterSpacing: '0.06em',
 };
 
 function chipBtnStyle(state: 'idle' | 'testing' | 'ok' | 'fail'): React.CSSProperties {

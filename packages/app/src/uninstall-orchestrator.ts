@@ -40,6 +40,10 @@ const TARGET_META: Record<
     displayName: 'F5-TTS',
     description: 'F5-TTS GPU text-to-speech server (Python install).',
   },
+  'sesame-csm': {
+    displayName: 'Sesame CSM',
+    description: 'Sesame Conversational Speech Model — advanced GPU TTS (Python install).',
+  },
   'aris-data': {
     displayName: 'Aris Data',
     description:
@@ -75,7 +79,7 @@ function getRemovalPath(detectedPath: string): string {
  * to remove. The Aris data target is always included (it's always "installed").
  */
 export async function getUninstallTargets(): Promise<UninstallTarget[]> {
-  const serviceNames: ServiceName[] = ['lmstudio', 'ollama', 'kokoro', 'whisper', 'f5-tts'];
+  const serviceNames: ServiceName[] = ['lmstudio', 'ollama', 'kokoro', 'whisper', 'f5-tts', 'sesame-csm'];
   const detections = await detectAllServices();
 
   const targets: UninstallTarget[] = serviceNames.map((name) => {

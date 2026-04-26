@@ -9,6 +9,7 @@ const SERVICE_DISPLAY: Record<ServiceName, { label: string; role: string }> = {
   kokoro: { label: 'Kokoro TTS', role: 'Text-to-speech voice (CPU)' },
   whisper: { label: 'Whisper STT', role: 'Speech-to-text recognition' },
   'f5-tts': { label: 'F5-TTS', role: 'Text-to-speech voice (GPU)' },
+  'sesame-csm': { label: 'Sesame CSM', role: 'Text-to-speech voice (GPU, advanced)' },
 };
 
 export function RepairPanel() {

@@ -296,6 +296,38 @@ async function detectF5TTS(): Promise<ServiceDetectionResult> {
 }
 
 // ---------------------------------------------------------------------------
+// Sesame CSM (advanced GPU TTS, SesameAILabs/csm via community wrapper)
+// ---------------------------------------------------------------------------
+
+const SESAME_CSM_CANDIDATES = [
+  { base: 'http://127.0.0.1:8000', probe: 'http://127.0.0.1:8000/health' },
+  { base: 'http://127.0.0.1:8000', probe: 'http://127.0.0.1:8000/' },
+  { base: 'http://127.0.0.1:8001', probe: 'http://127.0.0.1:8001/health' },
+];
+
+async function detectSesameCSM(): Promise<ServiceDetectionResult> {
+  let runningBase: string | null = null;
+
+  for (const { base, probe } of SESAME_CSM_CANDIDATES) {
+    const result = await probeUrl(probe);
+    if (result.ok) {
+      runningBase = base;
+      break;
+    }
+  }
+
+  return {
+    name: 'sesame-csm',
+    installed: runningBase !== null,
+    running: runningBase !== null,
+    version: null,
+    path: null,
+    endpoint: runningBase,
+    error: null,
+  };
+}
+
+// ---------------------------------------------------------------------------
 // Public API
 // ---------------------------------------------------------------------------
 
@@ -305,6 +337,7 @@ const DETECTORS: Record<ServiceName, () => Promise<ServiceDetectionResult>> = {
   whisper: detectWhisper,
   ollama: detectOllama,
   'f5-tts': detectF5TTS,
+  'sesame-csm': detectSesameCSM,
 };
 
 export async function detectService(name: ServiceName): Promise<ServiceDetectionResult> {
