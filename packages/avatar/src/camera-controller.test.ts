@@ -7,6 +7,10 @@ import {
   normalizeCameraMode,
 } from './camera-controller';
 
+// ARI-226 — explicit coverage required by the test spec for the new headshot
+// mode and the legacy 'portrait' coercion path. The pose-resolution and
+// transition tests above are kept as-is; these add the spec-named guarantees.
+
 function makeCamera(): THREE.PerspectiveCamera {
   // Match the camera AvatarScene constructs (FOV 30°, aspect 1, near 0.1, far 20).
   return new THREE.PerspectiveCamera(30, 1, 0.1, 20);
@@ -115,5 +119,50 @@ describe('CameraController', () => {
     expect(controller.getMode()).toBe('upper_torso');
     // Camera shouldn't have moved off the initial pose.
     expect(camera.position.toArray()).toEqual([0, 1.4, 1.5]);
+  });
+});
+
+// ── ARI-226 spec-named guarantees ────────────────────────────────────────
+
+describe('ARI-226 — headshot pose & legacy coercion', () => {
+  it("setMode('headshot') resolves to position (0,1.55,0.65), target (0,1.50,0), FOV 22° after the 750ms ease", () => {
+    const camera = makeCamera();
+    const controller = new CameraController(camera);
+    controller.setMode('headshot');
+    // Step the controller forward by exactly the transition duration so the
+    // ease completes (progress >= 1).
+    controller.update(CAMERA_TRANSITION_DURATION_S);
+    expect(controller.getMode()).toBe('headshot');
+    expect(camera.position.x).toBeCloseTo(0, 6);
+    expect(camera.position.y).toBeCloseTo(1.55, 6);
+    expect(camera.position.z).toBeCloseTo(0.65, 6);
+    expect(controller.getCurrentTarget().x).toBeCloseTo(0, 6);
+    expect(controller.getCurrentTarget().y).toBeCloseTo(1.5, 6);
+    expect(controller.getCurrentTarget().z).toBeCloseTo(0, 6);
+    expect(camera.fov).toBeCloseTo(22, 6);
+  });
+
+  it("legacy 'portrait' value coerces to 'upper_torso' on the runtime input boundary", () => {
+    // The viewer config persists the canonical CameraMode union; any legacy
+    // 'portrait' string read from settings flows through the runtime
+    // `setMode` path (CameraViewerApp -> AvatarDisplay -> setCameraMode), and
+    // `normalizeCameraMode` is the single coercion site.
+    expect(normalizeCameraMode('portrait')).toBe('upper_torso');
+    // Pose lookup composed with the coercion returns upper_torso literals.
+    const pose = getCameraPose(normalizeCameraMode('portrait'));
+    expect(pose.position.toArray()).toEqual([0, 1.4, 1.5]);
+    expect(pose.target.toArray()).toEqual([0, 1.3, 0]);
+    expect(pose.fov).toBe(30);
+  });
+
+  // The plan's "reduce-motion collapses framing transition to instant"
+  // requirement targets the camera-controller transition path. The
+  // controller currently runs the lerp unconditionally, so this guarantee
+  // is not yet implemented at the runtime layer (only the chrome-bar fade
+  // honours `prefers-reduced-motion`). Tracked as a follow-up.
+  it.skip("'prefers-reduced-motion: reduce' collapses the framing transition to instant", () => {
+    // When implemented, the controller should expose a way to bypass the
+    // 750ms ease (e.g. an option on setMode or a detector hook) so callers
+    // can respect the user's media-query preference. See ARI-226 follow-up.
   });
 });
