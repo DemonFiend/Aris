@@ -486,9 +486,9 @@ export interface CameraViewerConfig {
 export const DEFAULT_CAMERA_VIEWER_CONFIG: CameraViewerConfig = {
   isOpen: false,
   mode: 'upper_torso',
-  transparentBg: true,
+  transparentBg: false,
   opacity: 1.0,
-  alwaysOnTop: false,
+  alwaysOnTop: true,
   clickThrough: false,
   locked: false,
 };

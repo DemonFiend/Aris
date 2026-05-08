@@ -52,9 +52,9 @@ async function resetViewerConfig(mainWindow: Page): Promise<void> {
   await mainWindow.evaluate(async () => {
     await (window as any).aris.invoke('viewer:set-config', {
       mode: 'upper_torso',
-      transparentBg: true,
+      transparentBg: false,
       opacity: 1.0,
-      alwaysOnTop: false,
+      alwaysOnTop: true,
       clickThrough: false,
       locked: false,
       bounds: undefined,

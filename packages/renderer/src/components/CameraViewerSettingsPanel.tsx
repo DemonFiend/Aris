@@ -17,8 +17,8 @@ const FRAMING_OPTIONS: { mode: CameraMode; label: string }[] = [
 
 const COMPANION_PRESET: Partial<CameraViewerConfig> = {
   mode: 'upper_torso',
-  transparentBg: true,
-  alwaysOnTop: false,
+  transparentBg: false,
+  alwaysOnTop: true,
   clickThrough: false,
   locked: false,
   opacity: 1.0,
@@ -30,7 +30,7 @@ const STREAMER_PRESET: Partial<CameraViewerConfig> = {
   alwaysOnTop: true,
   clickThrough: true,
   locked: true,
-  opacity: 0.95,
+  opacity: 1.0,
 };
 
 export function CameraViewerSettingsPanel({ config, onConfigChange, onResetPosition, onClose }: Props) {
