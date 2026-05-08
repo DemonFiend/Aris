@@ -18,6 +18,7 @@ export function App() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [chatExpanded, setChatExpanded] = useState(false);
   const [aiStreaming, setAiStreaming] = useState(false);
+  const [viewerOpen, setViewerOpen] = useState(false);
 
   // First-launch wizard state
   const [setupDone, setSetupDone] = useState<boolean | null>(null);
@@ -101,6 +102,43 @@ export function App() {
     }
   }, [arisActive]);
 
+  // Sync viewer open state
+  useEffect(() => {
+    const cleanup = window.aris.on?.('viewer:state-changed', (cfg: unknown) => {
+      if (cfg && typeof (cfg as any).isOpen === 'boolean') {
+        setViewerOpen((cfg as any).isOpen as boolean);
+      }
+    });
+    return cleanup;
+  }, []);
+
+  // Keyboard shortcut Ctrl/Cmd+Shift+C to toggle camera viewer
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'C' && e.shiftKey && (e.ctrlKey || e.metaKey)) {
+        e.preventDefault();
+        handleToggleViewer();
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [viewerOpen]);
+
+  const handleToggleViewer = useCallback(async () => {
+    try {
+      if (viewerOpen) {
+        await window.aris.invoke('viewer:close');
+        setViewerOpen(false);
+      } else {
+        await window.aris.invoke('viewer:open');
+        setViewerOpen(true);
+      }
+    } catch {
+      // no-op
+    }
+  }, [viewerOpen]);
+
   // Show wizard on first launch (before any lock/auth check)
   if (setupDone === null) {
     return (
@@ -148,6 +186,22 @@ export function App() {
         <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
           <button onClick={toggleActive} style={statusIndicatorStyle} title={arisActive ? 'Active' : 'Disabled'}>
             <span style={statusDotStyle(arisActive)} />
+          </button>
+          {/* Camera Viewer entry button */}
+          <button
+            onClick={handleToggleViewer}
+            style={{ ...iconBtnStyle, position: 'relative' }}
+            title="Open camera viewer (Ctrl+Shift+C)"
+            aria-label="Open camera viewer"
+            aria-pressed={viewerOpen}
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M23 7l-7 5 7 5V7z" />
+              <rect x="1" y="5" width="15" height="14" rx="2" ry="2" />
+            </svg>
+            {viewerOpen && (
+              <span style={viewerOpenDotStyle} aria-hidden="true" />
+            )}
           </button>
           <button
             onClick={() => setView(view === 'settings' ? 'chat' : 'settings')}
@@ -357,6 +411,18 @@ const drawerOverlayStyle: React.CSSProperties = {
   inset: 0,
   background: 'rgba(0, 0, 0, 0.6)',
   zIndex: 50,
+};
+
+const viewerOpenDotStyle: React.CSSProperties = {
+  position: 'absolute',
+  top: 3,
+  right: 3,
+  width: 5,
+  height: 5,
+  borderRadius: '50%',
+  background: 'var(--color-success)',
+  boxShadow: '0 0 4px rgba(0, 230, 118, 0.7)',
+  pointerEvents: 'none',
 };
 
 const drawerStyle: React.CSSProperties = {

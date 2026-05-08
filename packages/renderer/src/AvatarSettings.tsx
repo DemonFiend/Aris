@@ -405,6 +405,109 @@ export function AvatarSettings() {
           </div>
         ))}
       </div>
+
+      {/* Camera Viewer section */}
+      <CameraViewerSection />
+    </div>
+  );
+}
+
+function CameraViewerSection() {
+  const [viewerOpen, setViewerOpen] = useState(false);
+  const [config, setConfig] = useState<{
+    opacity: number;
+    alwaysOnTop: boolean;
+    transparentBg: boolean;
+    clickThrough: boolean;
+    locked: boolean;
+  }>({ opacity: 1.0, alwaysOnTop: false, transparentBg: true, clickThrough: false, locked: false });
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const cfg = (await window.aris.invoke('viewer:get-config')) as any;
+        if (cfg) { setViewerOpen(cfg.isOpen ?? false); setConfig(cfg); }
+      } catch {}
+    })();
+    const cleanup = window.aris.on?.('viewer:state-changed', (cfg: unknown) => {
+      if (cfg) { setViewerOpen((cfg as any).isOpen ?? false); setConfig(cfg as any); }
+    });
+    return cleanup;
+  }, []);
+
+  const handleChange = async (partial: Record<string, unknown>) => {
+    setConfig((prev) => ({ ...prev, ...partial }));
+    try { await window.aris.invoke('viewer:set-config', partial); } catch {}
+  };
+
+  const handleToggle = async () => {
+    try {
+      if (viewerOpen) { await window.aris.invoke('viewer:close'); }
+      else { await window.aris.invoke('viewer:open'); }
+    } catch {}
+  };
+
+  const handleReset = async () => {
+    await handleChange({ bounds: undefined });
+  };
+
+  const opacityPct = Math.round(config.opacity * 100);
+
+  return (
+    <div style={{ marginTop: 'var(--space-6)', borderTop: '1px solid var(--border-subtle)', paddingTop: 'var(--space-4)' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--space-3)' }}>
+        <div>
+          <h3 style={headingStyle}>Camera Viewer</h3>
+          <p style={hintStyle}>Standalone avatar window for streaming or companion use.</p>
+        </div>
+        <button
+          onClick={handleToggle}
+          style={viewerOpen ? primaryBtnStyle : secondaryBtnStyle}
+          aria-pressed={viewerOpen}
+          aria-label={viewerOpen ? 'Close camera viewer' : 'Open camera viewer'}
+        >
+          {viewerOpen ? 'Close viewer' : 'Open viewer'}
+        </button>
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
+        <label style={viewerToggleRowStyle}>
+          <span style={{ fontSize: 'var(--text-sm)' }}>Always on top</span>
+          <input type="checkbox" checked={config.alwaysOnTop} onChange={(e) => handleChange({ alwaysOnTop: e.target.checked })} style={{ accentColor: 'var(--color-primary)' }} />
+        </label>
+        <label style={viewerToggleRowStyle}>
+          <span style={{ fontSize: 'var(--text-sm)' }}>Transparent background</span>
+          <input type="checkbox" checked={config.transparentBg} onChange={(e) => handleChange({ transparentBg: e.target.checked })} style={{ accentColor: 'var(--color-primary)' }} />
+        </label>
+        <label style={viewerToggleRowStyle}>
+          <span style={{ fontSize: 'var(--text-sm)' }}>Click-through</span>
+          <input type="checkbox" checked={config.clickThrough} onChange={(e) => {
+            const v = e.target.checked;
+            handleChange(v ? { clickThrough: true, locked: true } : { clickThrough: false });
+          }} style={{ accentColor: 'var(--color-primary)' }} />
+        </label>
+        <label style={viewerToggleRowStyle}>
+          <span style={{ fontSize: 'var(--text-sm)' }}>Lock layout</span>
+          <input type="checkbox" checked={config.locked} onChange={(e) => handleChange({ locked: e.target.checked })} style={{ accentColor: 'var(--color-primary)' }} />
+        </label>
+        <div>
+          <label htmlFor="settings-viewer-opacity" style={{ fontSize: 'var(--text-sm)', color: 'var(--text-primary)' }}>
+            Opacity — {opacityPct}%
+          </label>
+          <input
+            id="settings-viewer-opacity"
+            type="range"
+            min={40} max={100} step={5}
+            value={opacityPct}
+            onChange={(e) => handleChange({ opacity: Number(e.target.value) / 100 })}
+            style={{ width: '100%', accentColor: 'var(--color-primary)', marginTop: 4 }}
+            aria-label="Camera viewer opacity"
+            aria-valuemin={40} aria-valuemax={100} aria-valuenow={opacityPct}
+          />
+        </div>
+        <button onClick={handleReset} style={{ ...secondaryBtnSmStyle, marginTop: 'var(--space-1)', alignSelf: 'flex-start' }} aria-label="Reset viewer position and size">
+          Reset position &amp; size
+        </button>
+      </div>
     </div>
   );
 }
@@ -731,4 +834,13 @@ const humanoidRowBadgeStyle: React.CSSProperties = {
   padding: '0 5px',
   borderRadius: 'var(--radius-full)',
   lineHeight: '16px',
+};
+
+const viewerToggleRowStyle: React.CSSProperties = {
+  display: 'flex',
+  justifyContent: 'space-between',
+  alignItems: 'center',
+  cursor: 'pointer',
+  padding: '2px 0',
+  color: 'var(--text-primary)',
 };

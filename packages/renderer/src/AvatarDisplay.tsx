@@ -2,7 +2,7 @@ import { useRef, useEffect, useState, useCallback } from 'react';
 import * as THREE from 'three';
 import { AvatarScene, IdleAnimation, IdleVariationManager, ExpressionController, GestureController, GazeController, BasePose, NonHumanoidAnimator, MicroExpressionController, SurpriseAnimationController, PoseController, PhysicsReactionController, ContextIdleController, ClickReactionController, BeatReactionController, sentimentToExpression, sentimentToPose } from '@aris/avatar';
 import type { Expression, GestureType, DockHint, PoseType } from '@aris/avatar';
-import type { AvatarInfo, CompanionConfig, PositionContext, VirtualSpaceConfig, WindowShakeEvent, UserContextSignals } from '@aris/shared';
+import type { AvatarInfo, CameraMode, CompanionConfig, PositionContext, VirtualSpaceConfig, WindowShakeEvent, UserContextSignals } from '@aris/shared';
 import { IDLE_PROFILE_PRESETS } from '@aris/shared';
 import { AudioAnalyzer } from './audio-analyzer';
 
@@ -11,9 +11,13 @@ interface Props {
   lastAssistantMessage?: string;
   /** Whether the AI is currently streaming a response */
   streaming?: boolean;
+  /** Camera framing mode — controlled externally by the viewer surface */
+  cameraMode?: CameraMode;
+  /** When true, removes border-radius and sets clearAlpha=0 for composited transparency */
+  transparentBg?: boolean;
 }
 
-export function AvatarDisplay({ lastAssistantMessage, streaming }: Props) {
+export function AvatarDisplay({ lastAssistantMessage, streaming, cameraMode, transparentBg }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const sceneRef = useRef<AvatarScene | null>(null);
   const idleRef = useRef<IdleAnimation | null>(null);
@@ -398,11 +402,25 @@ export function AvatarDisplay({ lastAssistantMessage, streaming }: Props) {
     return cleanup;
   }, [loaded]);
 
-  // Apply explicit camera mode changes
+  // Apply camera mode from prop (viewer surface drives this)
+  useEffect(() => {
+    if (cameraMode && sceneRef.current) {
+      sceneRef.current.setCameraMode(cameraMode);
+    }
+  }, [cameraMode]);
+
+  // Apply transparent background from prop (viewer surface)
+  useEffect(() => {
+    if (!sceneRef.current) return;
+    sceneRef.current.renderer.setClearAlpha(transparentBg ? 0 : 1);
+  }, [transparentBg]);
+
+  // Apply explicit camera mode changes from legacy IPC (main-window avatar only)
   useEffect(() => {
     const cleanup = window.aris.on?.('avatar:camera-mode-changed', (mode: unknown) => {
-      if ((mode === 'portrait' || mode === 'fullbody') && sceneRef.current) {
-        sceneRef.current.setCameraMode(mode);
+      const validModes = ['headshot', 'upper_torso', 'fullbody', 'portrait'] as const;
+      if (typeof mode === 'string' && (validModes as readonly string[]).includes(mode) && sceneRef.current) {
+        sceneRef.current.setCameraMode(mode as 'headshot' | 'upper_torso' | 'fullbody' | 'portrait');
       }
     });
     return cleanup;
@@ -464,8 +482,13 @@ export function AvatarDisplay({ lastAssistantMessage, streaming }: Props) {
   }, [loaded]);
 
   return (
-    <div style={wrapperStyle}>
-      <canvas ref={canvasRef} style={canvasStyle} />
+    <div style={{ ...wrapperStyle, borderRadius: transparentBg ? 0 : 'var(--radius-lg)' }}>
+      <canvas
+        ref={canvasRef}
+        style={canvasStyle}
+        data-testid="camera-viewer-canvas"
+        data-camera-mode={cameraMode ?? 'upper_torso'}
+      />
       {!loaded && !error && (
         <div style={overlayStyle}>
           <span style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm)' }}>Loading avatar...</span>
