@@ -6,6 +6,7 @@ import { registerIpcHandlers, initProviders } from './ipc-handlers';
 import { registerVoiceHandlers } from './voice-handlers';
 import { registerAvatarHandlers } from './avatar-handlers';
 import { registerCompanionHandlers } from './companion-handlers';
+import { registerViewerHandlers, maybeReopenViewerOnStartup, closeViewerForQuit } from './viewer-handlers';
 import { captureEvents } from './capture-service';
 import { getPositionContext } from './position-context';
 import { getScreenPositionState } from './screen-position';
@@ -298,9 +299,11 @@ app.whenReady().then(() => {
   registerVoiceHandlers();
   registerAvatarHandlers();
   registerCompanionHandlers();
+  registerViewerHandlers(() => mainWindow);
   registerWindowHandlers();
   createTray();
   createWindow();
+  maybeReopenViewerOnStartup();
 
   // Security: prevent external URLs from loading in a new Electron BrowserWindow.
   // All window.open() / target=_blank navigation is routed to the system browser.
@@ -327,6 +330,7 @@ app.whenReady().then(() => {
 
 app.on('before-quit', () => {
   isQuitting = true;
+  closeViewerForQuit();
   closeDb();
 });
 
