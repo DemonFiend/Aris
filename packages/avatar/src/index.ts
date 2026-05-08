@@ -1,6 +1,11 @@
 export { AvatarScene } from './scene';
-export { CameraController } from './camera-controller';
-export type { CameraMode } from './camera-controller';
+export {
+  CameraController,
+  CAMERA_TRANSITION_DURATION_S,
+  getCameraPose,
+  normalizeCameraMode,
+} from './camera-controller';
+export type { CameraMode, CameraModeInput, CameraPose } from './camera-controller';
 export { ExpressionController, sentimentToExpression } from './expressions';
 export type { Expression } from './expressions';
 export { LipSync } from './lip-sync';

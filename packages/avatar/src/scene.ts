@@ -3,7 +3,7 @@ import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { VRMLoaderPlugin, VRM, VRMUtils, VRMHumanBoneName } from '@pixiv/three-vrm';
 import type { VirtualSpaceConfig } from '@aris/shared';
 import { CameraController } from './camera-controller';
-import type { CameraMode } from './camera-controller';
+import type { CameraMode, CameraModeInput } from './camera-controller';
 
 export class AvatarScene {
   readonly renderer: THREE.WebGLRenderer;
@@ -274,7 +274,7 @@ export class AvatarScene {
     }
   }
 
-  setCameraMode(mode: CameraMode): void {
+  setCameraMode(mode: CameraModeInput): void {
     this.cameraController.setMode(mode);
   }
 
