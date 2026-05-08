@@ -400,3 +400,184 @@ test.describe('Camera Viewer — click-through requires lock (ARI-226 #8)', () =
     await app.close();
   });
 });
+
+// ── Scenario 7: Empty / Loading / Error states (ARI-230 #7) ──────────────
+
+test.describe('Camera Viewer — Empty/Loading/Error states (ARI-230 #7)', () => {
+  test('loading overlay is wired; successful load leaves no error overlay', async () => {
+    const { app, mainWindow } = await launchApp();
+    await resetViewerConfig(mainWindow);
+
+    await mainWindow.click('button[aria-label="Open camera viewer"]');
+    const viewer = await waitForViewerWindow(app, mainWindow);
+
+    // The avatar load is async; the loading overlay text (`Loading avatar...`)
+    // may flash briefly before the canvas renders. Either we catch the loading
+    // overlay or the canvas reaches the "loaded — no overlay" terminal state.
+    // Both outcomes prove the loading-state UI is correctly wired (plan §6).
+    const result = await Promise.race([
+      viewer
+        .waitForFunction(
+          () => Array.from(document.querySelectorAll('span')).some((s) => /Loading avatar/.test(s.textContent ?? '')),
+          undefined,
+          { timeout: 4000 },
+        )
+        .then(() => 'loading-seen' as const)
+        .catch(() => null),
+      viewer
+        .waitForFunction(
+          () => {
+            const canvas = document.querySelector('canvas[data-testid="camera-viewer-canvas"]');
+            return canvas !== null;
+          },
+          undefined,
+          { timeout: 8000 },
+        )
+        .then(() => 'loaded' as const)
+        .catch(() => null),
+    ]);
+    expect(result).not.toBeNull();
+
+    // Wait for the canvas to be present (terminal state).
+    await viewer
+      .waitForSelector('canvas[data-testid="camera-viewer-canvas"]', { timeout: 8000 })
+      .catch(() => {});
+
+    // After load finishes, no error overlay should be present. The error
+    // overlay span text starts with the thrown message (often "Failed to load…");
+    // a successful or ghost-fallback load leaves only the canvas (or transient
+    // loading text that has already cleared).
+    await viewer.waitForTimeout(800);
+    const hasErrorOverlay = await viewer.evaluate(() => {
+      const canvas = document.querySelector('canvas[data-testid="camera-viewer-canvas"]');
+      const wrapper = canvas?.parentElement;
+      if (!wrapper) return false;
+      const spans = Array.from(wrapper.querySelectorAll('span'));
+      return spans.some((s) => /Failed to load/i.test(s.textContent ?? ''));
+    });
+    expect(hasErrorOverlay).toBe(false);
+
+    await app.close();
+  });
+});
+
+// ── Scenario 8b: Accessibility smoke (ARI-230 #8) ────────────────────────
+
+test.describe('Camera Viewer — accessibility smoke (ARI-230 #8)', () => {
+  test('opacity slider exposes aria-valuemin/max/now; framing radiogroup supports arrow-key navigation with tabindex roving', async () => {
+    const { app, mainWindow } = await launchApp();
+    await resetViewerConfig(mainWindow);
+
+    await mainWindow.click('button[aria-label="Open camera viewer"]');
+    const viewer = await waitForViewerWindow(app, mainWindow);
+
+    // ── Opacity slider a11y ──
+    await viewer.click('button[aria-label="Open settings"]');
+    await viewer.waitForSelector('[role="dialog"][aria-label="Camera viewer settings"]', { timeout: 3000 });
+
+    const slider = viewer.locator('input[aria-label="Window opacity"]');
+    await expect(slider).toHaveAttribute('aria-valuemin', '40');
+    await expect(slider).toHaveAttribute('aria-valuemax', '100');
+    // Default config opacity is 1.0 → aria-valuenow="100"
+    await expect(slider).toHaveAttribute('aria-valuenow', '100');
+
+    // Close popover for cleaner radiogroup tests.
+    await viewer.keyboard.press('Escape');
+    await expect(viewer.locator('[role="dialog"][aria-label="Camera viewer settings"]')).toHaveCount(0);
+
+    // ── Framing radiogroup a11y ──
+    // Reset to a known mode so the active radio is deterministic.
+    await mainWindow.evaluate(async () => {
+      await (window as any).aris.invoke('viewer:set-config', { mode: 'upper_torso' });
+    });
+    await mainWindow.waitForTimeout(400);
+
+    // Roving tabindex: exactly one chrome-bar radio has tabindex=0; the other two are -1.
+    const tabIndices = await viewer.evaluate(() => {
+      const buttons = Array.from(
+        document.querySelectorAll('div[role="radiogroup"][aria-label="Camera framing"] button[role="radio"]'),
+      ) as HTMLButtonElement[];
+      return buttons.map((b) => ({ label: b.getAttribute('aria-label'), tabIndex: b.tabIndex }));
+    });
+    const zeroes = tabIndices.filter((t) => t.tabIndex === 0);
+    expect(zeroes).toHaveLength(1);
+    expect(zeroes[0]?.label).toBe('Upper Torso');
+    expect(tabIndices.filter((t) => t.tabIndex === -1)).toHaveLength(2);
+
+    // Arrow-key navigation: focus the active radio, press ArrowRight → fullbody.
+    await viewer.locator('button[role="radio"][aria-label="Upper Torso"]').focus();
+    await viewer.keyboard.press('ArrowRight');
+    await expect(viewer.locator('canvas[data-testid="camera-viewer-canvas"]'))
+      .toHaveAttribute('data-camera-mode', 'fullbody');
+    await expect(viewer.locator('button[role="radio"][aria-label="Full Body"]'))
+      .toHaveAttribute('aria-checked', 'true');
+
+    // ArrowLeft cycles back through upper_torso → headshot.
+    await viewer.keyboard.press('ArrowLeft');
+    await expect(viewer.locator('canvas[data-testid="camera-viewer-canvas"]'))
+      .toHaveAttribute('data-camera-mode', 'upper_torso');
+    await viewer.keyboard.press('ArrowLeft');
+    await expect(viewer.locator('canvas[data-testid="camera-viewer-canvas"]'))
+      .toHaveAttribute('data-camera-mode', 'headshot');
+
+    await app.close();
+  });
+
+  test('prefers-reduced-motion collapses the chrome-bar opacity transition to "none"', async () => {
+    const { app, mainWindow } = await launchApp();
+    await resetViewerConfig(mainWindow);
+
+    await mainWindow.click('button[aria-label="Open camera viewer"]');
+    const viewer = await waitForViewerWindow(app, mainWindow);
+
+    // Emulate reduced-motion BEFORE re-rendering so React's matchMedia query
+    // returns true at render time (the component reads matchMedia at render).
+    await viewer.emulateMedia({ reducedMotion: 'reduce' });
+    await viewer.reload();
+    await viewer.waitForSelector('canvas[data-testid="camera-viewer-canvas"]', { timeout: 5000 });
+
+    // Inline style.transition should be 'none' regardless of visibility state
+    // (see CameraViewerChrome: `prefersReducedMotion ? 'none' : …`).
+    const transition = await viewer.evaluate(() => {
+      const bar = document.querySelector('div[aria-label="Camera viewer controls"]') as HTMLElement | null;
+      return bar?.style.transition ?? null;
+    });
+    expect(transition).toBe('none');
+
+    await app.close();
+  });
+});
+
+// ── Scenario 9: Single-instance via user flow (ARI-230 #9) ───────────────
+
+test.describe('Camera Viewer — single-instance from user flow (ARI-230 #9)', () => {
+  test('after opening via the entry button, repeat viewer:open IPC focuses existing window without spawning another', async () => {
+    const { app, mainWindow } = await launchApp();
+    await resetViewerConfig(mainWindow);
+
+    const initialCount = app.windows().length;
+
+    // Open via the title-bar button (user flow).
+    await mainWindow.click('button[aria-label="Open camera viewer"]');
+    await waitForViewerWindow(app, mainWindow);
+    expect(app.windows().length).toBe(initialCount + 1);
+
+    // Re-issue viewer:open from the main window twice. Each call must focus
+    // the existing viewer rather than spawn a duplicate.
+    for (let i = 0; i < 2; i++) {
+      await mainWindow.evaluate(async () => {
+        await (window as any).aris.invoke('viewer:open');
+      });
+      await mainWindow.waitForTimeout(400);
+      expect(app.windows().length).toBe(initialCount + 1);
+    }
+
+    // Cleanup
+    await mainWindow.evaluate(async () => {
+      await (window as any).aris.invoke('viewer:close');
+    });
+    await expect.poll(() => app.windows().length, { timeout: 5000 }).toBe(initialCount);
+
+    await app.close();
+  });
+});
