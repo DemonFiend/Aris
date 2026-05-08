@@ -200,22 +200,6 @@ function createTray(): void {
 }
 
 function registerWindowHandlers(): void {
-  ipcMain.handle('window:toggle-overlay', async () => {
-    if (!mainWindow) return false;
-    const isOverlay = mainWindow.isAlwaysOnTop();
-    mainWindow.setAlwaysOnTop(!isOverlay);
-    if (!isOverlay) {
-      mainWindow.setOpacity(0.9);
-    } else {
-      mainWindow.setOpacity(1.0);
-    }
-    return !isOverlay;
-  });
-
-  ipcMain.handle('window:get-overlay', async () => {
-    return mainWindow?.isAlwaysOnTop() ?? false;
-  });
-
   ipcMain.handle('window:get-position-context', async () => {
     if (!mainWindow) return null;
     return getPositionContext(mainWindow);

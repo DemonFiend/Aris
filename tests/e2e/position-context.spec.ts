@@ -27,9 +27,6 @@ test.describe('Position context system', () => {
     const validQuadrants = ['top-left', 'top-right', 'bottom-left', 'bottom-right', 'center'];
     expect(validQuadrants).toContain(ctx.screenQuadrant);
 
-    // Overlay mode should be boolean
-    expect(typeof ctx.overlayMode).toBe('boolean');
-
     // Window bounds should have valid numbers
     expect(typeof ctx.windowBounds.x).toBe('number');
     expect(typeof ctx.windowBounds.y).toBe('number');
@@ -69,33 +66,6 @@ test.describe('Position context system', () => {
     expect(afterMove).toBeTruthy();
     expect(afterMove.windowBounds.x).toBe(100);
     expect(afterMove.windowBounds.y).toBe(100);
-
-    await electronApp.close();
-  });
-
-  test('overlay toggle IPC returns a boolean', async () => {
-    const electronApp = await electron.launch({ args: [appPath] });
-    const window = await electronApp.firstWindow();
-    await window.waitForLoadState('domcontentloaded');
-
-    // Toggle overlay on — IPC should return a boolean (the new state)
-    const toggleResult = await window.evaluate(async () => {
-      try {
-        return await (window as any).aris.invoke('window:toggle-overlay');
-      } catch {
-        return null;
-      }
-    });
-    expect(typeof toggleResult).toBe('boolean');
-
-    // Toggle back to restore original state
-    await window.evaluate(async () => {
-      try {
-        await (window as any).aris.invoke('window:toggle-overlay');
-      } catch {
-        // ignore
-      }
-    });
 
     await electronApp.close();
   });

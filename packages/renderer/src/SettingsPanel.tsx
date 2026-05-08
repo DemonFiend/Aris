@@ -26,7 +26,6 @@ const TABS: { key: Tab; label: string; icon: string }[] = [
 
 export function SettingsPanel() {
   const [tab, setTab] = useState<Tab>('providers');
-  const [overlayMode, setOverlayMode] = useState(false);
   const [confirmWipe, setConfirmWipe] = useState(false);
   const [exportStatus, setExportStatus] = useState<'idle' | 'done'>('idle');
   const [screenMode, setScreenMode] = useState<ScreenPositionMode>('disabled');
@@ -37,8 +36,6 @@ export function SettingsPanel() {
   const [spaceConfig, setSpaceConfig] = useState<VirtualSpaceConfig | null>(null);
 
   const loadState = useCallback(async () => {
-    const overlay = (await window.aris.invoke('window:get-overlay')) as boolean;
-    setOverlayMode(overlay);
     try {
       const state = (await window.aris.invoke('screen:get-position-state')) as ScreenPositionState;
       setScreenMode(state.mode);
@@ -65,11 +62,6 @@ export function SettingsPanel() {
       setLiveScreenState(state as ScreenPositionState);
     });
   }, []);
-
-  const toggleOverlay = async () => {
-    const newState = (await window.aris.invoke('window:toggle-overlay')) as boolean;
-    setOverlayMode(newState);
-  };
 
   const handleScreenModeChange = (mode: ScreenPositionMode) => {
     if (screenMode === 'disabled' && mode !== 'disabled') {
@@ -215,13 +207,6 @@ export function SettingsPanel() {
           <SettingsCard>
             <div style={cardInnerStyle}>
               <h3 style={sectionHeadingStyle}>Window</h3>
-
-              <SettingRow
-                label="Overlay mode"
-                description="Keeps Aris visible over your game with slight transparency"
-              >
-                <ToggleButton on={overlayMode} onClick={toggleOverlay} />
-              </SettingRow>
 
               <SettingRow label="Minimize to tray" description="Hide Aris to the system tray">
                 <button

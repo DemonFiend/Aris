@@ -31,7 +31,6 @@ test.describe('Dock position system prompt', () => {
       ipcMain.handle('window:get-position-context', () => ({
         dockPosition: 'floating',
         screenQuadrant: 'center',
-        overlayMode: false,
         windowBounds: { x: 0, y: 0, width: 100, height: 100 },
         screenBounds: { width: 1920, height: 1080 },
       }));
@@ -99,7 +98,6 @@ test.describe('Dock position system prompt', () => {
       ipcMain.handle('window:get-position-context', () => ({
         dockPosition: 'left',
         screenQuadrant: 'center',
-        overlayMode: false,
         windowBounds: { x: 0, y: 0, width: 100, height: 100 },
         screenBounds: { width: 1920, height: 1080 },
       }));

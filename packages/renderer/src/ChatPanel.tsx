@@ -240,7 +240,7 @@ export function ChatPanel({
             posCtx.dockPosition === 'floating'
               ? 'floating on screen'
               : `on the ${posCtx.dockPosition} side of the screen`;
-          systemPrompt += `\n\n[You are ${position}${posCtx.overlayMode ? ", overlaying on top of the player's game" : ''}. You may subtly reference this when it feels natural, but NEVER mention window dimensions, pixels, or technical details like "docked" — just be aware of where you are.]`;
+          systemPrompt += `\n\n[You are ${position}. You may subtly reference this when it feels natural, but NEVER mention window dimensions, pixels, or technical details like "docked" — just be aware of where you are.]`;
         }
       } catch {
         // Position context unavailable — continue without it

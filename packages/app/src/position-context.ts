@@ -5,7 +5,7 @@ const EDGE_THRESHOLD = 50; // px — how close to screen edge counts as "docked"
 
 /**
  * Compute the current position context for a BrowserWindow.
- * Determines dock position, screen quadrant, overlay state, and bounds.
+ * Determines dock position, screen quadrant, and bounds.
  */
 export function getPositionContext(win: BrowserWindow): PositionContext {
   const bounds = win.getBounds();
@@ -15,7 +15,6 @@ export function getPositionContext(win: BrowserWindow): PositionContext {
   return {
     dockPosition: computeDockPosition(bounds, workArea, win.isFullScreen()),
     screenQuadrant: computeQuadrant(bounds, workArea),
-    overlayMode: win.isAlwaysOnTop(),
     windowBounds: { x: bounds.x, y: bounds.y, width: bounds.width, height: bounds.height },
     screenBounds: { width: workArea.width, height: workArea.height },
   };

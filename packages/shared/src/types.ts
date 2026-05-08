@@ -435,7 +435,6 @@ export type ScreenQuadrant = 'top-left' | 'top-right' | 'bottom-left' | 'bottom-
 export interface PositionContext {
   dockPosition: DockPosition;
   screenQuadrant: ScreenQuadrant;
-  overlayMode: boolean;
   windowBounds: { x: number; y: number; width: number; height: number };
   screenBounds: { width: number; height: number };
 }
@@ -750,8 +749,6 @@ export type IpcChannel =
   | 'password:verify'
   | 'password:set-config'
   | 'password:remove'
-  | 'window:toggle-overlay'
-  | 'window:get-overlay'
   | 'window:get-position-context'
   | 'window:minimize-to-tray'
   | 'window:quit'
