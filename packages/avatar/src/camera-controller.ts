@@ -1,16 +1,17 @@
 import * as THREE from 'three';
+import type { CameraMode, CameraModeInput } from '@aris/shared';
 
 /**
- * Canonical camera framings supported by the Camera Viewer.
+ * Canonical camera framings live in `@aris/shared` (per ARI-221) so the main
+ * process, renderer UI, and avatar runtime share one definition. We re-export
+ * for back-compat with existing callers that import from `@aris/avatar`.
  *
- * Per ARI-168 plan §3.3, the viewer ships three modes for the minimum-viable
- * lane. The legacy `'portrait'` value is still accepted on input (mapped to
- * `'upper_torso'`) but no longer appears in the canonical union.
+ * Per ARI-168 plan §3.3, the viewer ships three modes (`headshot`,
+ * `upper_torso`, `fullbody`). The legacy `'portrait'` value is still accepted
+ * on input (mapped to `'upper_torso'`) but no longer appears in the canonical
+ * union.
  */
-export type CameraMode = 'headshot' | 'upper_torso' | 'fullbody';
-
-/** Input type for {@link CameraController.setMode} — accepts the legacy `'portrait'` alias. */
-export type CameraModeInput = CameraMode | 'portrait';
+export type { CameraMode, CameraModeInput };
 
 // Pose constants — exact values from ARI-168 plan §4.
 const HEADSHOT_POSITION = new THREE.Vector3(0, 1.55, 0.65);

@@ -453,6 +453,47 @@ export interface PasswordConfig {
   hasStartupPassword: boolean;
 }
 
+/**
+ * Canonical camera framings supported by the avatar viewport and Camera Viewer.
+ *
+ * Authoritative definition lives here in `@aris/shared` so that main-process
+ * IPC handlers, renderer UI, and the avatar runtime all reference one type.
+ * The avatar package owns the runtime behaviour (pose constants, controller
+ * class, normalisation helpers) keyed off this union.
+ */
+export type CameraMode = 'headshot' | 'upper_torso' | 'fullbody';
+
+/** Input variant for camera-mode setters — accepts the legacy `'portrait'` alias. */
+export type CameraModeInput = CameraMode | 'portrait';
+
+/**
+ * Persistent + runtime configuration for the standalone Camera Viewer window
+ * introduced in ARI-168. Lives in `@aris/shared` so renderer UI, settings
+ * store, and main-process window manager share one shape.
+ */
+export interface CameraViewerConfig {
+  isOpen: boolean;
+  mode: CameraMode;
+  transparentBg: boolean;
+  /** 0.40 – 1.00, step 0.05 */
+  opacity: number;
+  alwaysOnTop: boolean;
+  clickThrough: boolean;
+  locked: boolean;
+  bounds?: { x: number; y: number; width: number; height: number };
+}
+
+/** Default Camera Viewer config — used on first launch and when settings are missing. */
+export const DEFAULT_CAMERA_VIEWER_CONFIG: CameraViewerConfig = {
+  isOpen: false,
+  mode: 'upper_torso',
+  transparentBg: true,
+  opacity: 1.0,
+  alwaysOnTop: false,
+  clickThrough: false,
+  locked: false,
+};
+
 /** Virtual space configuration — ground plane, shadows, and scene environment */
 export interface VirtualSpaceConfig {
   enabled: boolean;
@@ -694,6 +735,11 @@ export type IpcChannel =
   | 'avatar:set-space-config'
   | 'avatar:set-camera-mode'
   | 'avatar:get-camera-mode'
+  | 'viewer:open'
+  | 'viewer:close'
+  | 'viewer:set-config'
+  | 'viewer:get-config'
+  | 'viewer:state-changed'
   | 'avatar:update-metadata'
   | 'avatar:set-humanoid-override'
   | 'companion:get-config'
