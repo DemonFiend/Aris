@@ -435,6 +435,8 @@ export type ScreenQuadrant = 'top-left' | 'top-right' | 'bottom-left' | 'bottom-
 export interface PositionContext {
   dockPosition: DockPosition;
   screenQuadrant: ScreenQuadrant;
+  /** True when the window is in always-on-top / overlay mode (floats over the player's game). */
+  overlayMode: boolean;
   windowBounds: { x: number; y: number; width: number; height: number };
   screenBounds: { width: number; height: number };
 }

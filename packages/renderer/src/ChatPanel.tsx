@@ -8,7 +8,7 @@ import type {
   ProviderConfig,
   ScreenAnalysisContext,
 } from '@aris/shared';
-import { buildPersonaSystemPrompt } from '@aris/shared';
+import { buildPersonaSystemPrompt, buildPositionPromptLine } from '@aris/shared';
 import { VoiceControls } from './VoiceControls';
 
 interface Message {
@@ -235,12 +235,9 @@ export function ChatPanel({
           'window:get-position-context',
         )) as PositionContext | null;
         if (posCtx) {
-          // DockPosition uses 'floating' for undocked center windows in shared types
-          const position =
-            posCtx.dockPosition === 'floating'
-              ? 'floating on screen'
-              : `on the ${posCtx.dockPosition} side of the screen`;
-          systemPrompt += `\n\n[You are ${position}. You may subtly reference this when it feels natural, but NEVER mention window dimensions, pixels, or technical details like "docked" — just be aware of where you are.]`;
+          // In overlay (always-on-top) mode the window floats anywhere over the player's
+          // game, so dock-side phrasing is misleading — switch to the screen quadrant.
+          systemPrompt += buildPositionPromptLine(posCtx);
         }
       } catch {
         // Position context unavailable — continue without it

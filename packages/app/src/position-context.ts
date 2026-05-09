@@ -15,6 +15,7 @@ export function getPositionContext(win: BrowserWindow): PositionContext {
   return {
     dockPosition: computeDockPosition(bounds, workArea, win.isFullScreen()),
     screenQuadrant: computeQuadrant(bounds, workArea),
+    overlayMode: win.isAlwaysOnTop(),
     windowBounds: { x: bounds.x, y: bounds.y, width: bounds.width, height: bounds.height },
     screenBounds: { width: workArea.width, height: workArea.height },
   };
