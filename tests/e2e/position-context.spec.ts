@@ -40,6 +40,63 @@ test.describe('Position context system', () => {
     await electronApp.close();
   });
 
+  test('active surface follows camera viewer when open and reverts on close (ARI-242)', async () => {
+    const electronApp = await electron.launch({ args: [appPath] });
+    const window = await electronApp.firstWindow();
+    await window.waitForLoadState('domcontentloaded');
+
+    // Move main window so its bounds are clearly distinct from the viewer's.
+    const mainBW = await electronApp.browserWindow(window);
+    await mainBW.evaluate((win) => win.setBounds({ x: 50, y: 50, width: 600, height: 400 }));
+    await window.waitForTimeout(200);
+
+    const beforeOpen = await window.evaluate(async () =>
+      (window as any).aris.invoke('window:get-position-context'),
+    );
+    expect(beforeOpen).toBeTruthy();
+    expect(beforeOpen.windowBounds.x).toBe(50);
+    expect(beforeOpen.windowBounds.y).toBe(50);
+    expect(beforeOpen.windowBounds.width).toBe(600);
+
+    // Open the camera viewer.
+    await window.evaluate(async () => (window as any).aris.invoke('viewer:open'));
+    await window.waitForTimeout(900); // allow ready-to-show + show()
+
+    // Move the viewer to a distinct location/size.
+    const allWindows = electronApp.windows();
+    expect(allWindows.length).toBeGreaterThanOrEqual(2);
+    const viewerPage = allWindows.find((w) => w !== window);
+    expect(viewerPage).toBeTruthy();
+    const viewerBW = await electronApp.browserWindow(viewerPage!);
+    await viewerBW.evaluate((win) =>
+      win.setBounds({ x: 800, y: 600, width: 360, height: 480 }),
+    );
+    await window.waitForTimeout(300);
+
+    const whileOpen = await window.evaluate(async () =>
+      (window as any).aris.invoke('window:get-position-context'),
+    );
+    expect(whileOpen).toBeTruthy();
+    expect(whileOpen.windowBounds.x).toBe(800);
+    expect(whileOpen.windowBounds.y).toBe(600);
+    expect(whileOpen.windowBounds.width).toBe(360);
+    expect(whileOpen.windowBounds.height).toBe(480);
+
+    // Close the viewer; active surface should revert to the main dock window.
+    await window.evaluate(async () => (window as any).aris.invoke('viewer:close'));
+    await window.waitForTimeout(800);
+
+    const afterClose = await window.evaluate(async () =>
+      (window as any).aris.invoke('window:get-position-context'),
+    );
+    expect(afterClose).toBeTruthy();
+    expect(afterClose.windowBounds.x).toBe(50);
+    expect(afterClose.windowBounds.y).toBe(50);
+    expect(afterClose.windowBounds.width).toBe(600);
+
+    await electronApp.close();
+  });
+
   test('position context updates after window move', async () => {
     const electronApp = await electron.launch({ args: [appPath] });
     const window = await electronApp.firstWindow();

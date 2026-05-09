@@ -16,6 +16,28 @@ let setConfigTimer: ReturnType<typeof setTimeout> | null = null;
 let pendingPartial: Partial<CameraViewerConfig> | null = null;
 let persistBoundsTimer: ReturnType<typeof setTimeout> | null = null;
 let escShortcutRegistered = false;
+let onActiveSurfaceMaybeChanged: (() => void) | null = null;
+
+function notifyActiveSurfaceMaybeChanged(): void {
+  try {
+    onActiveSurfaceMaybeChanged?.();
+  } catch {
+    /* ignore subscriber errors */
+  }
+}
+
+/**
+ * Returns the viewer BrowserWindow when it exists, is not destroyed, and is
+ * visible. Used by main.ts to choose the "active surface" for position-context
+ * reporting: when the camera viewer is open the avatar visually lives there,
+ * so the model should reason about that window's bounds instead of the dock
+ * window. (ARI-242)
+ */
+export function getViewerWindow(): BrowserWindow | null {
+  if (!viewerWindow || viewerWindow.isDestroyed()) return null;
+  if (!viewerWindow.isVisible()) return null;
+  return viewerWindow;
+}
 
 function clampOpacity(value: number): number {
   if (!Number.isFinite(value)) return DEFAULT_CAMERA_VIEWER_CONFIG.opacity;
@@ -170,8 +192,16 @@ function createCameraViewerWindow(initial: CameraViewerConfig): BrowserWindow {
       persistViewerConfig(next);
     }, PERSIST_BOUNDS_DEBOUNCE_MS);
   };
-  win.on('move', schedulePersistBounds);
-  win.on('resize', schedulePersistBounds);
+  win.on('move', () => {
+    schedulePersistBounds();
+    notifyActiveSurfaceMaybeChanged();
+  });
+  win.on('resize', () => {
+    schedulePersistBounds();
+    notifyActiveSurfaceMaybeChanged();
+  });
+  win.on('show', notifyActiveSurfaceMaybeChanged);
+  win.on('hide', notifyActiveSurfaceMaybeChanged);
 
   win.on('closed', () => {
     if (persistBoundsTimer) {
@@ -185,6 +215,10 @@ function createCameraViewerWindow(initial: CameraViewerConfig): BrowserWindow {
     viewerWindow = null;
     syncEscShortcut(next);
     broadcastConfig(next);
+    // Active surface flipped from viewer back to main — let main.ts emit a
+    // window:position-changed so the renderer/model isn't stuck with stale
+    // viewer context. (ARI-242)
+    notifyActiveSurfaceMaybeChanged();
   });
 
   return win;
@@ -196,6 +230,7 @@ function openOrFocus(cfg: CameraViewerConfig): void {
     viewerWindow.show();
     viewerWindow.focus();
     applyWindowFlags(cfg);
+    notifyActiveSurfaceMaybeChanged();
     return;
   }
   viewerWindow = createCameraViewerWindow(cfg);
@@ -203,11 +238,25 @@ function openOrFocus(cfg: CameraViewerConfig): void {
     if (!viewerWindow || viewerWindow.isDestroyed()) return;
     applyWindowFlags(cfg);
     viewerWindow.show();
+    notifyActiveSurfaceMaybeChanged();
   });
 }
 
-export function registerViewerHandlers(mainWindowGetter: () => BrowserWindow | null): void {
+export type ViewerHandlerCallbacks = {
+  /**
+   * Called when the viewer window opens, closes, becomes visible/hidden, or
+   * moves/resizes. main.ts uses this to (re)emit window:position-changed so
+   * the model sees the active surface instead of stale dock context. (ARI-242)
+   */
+  onActiveSurfaceMaybeChanged?: () => void;
+};
+
+export function registerViewerHandlers(
+  mainWindowGetter: () => BrowserWindow | null,
+  callbacks: ViewerHandlerCallbacks = {},
+): void {
   getMainWindow = mainWindowGetter;
+  onActiveSurfaceMaybeChanged = callbacks.onActiveSurfaceMaybeChanged ?? null;
   // Prime cache so first `viewer:get-config` is sync against persisted state.
   if (!currentConfig) currentConfig = loadViewerConfig();
 
