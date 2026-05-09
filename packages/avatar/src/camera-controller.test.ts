@@ -17,13 +17,13 @@ function makeCamera(): THREE.PerspectiveCamera {
 }
 
 describe('getCameraPose', () => {
-  it('resolves headshot to plan §4 literals exactly', () => {
+  it('resolves headshot to plan §4 literals (Y lowered per ARI-241)', () => {
     const pose = getCameraPose('headshot');
     expect(pose.position.x).toBe(0);
-    expect(pose.position.y).toBe(1.55);
+    expect(pose.position.y).toBe(1.1);
     expect(pose.position.z).toBe(0.65);
     expect(pose.target.x).toBe(0);
-    expect(pose.target.y).toBe(1.5);
+    expect(pose.target.y).toBe(1.05);
     expect(pose.target.z).toBe(0);
     expect(pose.fov).toBe(22);
   });
@@ -73,9 +73,9 @@ describe('CameraController', () => {
     controller.update(CAMERA_TRANSITION_DURATION_S + 0.01);
     expect(controller.getMode()).toBe('headshot');
     expect(camera.position.x).toBeCloseTo(0, 6);
-    expect(camera.position.y).toBeCloseTo(1.55, 6);
+    expect(camera.position.y).toBeCloseTo(1.1, 6);
     expect(camera.position.z).toBeCloseTo(0.65, 6);
-    expect(controller.getCurrentTarget().y).toBeCloseTo(1.5, 6);
+    expect(controller.getCurrentTarget().y).toBeCloseTo(1.05, 6);
     expect(camera.fov).toBeCloseTo(22, 6);
   });
 
@@ -125,7 +125,7 @@ describe('CameraController', () => {
 // ── ARI-226 spec-named guarantees ────────────────────────────────────────
 
 describe('ARI-226 — headshot pose & legacy coercion', () => {
-  it("setMode('headshot') resolves to position (0,1.55,0.65), target (0,1.50,0), FOV 22° after the 750ms ease", () => {
+  it("setMode('headshot') resolves to position (0,1.10,0.65), target (0,1.05,0), FOV 22° after the 750ms ease", () => {
     const camera = makeCamera();
     const controller = new CameraController(camera);
     controller.setMode('headshot');
@@ -134,10 +134,10 @@ describe('ARI-226 — headshot pose & legacy coercion', () => {
     controller.update(CAMERA_TRANSITION_DURATION_S);
     expect(controller.getMode()).toBe('headshot');
     expect(camera.position.x).toBeCloseTo(0, 6);
-    expect(camera.position.y).toBeCloseTo(1.55, 6);
+    expect(camera.position.y).toBeCloseTo(1.1, 6);
     expect(camera.position.z).toBeCloseTo(0.65, 6);
     expect(controller.getCurrentTarget().x).toBeCloseTo(0, 6);
-    expect(controller.getCurrentTarget().y).toBeCloseTo(1.5, 6);
+    expect(controller.getCurrentTarget().y).toBeCloseTo(1.05, 6);
     expect(controller.getCurrentTarget().z).toBeCloseTo(0, 6);
     expect(camera.fov).toBeCloseTo(22, 6);
   });

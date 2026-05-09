@@ -13,9 +13,12 @@ import type { CameraMode, CameraModeInput } from '@aris/shared';
  */
 export type { CameraMode, CameraModeInput };
 
-// Pose constants — exact values from ARI-168 plan §4.
-const HEADSHOT_POSITION = new THREE.Vector3(0, 1.55, 0.65);
-const HEADSHOT_TARGET = new THREE.Vector3(0, 1.5, 0);
+// Pose constants — headshot Y values lowered ~30% per ARI-241 user feedback
+// on ARI-237 ("camera headshot is too high"). Both position.y and target.y
+// dropped by 0.45 from the ARI-168 plan §4 originals (1.55 → 1.10, 1.5 → 1.05)
+// to preserve the camera tilt while shifting the framed head down in-frame.
+const HEADSHOT_POSITION = new THREE.Vector3(0, 1.1, 0.65);
+const HEADSHOT_TARGET = new THREE.Vector3(0, 1.05, 0);
 const HEADSHOT_FOV = 22;
 
 // Upper-torso pose preserves the legacy `'portrait'` numbers verbatim
