@@ -18,12 +18,10 @@ const HEADSHOT_POSITION = new THREE.Vector3(0, 1.55, 0.65);
 const HEADSHOT_TARGET = new THREE.Vector3(0, 1.5, 0);
 const HEADSHOT_FOV = 22;
 
-// Upper-torso pose. ARI-238 lowered position.y/target.y by 0.35 so the
-// face sits centered (slightly below center) instead of crowding the top of
-// the frame; the look-angle (position.y − target.y = 0.1) is preserved.
-// Legacy `'portrait'` callers still resolve here via `normalizeCameraMode`.
-const UPPER_TORSO_POSITION = new THREE.Vector3(0, 1.05, 1.5);
-const UPPER_TORSO_TARGET = new THREE.Vector3(0, 0.95, 0);
+// Upper-torso pose preserves the legacy `'portrait'` numbers verbatim
+// so existing callers that send `'portrait'` see no behavioural change.
+const UPPER_TORSO_POSITION = new THREE.Vector3(0, 1.4, 1.5);
+const UPPER_TORSO_TARGET = new THREE.Vector3(0, 1.3, 0);
 
 const FULLBODY_POSITION = new THREE.Vector3(0, 2.0, 4.5);
 const FULLBODY_TARGET = new THREE.Vector3(0, 0.9, 0);
