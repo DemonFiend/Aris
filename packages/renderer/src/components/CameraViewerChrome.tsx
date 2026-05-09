@@ -71,13 +71,22 @@ export function CameraViewerChrome({ mode, locked, onModeChange, onOpenSettings,
   }, [onModeChange]);
 
   if (locked) {
-    return <LockedAffordance />;
+    return (
+      <>
+        <PersistentDragStrip />
+        <LockedAffordance />
+      </>
+    );
   }
 
   const prefersReducedMotion = typeof window !== 'undefined'
     && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
   return (
+   <>
+    {/* Always-available drag strip: persists even while chrome is faded out
+        so users can grab the window without hovering for the chrome bar. */}
+    <PersistentDragStrip />
     <div
       ref={rootRef}
       style={{
@@ -158,6 +167,25 @@ export function CameraViewerChrome({ mode, locked, onModeChange, onOpenSettings,
         </button>
       </div>
     </div>
+   </>
+  );
+}
+
+/**
+ * Slim, always-rendered drag region pinned to the top edge of the viewer.
+ * Stays draggable when the chrome bar is faded out (and when only `locked` is
+ * set, since locking hides chrome but keeps the window movable). When the user
+ * has enabled click-through, Electron's `setIgnoreMouseEvents(true)` makes the
+ * whole window pass-through anyway, so this strip naturally goes inert without
+ * extra code paths — matching the invariant in viewer-handlers.ts.
+ */
+function PersistentDragStrip() {
+  return (
+    <div
+      data-testid="camera-viewer-drag-strip"
+      aria-hidden="true"
+      style={persistentDragStripStyle}
+    />
   );
 }
 
@@ -281,6 +309,20 @@ const iconBtnStyle: React.CSSProperties = {
   padding: 0,
   WebkitAppRegion: 'no-drag',
   transition: 'var(--transition-fast)',
+} as React.CSSProperties;
+
+const persistentDragStripStyle: React.CSSProperties = {
+  position: 'absolute',
+  top: 0,
+  left: 0,
+  right: 0,
+  height: 8,
+  // OS-level drag region; survives chrome opacity changes.
+  WebkitAppRegion: 'drag',
+  background: 'transparent',
+  // Sit beneath the chrome bar so its `no-drag` controls always win the
+  // hit test when chrome is visible. zIndex < chromeBarStyle.zIndex (100).
+  zIndex: 50,
 } as React.CSSProperties;
 
 const lockedHintStyle: React.CSSProperties = {

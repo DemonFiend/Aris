@@ -548,6 +548,102 @@ test.describe('Camera Viewer — accessibility smoke (ARI-230 #8)', () => {
   });
 });
 
+// ── Scenario 10: Always-on drag affordance (ARI-243) ─────────────────────
+
+test.describe('Camera Viewer — persistent drag strip (ARI-243)', () => {
+  test('drag strip is rendered with -webkit-app-region: drag and survives chrome fade-out', async () => {
+    const { app, mainWindow } = await launchApp();
+    await resetViewerConfig(mainWindow);
+
+    await mainWindow.click('button[aria-label="Open camera viewer"]');
+    const viewer = await waitForViewerWindow(app, mainWindow);
+
+    const strip = viewer.locator('[data-testid="camera-viewer-drag-strip"]');
+    await expect(strip).toHaveCount(1);
+
+    // OS-level drag region present in the inline style.
+    const initial = await strip.evaluate((el) => ({
+      appRegion: (el as HTMLElement).style.WebkitAppRegion,
+      position: (el as HTMLElement).style.position,
+      top: (el as HTMLElement).style.top,
+    }));
+    expect(initial.appRegion).toBe('drag');
+    expect(initial.position).toBe('absolute');
+    expect(initial.top).toBe('0px');
+
+    // Force the chrome bar to fade out: the chrome listens for mouseleave on
+    // its parent, so dispatch one and wait past scheduleHide (1500ms) +
+    // transition (200ms).
+    await viewer.evaluate(() => {
+      const root = document.querySelector('div[aria-label="Camera viewer controls"]')?.parentElement;
+      root?.dispatchEvent(new MouseEvent('mouseleave', { bubbles: true }));
+    });
+    await viewer.waitForTimeout(1800);
+
+    const chromeOpacity = await viewer.evaluate(() => {
+      const bar = document.querySelector('div[aria-label="Camera viewer controls"]') as HTMLElement | null;
+      return bar?.style.opacity ?? null;
+    });
+    expect(chromeOpacity).toBe('0');
+
+    // Strip must still be mounted with its drag region intact.
+    await expect(strip).toHaveCount(1);
+    const persisted = await strip.evaluate((el) => (el as HTMLElement).style.WebkitAppRegion);
+    expect(persisted).toBe('drag');
+
+    await app.close();
+  });
+
+  test('drag strip remains in locked mode (chrome bar is replaced by locked affordance)', async () => {
+    const { app, mainWindow } = await launchApp();
+    await resetViewerConfig(mainWindow);
+
+    await mainWindow.click('button[aria-label="Open camera viewer"]');
+    const viewer = await waitForViewerWindow(app, mainWindow);
+
+    await mainWindow.evaluate(async () => {
+      await (window as any).aris.invoke('viewer:set-config', { locked: true });
+    });
+    await mainWindow.waitForTimeout(400);
+
+    expect(await viewer.locator('div[aria-label="Camera viewer controls"]').count()).toBe(0);
+
+    const strip = viewer.locator('[data-testid="camera-viewer-drag-strip"]');
+    await expect(strip).toHaveCount(1);
+    const appRegion = await strip.evaluate((el) => (el as HTMLElement).style.WebkitAppRegion);
+    expect(appRegion).toBe('drag');
+
+    // Cleanup
+    await mainWindow.evaluate(async () => {
+      await (window as any).aris.invoke('viewer:set-config', { locked: false });
+    });
+    await mainWindow.waitForTimeout(400);
+
+    await app.close();
+  });
+
+  test('chrome controls remain clickable — strip does not block the hit test', async () => {
+    const { app, mainWindow } = await launchApp();
+    await resetViewerConfig(mainWindow);
+
+    await mainWindow.click('button[aria-label="Open camera viewer"]');
+    const viewer = await waitForViewerWindow(app, mainWindow);
+
+    // Settings button must still open the popover.
+    await viewer.click('button[aria-label="Open settings"]');
+    await viewer.waitForSelector('[role="dialog"][aria-label="Camera viewer settings"]', { timeout: 3000 });
+    await expect(viewer.locator('[role="dialog"][aria-label="Camera viewer settings"]')).toHaveCount(1);
+    await viewer.keyboard.press('Escape');
+
+    // Framing pills still respond.
+    await viewer.click('button[role="radio"][aria-label="Headshot"]');
+    await expect(viewer.locator('canvas[data-testid="camera-viewer-canvas"]'))
+      .toHaveAttribute('data-camera-mode', 'headshot');
+
+    await app.close();
+  });
+});
+
 // ── Scenario 9: Single-instance via user flow (ARI-230 #9) ───────────────
 
 test.describe('Camera Viewer — single-instance from user flow (ARI-230 #9)', () => {
