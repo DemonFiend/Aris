@@ -28,10 +28,10 @@ describe('getCameraPose', () => {
     expect(pose.fov).toBe(22);
   });
 
-  it('resolves upper_torso to the same numbers as the legacy portrait pose', () => {
+  it('resolves upper_torso to the ARI-238 lowered framing', () => {
     const pose = getCameraPose('upper_torso');
-    expect(pose.position.toArray()).toEqual([0, 1.4, 1.5]);
-    expect(pose.target.toArray()).toEqual([0, 1.3, 0]);
+    expect(pose.position.toArray()).toEqual([0, 1.05, 1.5]);
+    expect(pose.target.toArray()).toEqual([0, 0.95, 0]);
     expect(pose.fov).toBe(30);
   });
 
@@ -56,12 +56,12 @@ describe('normalizeCameraMode', () => {
 });
 
 describe('CameraController', () => {
-  it('defaults to upper_torso framing with the legacy portrait numbers and FOV 30°', () => {
+  it('defaults to upper_torso framing with the ARI-238 lowered numbers and FOV 30°', () => {
     const camera = makeCamera();
     const controller = new CameraController(camera);
     expect(controller.getMode()).toBe('upper_torso');
-    expect(camera.position.toArray()).toEqual([0, 1.4, 1.5]);
-    expect(controller.getCurrentTarget().toArray()).toEqual([0, 1.3, 0]);
+    expect(camera.position.toArray()).toEqual([0, 1.05, 1.5]);
+    expect(controller.getCurrentTarget().toArray()).toEqual([0, 0.95, 0]);
     expect(camera.fov).toBe(30);
   });
 
@@ -89,8 +89,8 @@ describe('CameraController', () => {
     controller.setMode('portrait');
     expect(controller.getMode()).toBe('upper_torso');
     controller.update(CAMERA_TRANSITION_DURATION_S + 0.01);
-    expect(camera.position.toArray()).toEqual([0, 1.4, 1.5]);
-    expect(controller.getCurrentTarget().toArray()).toEqual([0, 1.3, 0]);
+    expect(camera.position.toArray()).toEqual([0, 1.05, 1.5]);
+    expect(controller.getCurrentTarget().toArray()).toEqual([0, 0.95, 0]);
     expect(camera.fov).toBeCloseTo(30, 6);
   });
 
@@ -106,9 +106,9 @@ describe('CameraController', () => {
     controller.setMode('fullbody');
     controller.update(CAMERA_TRANSITION_DURATION_S / 2);
     expect(camera.position.x).toBeCloseTo((0 + 0) / 2, 6);
-    expect(camera.position.y).toBeCloseTo((1.4 + 2.0) / 2, 6);
+    expect(camera.position.y).toBeCloseTo((1.05 + 2.0) / 2, 6);
     expect(camera.position.z).toBeCloseTo((1.5 + 4.5) / 2, 6);
-    expect(controller.getCurrentTarget().y).toBeCloseTo((1.3 + 0.9) / 2, 6);
+    expect(controller.getCurrentTarget().y).toBeCloseTo((0.95 + 0.9) / 2, 6);
   });
 
   it('does not restart a transition when the requested mode equals the current canonical mode', () => {
@@ -118,7 +118,7 @@ describe('CameraController', () => {
     controller.setMode('portrait');
     expect(controller.getMode()).toBe('upper_torso');
     // Camera shouldn't have moved off the initial pose.
-    expect(camera.position.toArray()).toEqual([0, 1.4, 1.5]);
+    expect(camera.position.toArray()).toEqual([0, 1.05, 1.5]);
   });
 });
 
@@ -148,10 +148,11 @@ describe('ARI-226 — headshot pose & legacy coercion', () => {
     // `setMode` path (CameraViewerApp -> AvatarDisplay -> setCameraMode), and
     // `normalizeCameraMode` is the single coercion site.
     expect(normalizeCameraMode('portrait')).toBe('upper_torso');
-    // Pose lookup composed with the coercion returns upper_torso literals.
+    // Pose lookup composed with the coercion returns upper_torso literals
+    // (lowered per ARI-238 to keep the face centered, not crowding the top).
     const pose = getCameraPose(normalizeCameraMode('portrait'));
-    expect(pose.position.toArray()).toEqual([0, 1.4, 1.5]);
-    expect(pose.target.toArray()).toEqual([0, 1.3, 0]);
+    expect(pose.position.toArray()).toEqual([0, 1.05, 1.5]);
+    expect(pose.target.toArray()).toEqual([0, 0.95, 0]);
     expect(pose.fov).toBe(30);
   });
 
