@@ -8,6 +8,12 @@ export default defineConfig({
     // Exclude E2E tests, build output, and node_modules to avoid picking up
     // Playwright tests (which import @playwright/test) and third-party test
     // files accidentally present in dependencies.
-    exclude: ['tests/e2e/**', 'tests/fixtures/**', 'dist/**', 'node_modules/**'],
+    exclude: [
+      '**/tests/e2e/**',
+      'tests/fixtures/**',
+      '**/dist/**',
+      '**/node_modules/**',
+      '.claude/**',
+    ],
   },
 });

@@ -1,6 +1,6 @@
 import { useRef, useEffect, useState, useCallback } from 'react';
 import * as THREE from 'three';
-import { AvatarScene, IdleAnimation, IdleVariationManager, ExpressionController, GestureController, GazeController, BasePose, NonHumanoidAnimator, MicroExpressionController, SurpriseAnimationController, PoseController, PhysicsReactionController, ContextIdleController, ClickReactionController, BeatReactionController, sentimentToExpression, sentimentToPose } from '@aris/avatar';
+import { AvatarScene, IdleAnimation, IdleVariationManager, ExpressionController, GestureController, GazeController, BasePose, NonHumanoidAnimator, MicroExpressionController, SurpriseAnimationController, PoseController, PhysicsReactionController, ContextIdleController, ClickReactionController, BeatReactionController, sentimentToExpression, sentimentToPose, resolveClickZone } from '@aris/avatar';
 import type { Expression, GestureType, DockHint, PoseType } from '@aris/avatar';
 import type { AvatarInfo, CompanionConfig, PositionContext, VirtualSpaceConfig, WindowShakeEvent, UserContextSignals } from '@aris/shared';
 import { IDLE_PROFILE_PRESETS } from '@aris/shared';
@@ -169,6 +169,9 @@ export function AvatarDisplay({ lastAssistantMessage, streaming }: Props) {
               microExpr.update(delta);  // additive blend-shape twitches (runs after expr)
               gesture.update(delta);
               clickReaction.update(delta);  // click-on-avatar escalating reactions (additive bone)
+              // Pull eyes to neutral while a reaction plays so mouse-tracked
+              // gaze + reaction expressions don't compound into rolled-back eyes.
+              gaze.setSuppressed(clickReaction.isPlaying());
               gaze.update(delta);
             });
           } else {
@@ -408,7 +411,19 @@ export function AvatarDisplay({ lastAssistantMessage, streaming }: Props) {
     return cleanup;
   }, []);
 
-  // Click-on-avatar raycast — triggers escalating reactions
+  // Click-on-avatar — triggers escalating reactions when the user clicks the avatar.
+  //
+  // Hit-test: ray vs. VRM scene world-space bounding box.
+  //
+  // We deliberately don't use per-mesh `raycaster.intersectObjects` against
+  // SkinnedMeshes here. Three.js's SkinnedMesh.raycast uses the rest-pose
+  // bounding sphere as a first-pass cull, which silently rejects rays that
+  // hit the deformed mesh but miss the rest-pose volume — a known precision
+  // issue that made click-to-react appear broken in practice.
+  //
+  // For an intent-based interaction ("user clicked on the avatar"), a
+  // world-space bbox test is both more reliable and a better match for user
+  // expectation: clicks on the silhouette and within its envelope all count.
   useEffect(() => {
     const canvas = canvasRef.current;
     const scene = sceneRef.current;
@@ -416,6 +431,8 @@ export function AvatarDisplay({ lastAssistantMessage, streaming }: Props) {
 
     const raycaster = new THREE.Raycaster();
     const pointer = new THREE.Vector2();
+    const bbox = new THREE.Box3();
+    const bboxSize = new THREE.Vector3();
 
     const handleClick = (e: MouseEvent) => {
       if (!clickReactionRef.current) return;
@@ -423,32 +440,32 @@ export function AvatarDisplay({ lastAssistantMessage, streaming }: Props) {
       const vrm = scene.getVRM();
       if (!vrm) return;
 
-      // Compute normalized device coordinates from click position
       const rect = canvas.getBoundingClientRect();
       pointer.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
       pointer.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
 
       raycaster.setFromCamera(pointer, scene.camera);
 
-      // Collect SkinnedMesh children of the VRM scene for raycast targets
-      const meshes: THREE.Object3D[] = [];
-      vrm.scene.traverse((obj) => {
-        if (obj instanceof THREE.SkinnedMesh || obj instanceof THREE.Mesh) {
-          meshes.push(obj);
-        }
-      });
+      bbox.setFromObject(vrm.scene);
+      if (bbox.isEmpty()) return;
 
-      const hits = raycaster.intersectObjects(meshes, false);
-      if (hits.length > 0) {
-        clickReactionRef.current.trigger();
-      }
+      if (!raycaster.ray.intersectsBox(bbox)) return;
+
+      // Use the bbox diagonal as the avatar scale so head-zone radius
+      // works for both chibi and realistic models without tuning.
+      bbox.getSize(bboxSize);
+      const avatarScale = bboxSize.length();
+      const zone = resolveClickZone(vrm, raycaster.ray, avatarScale);
+      clickReactionRef.current.trigger(zone);
     };
 
     canvas.addEventListener('click', handleClick);
     return () => canvas.removeEventListener('click', handleClick);
   }, [loaded]);
 
-  // Mouse-tracked gaze — pass normalized screen coords to gaze controller
+  // Mouse-tracked gaze — pass normalized screen coords to gaze controller.
+  // mouseleave clears the position so eyes drift back to neutral when the
+  // cursor leaves the canvas (otherwise stale offsets persist indefinitely).
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas || !loaded) return;
@@ -459,8 +476,15 @@ export function AvatarDisplay({ lastAssistantMessage, streaming }: Props) {
       const y = (e.clientY - rect.top) / rect.height;
       gazeRef.current.setMousePosition(x, y);
     };
+    const handleMouseLeave = () => {
+      gazeRef.current?.clearMousePosition();
+    };
     canvas.addEventListener('mousemove', handleMouseMove);
-    return () => canvas.removeEventListener('mousemove', handleMouseMove);
+    canvas.addEventListener('mouseleave', handleMouseLeave);
+    return () => {
+      canvas.removeEventListener('mousemove', handleMouseMove);
+      canvas.removeEventListener('mouseleave', handleMouseLeave);
+    };
   }, [loaded]);
 
   return (

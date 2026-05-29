@@ -579,7 +579,10 @@ export interface ScreenAnalysisContext {
 }
 
 /** Click reaction escalation levels */
-export type ClickReactionType = 'surprised' | 'giggle' | 'annoyed' | 'pushback';
+export type ClickReactionType = 'surprised' | 'giggle' | 'annoyed' | 'pushback' | 'headpat';
+
+/** Body region a click resolves to. Drives which reaction primitive fires. */
+export type ClickZone = 'head' | 'body';
 
 /** Time period based on system clock hour */
 export type TimeOfDay = 'morning' | 'afternoon' | 'evening' | 'night';
