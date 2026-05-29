@@ -1,7 +1,7 @@
 import type { VRM } from '@pixiv/three-vrm';
 import type { ExpressionController } from './expressions';
 import type { GestureController } from './gestures';
-import type { ClickReactionType } from '@aris/shared';
+import type { ClickReactionType, ClickZone } from '@aris/shared';
 
 /** Rolling window (seconds) within which clicks accumulate before resetting. */
 const CLICK_WINDOW = 10;
@@ -12,6 +12,7 @@ const REACTION_DURATIONS: Record<ClickReactionType, number> = {
   giggle: 0.9,
   annoyed: 1.2,
   pushback: 1.4,
+  headpat: 0.8,
 };
 
 function lerp(a: number, b: number, t: number): number {
@@ -60,19 +61,34 @@ export class ClickReactionController {
     this.gesture = gesture;
   }
 
-  /** Call when the user clicks on the avatar mesh. */
-  trigger(): void {
+  /**
+   * Call when the user clicks on the avatar.
+   *
+   * @param zone Body region the click resolved to. `head` always plays a
+   *   headpat (no escalation — repeated headpats stay affectionate).
+   *   `body` (default) runs the existing surprised → giggle → annoyed →
+   *   pushback escalation chain.
+   */
+  trigger(zone: ClickZone = 'body'): void {
     if (!this.vrm) return;
 
-    // Record click time
-    this.clickTimes.push(this.clock);
+    let reaction: ClickReactionType;
 
-    // Prune clicks older than the rolling window
-    const cutoff = this.clock - CLICK_WINDOW;
-    this.clickTimes = this.clickTimes.filter((t) => t >= cutoff);
-
-    const count = this.clickTimes.length;
-    const reaction = this.pickReaction(count);
+    if (zone === 'head') {
+      // Headpats don't escalate — they're affectionate, not provocative.
+      // We still record the click time so a switch from head→body keeps the
+      // body counter accurate, but we always play the headpat primitive.
+      this.clickTimes.push(this.clock);
+      const cutoff = this.clock - CLICK_WINDOW;
+      this.clickTimes = this.clickTimes.filter((t) => t >= cutoff);
+      reaction = 'headpat';
+    } else {
+      // Body zone: original escalating poke chain.
+      this.clickTimes.push(this.clock);
+      const cutoff = this.clock - CLICK_WINDOW;
+      this.clickTimes = this.clickTimes.filter((t) => t >= cutoff);
+      reaction = this.pickReaction(this.clickTimes.length);
+    }
 
     // Interrupt any current reaction and start the new one
     this.activeReaction = reaction;
@@ -88,6 +104,7 @@ export class ClickReactionController {
         this.expr?.setExpression('surprised');
         break;
       case 'giggle':
+      case 'headpat':
         this.expr?.setExpression('happy');
         break;
       case 'annoyed':
@@ -130,6 +147,34 @@ export class ClickReactionController {
       case 'pushback':
         this.applyPushback(t);
         break;
+      case 'headpat':
+        this.applyHeadpat(t);
+        break;
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Headpat — gentle nod into the touch + relaxed spine (0.8 s)
+  // ---------------------------------------------------------------------------
+
+  private applyHeadpat(t: number): void {
+    const vrm = this.vrm!;
+    const env = Math.sin(t * Math.PI); // 0 → peak → 0
+
+    const head = vrm.humanoid?.getNormalizedBoneNode('head');
+    const neck = vrm.humanoid?.getNormalizedBoneNode('neck');
+    const spine = vrm.humanoid?.getNormalizedBoneNode('spine');
+
+    // Head tips slightly INTO the touch (gentle nod down).
+    if (head) {
+      head.rotation.x += lerp(0, 0.08, ease(env));
+    }
+    if (neck) {
+      neck.rotation.x += lerp(0, 0.04, ease(env));
+    }
+    // Spine relaxes — slight forward lean for the contented feel.
+    if (spine) {
+      spine.rotation.x += lerp(0, 0.03, ease(env));
     }
   }
 
@@ -202,14 +247,18 @@ export class ClickReactionController {
       head.rotation.x += lerp(0, 0.05, ease(env));
     }
 
-    // Arms crossed pose (additive)
+    // Arms crossed pose (additive). BasePose already brought arms down to
+    // ~1.2 rad on z; further increments push the upper arm past arm-down
+    // and around behind the body. The crossed-arms look comes from the
+    // FORWARD x rotation + forearm inward rotation; z gets only a small
+    // extra tuck inward.
     const armEnv = ease(Math.min(t * 2, 1)) * (1 - ease(Math.max((t - 0.7) / 0.3, 0)));
     if (leftArm) {
-      leftArm.rotation.z += 0.65 * armEnv;
+      leftArm.rotation.z += 0.1 * armEnv;
       leftArm.rotation.x += -0.45 * armEnv;
     }
     if (rightArm) {
-      rightArm.rotation.z += -0.65 * armEnv;
+      rightArm.rotation.z += -0.1 * armEnv;
       rightArm.rotation.x += -0.45 * armEnv;
     }
     if (leftForearm) leftForearm.rotation.y += 0.3 * armEnv;
@@ -258,9 +307,11 @@ export class ClickReactionController {
       rightForearm.rotation.z += -0.3 * armEnv;
     }
 
-    // Left arm on hip (annoyed stance)
+    // Left arm on hip (annoyed stance). BasePose already places the upper
+    // arm at ~1.2 rad on z (arm down); +0.5 here pushed it past arm-down
+    // and around behind the back. Use a small inward tuck instead.
     if (leftArm) {
-      leftArm.rotation.z += 0.5 * armEnv;
+      leftArm.rotation.z += 0.05 * armEnv;
       leftArm.rotation.x += 0.25 * armEnv;
     }
   }
