@@ -6,7 +6,7 @@ import { registerIpcHandlers, initProviders } from './ipc-handlers';
 import { registerVoiceHandlers } from './voice-handlers';
 import { registerAvatarHandlers } from './avatar-handlers';
 import { registerCompanionHandlers } from './companion-handlers';
-import { registerViewerHandlers, maybeReopenViewerOnStartup, closeViewerForQuit } from './viewer-handlers';
+import { registerViewerHandlers, maybeReopenViewerOnStartup, closeViewerForQuit, getViewerWindow } from './viewer-handlers';
 import { captureEvents } from './capture-service';
 import { getPositionContext } from './position-context';
 import { getScreenPositionState } from './screen-position';
@@ -64,6 +64,33 @@ function stopShakePolling(): void {
   prevPos = null;
 }
 
+/**
+ * Returns the BrowserWindow that the model should reason about as "where Aris
+ * is". When the camera viewer is open and visible, the avatar visually lives
+ * there, so it is the active surface; otherwise we fall back to the main dock
+ * window. (ARI-242)
+ */
+function getActiveSurfaceWindow(): BrowserWindow | null {
+  return getViewerWindow() ?? mainWindow;
+}
+
+/**
+ * Emit window:position-changed (and screen:position-changed in auto mode) to
+ * the renderer/model, sourced from the current active surface (viewer if open,
+ * else dock). The events are still sent to the main window's webContents
+ * because that's where the model/renderer lives. (ARI-242)
+ */
+function emitPositionContext(): void {
+  if (!mainWindow || mainWindow.isDestroyed()) return;
+  const surface = getActiveSurfaceWindow();
+  if (!surface || surface.isDestroyed()) return;
+  mainWindow.webContents.send('window:position-changed', getPositionContext(surface));
+  const mode = getSetting('screenPosition.mode') ?? 'disabled';
+  if (mode === 'auto') {
+    mainWindow.webContents.send('screen:position-changed', getScreenPositionState(surface));
+  }
+}
+
 function createWindow(): void {
   mainWindow = new BrowserWindow({
     width: 900,
@@ -97,16 +124,6 @@ function createWindow(): void {
     }
   });
 
-  // Push position context updates to the renderer on move/resize
-  const emitPositionContext = () => {
-    if (!mainWindow || mainWindow.isDestroyed()) return;
-    mainWindow.webContents.send('window:position-changed', getPositionContext(mainWindow));
-    // In auto mode, also emit the full screen position state
-    const mode = getSetting('screenPosition.mode') ?? 'disabled';
-    if (mode === 'auto') {
-      mainWindow.webContents.send('screen:position-changed', getScreenPositionState(mainWindow));
-    }
-  };
   mainWindow.on('move', emitPositionContext);
   mainWindow.on('resize', emitPositionContext);
   mainWindow.on('enter-full-screen', emitPositionContext);
@@ -201,8 +218,9 @@ function createTray(): void {
 
 function registerWindowHandlers(): void {
   ipcMain.handle('window:get-position-context', async () => {
-    if (!mainWindow) return null;
-    return getPositionContext(mainWindow);
+    const surface = getActiveSurfaceWindow();
+    if (!surface || surface.isDestroyed()) return null;
+    return getPositionContext(surface);
   });
 
   ipcMain.handle('window:minimize-to-tray', async () => {
@@ -216,8 +234,9 @@ function registerWindowHandlers(): void {
   });
 
   ipcMain.handle('screen:get-position-state', async () => {
-    if (!mainWindow) return null;
-    return getScreenPositionState(mainWindow);
+    const surface = getActiveSurfaceWindow();
+    if (!surface || surface.isDestroyed()) return null;
+    return getScreenPositionState(surface);
   });
 }
 
@@ -283,7 +302,9 @@ app.whenReady().then(() => {
   registerVoiceHandlers();
   registerAvatarHandlers();
   registerCompanionHandlers();
-  registerViewerHandlers(() => mainWindow);
+  registerViewerHandlers(() => mainWindow, {
+    onActiveSurfaceMaybeChanged: emitPositionContext,
+  });
   registerWindowHandlers();
   createTray();
   createWindow();
