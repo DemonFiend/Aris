@@ -25,3 +25,17 @@ npm-debug.log*
 .dolt/
 *.db
 .beads-credential-key
+# CocoIndex Code (ccc)
+/.cocoindex_code/
+
+# Generated test output
+playwright-report/
+test-results/
+
+# Beads pre-1.0 migration backups (kept locally as a safety net, never committed)
+.beads.full-backup-*/
+.beads.sqlite-era/
+
+# Local Claude Code state
+.claude/settings.local.json
+.claude/worktrees/
