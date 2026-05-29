@@ -171,6 +171,21 @@ export interface ScreenshotFolderStats {
   newestFile?: string;
 }
 
+/** Local GPU/runtime capabilities, used to gate GPU-class TTS providers */
+export interface GpuRuntime {
+  hasGpu: boolean;
+  /** Detected GPU vendors, deduped + lowercased: 'nvidia' | 'amd' | 'intel' | 'apple' | ... */
+  vendors: string[];
+  /** Total VRAM across discrete GPUs, MB. null = unknown. */
+  vramMb: number | null;
+  /** CUDA toolkit / driver reachable */
+  cuda: boolean;
+  /** Apple Metal — true on darwin */
+  metal: boolean;
+  /** AMD ROCm reachable */
+  rocm: boolean;
+}
+
 /** Voice pipeline configuration */
 export interface VoiceConfig {
   sttEngine: 'web-speech' | 'whisper-local' | 'cloud';
@@ -517,7 +532,7 @@ export const DEFAULT_VIRTUAL_SPACE_CONFIG: VirtualSpaceConfig = {
 };
 
 /** Identifiers for locally-hosted AI services */
-export type ServiceName = 'lmstudio' | 'kokoro' | 'whisper' | 'ollama';
+export type ServiceName = 'lmstudio' | 'kokoro' | 'whisper' | 'ollama' | 'f5-tts' | 'sesame-csm';
 
 /** Platform-specific install guidance for a local service */
 export interface ServiceInstallInfo {
@@ -530,6 +545,39 @@ export interface ServiceInstallInfo {
   installSteps: string[];
   /** Extra advisory shown after install (e.g. model download reminder), or null */
   modelNote: string | null;
+  /** True when a Quick Install script is bundled for this service.
+   *  Renderer renders the one-click button when set. */
+  hasQuickInstall?: boolean;
+}
+
+/** Per-platform script paths for one-click install. Resolved relative to
+ *  the bundled install-scripts resources directory. */
+export interface QuickInstallScripts {
+  win32?: string;
+  darwin?: string;
+  linux?: string;
+}
+
+/** Streaming event emitted while a Quick Install script runs. */
+export interface QuickInstallProgress {
+  service: ServiceName;
+  /** Coarse milestone the script is currently in. */
+  stage: 'starting' | 'checking' | 'cloning' | 'venv' | 'deps' | 'weights' | 'wrapper' | 'launching' | 'done' | 'error';
+  /** 0-100 — only advances; terminal states fire {percent: 100} */
+  percent: number;
+  /** Short human-readable status (replaces the modal subtitle). */
+  message: string;
+  /** Raw stdout/stderr line for the live log; empty on synthetic events. */
+  line: string;
+}
+
+/** Result returned by install:run-quick-install when the script exits. */
+export interface QuickInstallResult {
+  service: ServiceName;
+  success: boolean;
+  exitCode: number | null;
+  /** Final error message if the script failed. */
+  error: string | null;
 }
 
 /** Detection result for a single local service */
@@ -694,6 +742,15 @@ export type IpcChannel =
   | 'voice:get-config'
   | 'voice:set-config'
   | 'voice:get-voices'
+  | 'tts:list-providers'
+  | 'tts:get-active-provider'
+  | 'tts:set-provider'
+  | 'tts:clear-provider'
+  | 'tts:test-connection'
+  | 'tts:get-voices'
+  | 'tts:synth'
+  | 'tts:rescan'
+  | 'hardware:gpu-runtime'
   | 'vision:start-capture'
   | 'vision:stop-capture'
   | 'vision:get-sources'
@@ -772,6 +829,7 @@ export type IpcChannel =
   | 'install:launch-installer'
   | 'install:extract'
   | 'install:start-service'
+  | 'install:run-quick-install'
   | 'setup:is-complete'
   | 'setup:mark-complete'
   | 'uninstall:scan'

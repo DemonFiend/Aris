@@ -16,19 +16,21 @@ test.afterAll(async () => {
 });
 
 test.describe('Repair panel IPC', () => {
-  test('services:detect-all returns 4 results with correct shape', async () => {
+  test('services:detect-all returns 6 results with correct shape', async () => {
     const page = await electronApp.firstWindow();
 
     const results = await page.evaluate(() => window.aris.invoke('services:detect-all'));
 
     expect(Array.isArray(results)).toBe(true);
-    expect((results as unknown[]).length).toBe(4);
+    expect((results as unknown[]).length).toBe(6);
 
     const names = new Set((results as Array<{ name: string }>).map((r) => r.name));
     expect(names.has('lmstudio')).toBe(true);
     expect(names.has('ollama')).toBe(true);
     expect(names.has('kokoro')).toBe(true);
     expect(names.has('whisper')).toBe(true);
+    expect(names.has('f5-tts')).toBe(true);
+    expect(names.has('sesame-csm')).toBe(true);
   });
 
   test('install:verify returns updated detection result for each service', async () => {
@@ -78,7 +80,7 @@ test.describe('Repair panel IPC', () => {
 });
 
 test.describe('Repair panel UI', () => {
-  test('Services tab renders repair panel with all 4 service cards', async () => {
+  test('Services tab renders repair panel with all 6 service cards', async () => {
     const page = await electronApp.firstWindow();
     await page.waitForLoadState('domcontentloaded');
 
@@ -98,11 +100,13 @@ test.describe('Repair panel UI', () => {
     // Click the Services tab
     await page.getByRole('button', { name: /Services/i }).click();
 
-    // All 4 service cards should appear after the scan completes
+    // All 6 service cards should appear after the scan completes
     await page.waitForSelector('[data-testid="service-card-lmstudio"]', { timeout: 15_000 });
     await page.waitForSelector('[data-testid="service-card-ollama"]', { timeout: 5_000 });
     await page.waitForSelector('[data-testid="service-card-kokoro"]', { timeout: 5_000 });
     await page.waitForSelector('[data-testid="service-card-whisper"]', { timeout: 5_000 });
+    await page.waitForSelector('[data-testid="service-card-f5-tts"]', { timeout: 5_000 });
+    await page.waitForSelector('[data-testid="service-card-sesame-csm"]', { timeout: 5_000 });
 
     // Re-check button should be present
     await expect(page.locator('[data-testid="repair-rescan"]')).toBeVisible();

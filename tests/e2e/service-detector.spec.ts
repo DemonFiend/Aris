@@ -24,13 +24,15 @@ test.describe('Service detector IPC', () => {
     );
 
     expect(Array.isArray(results)).toBe(true);
-    expect((results as unknown[]).length).toBe(4);
+    expect((results as unknown[]).length).toBe(6);
 
     const names = new Set((results as Array<{ name: string }>).map((r) => r.name));
     expect(names.has('lmstudio')).toBe(true);
     expect(names.has('kokoro')).toBe(true);
     expect(names.has('whisper')).toBe(true);
     expect(names.has('ollama')).toBe(true);
+    expect(names.has('f5-tts')).toBe(true);
+    expect(names.has('sesame-csm')).toBe(true);
 
     for (const result of results as Array<Record<string, unknown>>) {
       expect(typeof result['name']).toBe('string');

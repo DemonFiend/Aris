@@ -262,6 +262,72 @@ async function detectOllama(): Promise<ServiceDetectionResult> {
 }
 
 // ---------------------------------------------------------------------------
+// F5-TTS (GPU TTS, SWivid/F5-TTS via a community OpenAI-compatible wrapper)
+// ---------------------------------------------------------------------------
+
+const F5_TTS_CANDIDATES = [
+  { base: 'http://127.0.0.1:7860', probe: 'http://127.0.0.1:7860/v1/voices' },
+  { base: 'http://127.0.0.1:7860', probe: 'http://127.0.0.1:7860/' },
+  { base: 'http://127.0.0.1:8000', probe: 'http://127.0.0.1:8000/v1/voices' },
+];
+
+async function detectF5TTS(): Promise<ServiceDetectionResult> {
+  let runningBase: string | null = null;
+
+  for (const { base, probe } of F5_TTS_CANDIDATES) {
+    const result = await probeUrl(probe);
+    if (result.ok) {
+      runningBase = base;
+      break;
+    }
+  }
+
+  // No canonical install path — F5-TTS is Python source. Detection relies
+  // on the wrapper server being reachable.
+  return {
+    name: 'f5-tts',
+    installed: runningBase !== null,
+    running: runningBase !== null,
+    version: null,
+    path: null,
+    endpoint: runningBase,
+    error: null,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Sesame CSM (advanced GPU TTS, SesameAILabs/csm via community wrapper)
+// ---------------------------------------------------------------------------
+
+const SESAME_CSM_CANDIDATES = [
+  { base: 'http://127.0.0.1:8000', probe: 'http://127.0.0.1:8000/health' },
+  { base: 'http://127.0.0.1:8000', probe: 'http://127.0.0.1:8000/' },
+  { base: 'http://127.0.0.1:8001', probe: 'http://127.0.0.1:8001/health' },
+];
+
+async function detectSesameCSM(): Promise<ServiceDetectionResult> {
+  let runningBase: string | null = null;
+
+  for (const { base, probe } of SESAME_CSM_CANDIDATES) {
+    const result = await probeUrl(probe);
+    if (result.ok) {
+      runningBase = base;
+      break;
+    }
+  }
+
+  return {
+    name: 'sesame-csm',
+    installed: runningBase !== null,
+    running: runningBase !== null,
+    version: null,
+    path: null,
+    endpoint: runningBase,
+    error: null,
+  };
+}
+
+// ---------------------------------------------------------------------------
 // Public API
 // ---------------------------------------------------------------------------
 
@@ -270,6 +336,8 @@ const DETECTORS: Record<ServiceName, () => Promise<ServiceDetectionResult>> = {
   kokoro: detectKokoro,
   whisper: detectWhisper,
   ollama: detectOllama,
+  'f5-tts': detectF5TTS,
+  'sesame-csm': detectSesameCSM,
 };
 
 export async function detectService(name: ServiceName): Promise<ServiceDetectionResult> {

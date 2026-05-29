@@ -18,6 +18,8 @@ files:
 extraResources:
   - from: packages/app/resources/default-avatar.vrm
     to: default-avatar.vrm
+  - from: packages/app/resources/install-scripts
+    to: install-scripts
 
 win:
   target:

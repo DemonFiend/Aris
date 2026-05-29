@@ -37,5 +37,17 @@
     "win32": null,
     "darwin": null,
     "linux": null
+  },
+  "f5-tts": {
+    "version": "latest",
+    "win32": null,
+    "darwin": null,
+    "linux": null
+  },
+  "sesame-csm": {
+    "version": "latest",
+    "win32": null,
+    "darwin": null,
+    "linux": null
   }
 }

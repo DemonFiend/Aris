@@ -39,6 +39,7 @@ import {
   launchInstaller,
   extractZip,
   startWhisperService,
+  runQuickInstall,
 } from './install-orchestrator';
 import { getUninstallTargets, performUninstall } from './uninstall-orchestrator';
 import type { ServiceName, UninstallTargetId, InstallProgress } from '@aris/shared';
@@ -659,6 +660,13 @@ export function registerIpcHandlers(): void {
       event.sender.send('install:progress', progress);
     };
     return downloadAndInstall(name, onProgress);
+  });
+
+  ipcMain.handle('install:run-quick-install', async (event, name: ServiceName) => {
+    const onProgress = (progress: import('@aris/shared').QuickInstallProgress) => {
+      event.sender.send('install:quick-install-progress', progress);
+    };
+    return runQuickInstall(name, onProgress);
   });
 
   ipcMain.handle('install:launch-installer', async (_event, installerPath: unknown) => {

@@ -25,14 +25,16 @@ test.describe('Uninstall IPC', () => {
     )) as UninstallTarget[];
 
     expect(Array.isArray(targets)).toBe(true);
-    // Should include the 4 services + aris-data
-    expect(targets.length).toBe(5);
+    // Should include the 6 services + aris-data
+    expect(targets.length).toBe(7);
 
     const ids = new Set(targets.map((t) => t.id));
     expect(ids.has('lmstudio')).toBe(true);
     expect(ids.has('ollama')).toBe(true);
     expect(ids.has('kokoro')).toBe(true);
     expect(ids.has('whisper')).toBe(true);
+    expect(ids.has('f5-tts')).toBe(true);
+    expect(ids.has('sesame-csm')).toBe(true);
     expect(ids.has('aris-data')).toBe(true);
 
     for (const t of targets) {
@@ -86,7 +88,7 @@ test.describe('Uninstall IPC', () => {
 });
 
 test.describe('Uninstall panel UI', () => {
-  test('Services tab renders uninstall panel with all 5 targets', async () => {
+  test('Services tab renders uninstall panel with all 7 targets', async () => {
     const page = await electronApp.firstWindow();
     await page.waitForLoadState('domcontentloaded');
 
@@ -109,11 +111,13 @@ test.describe('Uninstall panel UI', () => {
     // Wait for the uninstall panel to appear
     await page.waitForSelector('[data-testid="uninstall-panel"]', { timeout: 15_000 });
 
-    // All 5 targets should be rendered
+    // All 7 targets should be rendered
     await page.waitForSelector('[data-testid="uninstall-target-lmstudio"]', { timeout: 5_000 });
     await page.waitForSelector('[data-testid="uninstall-target-ollama"]', { timeout: 5_000 });
     await page.waitForSelector('[data-testid="uninstall-target-kokoro"]', { timeout: 5_000 });
     await page.waitForSelector('[data-testid="uninstall-target-whisper"]', { timeout: 5_000 });
+    await page.waitForSelector('[data-testid="uninstall-target-f5-tts"]', { timeout: 5_000 });
+    await page.waitForSelector('[data-testid="uninstall-target-sesame-csm"]', { timeout: 5_000 });
     await page.waitForSelector('[data-testid="uninstall-target-aris-data"]', { timeout: 5_000 });
 
     // Continue button should be present

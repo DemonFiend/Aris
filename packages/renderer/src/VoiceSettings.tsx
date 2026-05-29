@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import type { VoiceConfig, CompanionConfig, ServiceDetectionResult } from '@aris/shared';
 import { VoicePicker } from './VoicePicker';
+import { TTSProviderSettings } from './TTSProviderSettings';
 
 export function VoiceSettings() {
   const [config, setConfig] = useState<VoiceConfig | null>(null);
@@ -41,6 +42,10 @@ export function VoiceSettings() {
 
   return (
     <div style={containerStyle}>
+      <TTSProviderSettings />
+
+      <div style={dividerStyle} />
+
       <h3 style={headingStyle}>Kokoro TTS Voice</h3>
       <VoicePicker
         kokoroEndpoint={kokoroEndpoint}

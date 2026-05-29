@@ -16,19 +16,21 @@ test.afterAll(async () => {
 });
 
 test.describe('Install orchestrator IPC', () => {
-  test('install:get-all-info returns array of 4 services with correct shape', async () => {
+  test('install:get-all-info returns array of 6 services with correct shape', async () => {
     const page = await electronApp.firstWindow();
 
     const results = await page.evaluate(() => window.aris.invoke('install:get-all-info'));
 
     expect(Array.isArray(results)).toBe(true);
-    expect((results as unknown[]).length).toBe(4);
+    expect((results as unknown[]).length).toBe(6);
 
     const names = new Set((results as Array<{ name: string }>).map((r) => r.name));
     expect(names.has('lmstudio')).toBe(true);
     expect(names.has('ollama')).toBe(true);
     expect(names.has('kokoro')).toBe(true);
     expect(names.has('whisper')).toBe(true);
+    expect(names.has('f5-tts')).toBe(true);
+    expect(names.has('sesame-csm')).toBe(true);
 
     for (const info of results as Array<Record<string, unknown>>) {
       expect(typeof info['name']).toBe('string');
