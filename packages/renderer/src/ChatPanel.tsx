@@ -271,6 +271,20 @@ export function ChatPanel({
             const primaryLabel = monitor.isPrimary ? 'primary' : 'secondary';
             const totalMonitors = screenState.monitors.length;
             systemPrompt += `\n\n[Screen position: You are on Monitor ${monitorN} (${primaryLabel}), positioned in the ${cellDesc} area. ${totalMonitors} monitor${totalMonitors !== 1 ? 's' : ''} detected. Mention your screen position naturally when relevant.]`;
+
+            if (
+              screenState.monitorGrid &&
+              screenState.gameMonitorIndex !== null &&
+              screenState.relativeGaze
+            ) {
+              const gameN = screenState.gameMonitorIndex + 1;
+              const dir = screenState.relativeGaze.direction;
+              if (dir === 'same-monitor') {
+                systemPrompt += `\n\n[The game is on your screen (Monitor ${gameN}); glance toward the action when reacting to gameplay.]`;
+              } else {
+                systemPrompt += `\n\n[Your screen is ${dir} of the game screen (Monitor ${gameN}); glance ${dir} when reacting to gameplay.]`;
+              }
+            }
           }
         }
       } catch {

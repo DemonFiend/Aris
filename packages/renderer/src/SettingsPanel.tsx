@@ -8,7 +8,27 @@ import { SecuritySettings } from './SecuritySettings';
 import { PersonaSettings } from './PersonaSettings';
 import { RepairPanel } from './RepairPanel';
 import { UninstallPanel } from './UninstallPanel';
-import type { ScreenPositionMode, MonitorInfo, ScreenPositionState, VirtualSpaceConfig } from '@aris/shared';
+import type { ScreenPositionMode, MonitorInfo, ScreenPositionState, VirtualSpaceConfig, MonitorGridLayout } from '@aris/shared';
+
+// Spiral default layout (cell 1-9 → 1-based monitor number). Mirrors the
+// authoritative app-process defaultMonitorGrid (packages/app/src/screen-position.ts);
+// duplicated here because that helper lives in the main process and is not
+// importable from the renderer.
+const DEFAULT_SPIRAL: Record<number, number> = {
+  1: 6, 2: 4, 3: 5,
+  4: 3, 5: 1, 6: 2,
+  7: 9, 8: 7, 9: 8,
+};
+
+function defaultMonitorGrid(monitors: MonitorInfo[]): MonitorGridLayout {
+  const n = monitors.length;
+  const cells: Record<number, number | null> = {};
+  for (let cell = 1; cell <= 9; cell++) {
+    const monitorNumber = DEFAULT_SPIRAL[cell];
+    cells[cell] = monitorNumber <= n ? monitorNumber - 1 : null; // 0-based index
+  }
+  return { cells };
+}
 
 type Tab = 'providers' | 'persona' | 'avatar' | 'voice' | 'capture' | 'security' | 'general' | 'data' | 'services';
 
@@ -34,6 +54,8 @@ export function SettingsPanel() {
   const [liveScreenState, setLiveScreenState] = useState<ScreenPositionState | null>(null);
   const [pendingMode, setPendingMode] = useState<ScreenPositionMode | null>(null);
   const [spaceConfig, setSpaceConfig] = useState<VirtualSpaceConfig | null>(null);
+  const [monitorGrid, setMonitorGrid] = useState<MonitorGridLayout | null>(null);
+  const [selectedChip, setSelectedChip] = useState<number | null>(null);
 
   const loadState = useCallback(async () => {
     try {
@@ -44,6 +66,12 @@ export function SettingsPanel() {
       setLiveScreenState(state);
     } catch {
       // Screen position backend not yet available (ARI-133)
+    }
+    try {
+      const grid = (await window.aris.invoke('screen:get-monitor-grid')) as MonitorGridLayout;
+      setMonitorGrid(grid);
+    } catch {
+      // MGZ backend not available
     }
     try {
       const cfg = (await window.aris.invoke('avatar:get-space-config')) as VirtualSpaceConfig;
@@ -59,9 +87,45 @@ export function SettingsPanel() {
 
   useEffect(() => {
     return window.aris.on('screen:position-changed', (state: unknown) => {
-      setLiveScreenState(state as ScreenPositionState);
+      const s = state as ScreenPositionState;
+      setLiveScreenState(s);
+      if (s.monitorGrid) setMonitorGrid(s.monitorGrid);
     });
   }, []);
+
+  const persistMonitorGrid = async (grid: MonitorGridLayout) => {
+    setMonitorGrid(grid);
+    try {
+      await window.aris.invoke('screen:set-monitor-grid', grid);
+    } catch {
+      // validation failed or backend unavailable; reload authoritative state
+      void loadState();
+    }
+  };
+
+  // Move a monitor chip into a target cell, vacating its previous cell.
+  const handleMoveChip = (monitorIndex: number, targetCell: number) => {
+    const current = monitorGrid?.cells ?? defaultMonitorGrid(monitors).cells;
+    const cells: Record<number, number | null> = {};
+    for (let cell = 1; cell <= 9; cell++) {
+      cells[cell] = current[cell] ?? null;
+    }
+    const occupant = cells[targetCell];
+    // find and clear the chip's old cell
+    let fromCell: number | null = null;
+    for (let cell = 1; cell <= 9; cell++) {
+      if (cells[cell] === monitorIndex) { fromCell = cell; break; }
+    }
+    if (fromCell !== null) cells[fromCell] = occupant ?? null; // swap if target occupied
+    cells[targetCell] = monitorIndex;
+    setSelectedChip(null);
+    void persistMonitorGrid({ cells });
+  };
+
+  const handleResetMonitorGrid = () => {
+    setSelectedChip(null);
+    void persistMonitorGrid(defaultMonitorGrid(monitors));
+  };
 
   const handleScreenModeChange = (mode: ScreenPositionMode) => {
     if (screenMode === 'disabled' && mode !== 'disabled') {
@@ -282,6 +346,35 @@ export function SettingsPanel() {
                   ))}
                 </div>
               )}
+
+              {screenMode !== 'disabled' && monitors.length > 0 && (
+                <div style={mgzSectionStyle} data-testid="mgz-editor">
+                  <div style={mgzHeaderRowStyle}>
+                    <div>
+                      <div style={mgzTitleStyle}>Monitor Layout (MGZ)</div>
+                      <div style={mgzHintStyle}>
+                        Arrange your physical monitors so Aris knows which screen is where.
+                        Drag a monitor to a cell, or click one then click its new spot.
+                      </div>
+                    </div>
+                    <button
+                      onClick={handleResetMonitorGrid}
+                      style={secondaryBtnStyle}
+                      data-testid="mgz-reset"
+                    >
+                      Reset to default
+                    </button>
+                  </div>
+                  <MonitorLayoutGrid
+                    monitors={monitors}
+                    grid={monitorGrid ?? defaultMonitorGrid(monitors)}
+                    selectedChip={selectedChip}
+                    onSelectChip={setSelectedChip}
+                    onMoveChip={handleMoveChip}
+                    onIdentify={(idx) => void window.aris.invoke('screen:identify-monitor', idx)}
+                  />
+                </div>
+              )}
             </div>
           </SettingsCard>
         )}
@@ -414,6 +507,134 @@ function MonitorGrid({
           </button>
         ))}
       </div>
+    </div>
+  );
+}
+
+/**
+ * Movable 3x3 layout of physical monitors (MGZ). Each occupied cell shows a
+ * draggable monitor chip; empty cells are drop targets. Click-to-select then
+ * click-target provides a keyboard/accessibility fallback to drag-and-drop.
+ */
+function MonitorLayoutGrid({
+  monitors,
+  grid,
+  selectedChip,
+  onSelectChip,
+  onMoveChip,
+  onIdentify,
+}: {
+  monitors: MonitorInfo[];
+  grid: MonitorGridLayout;
+  selectedChip: number | null;
+  onSelectChip: (monitorIndex: number | null) => void;
+  onMoveChip: (monitorIndex: number, targetCell: number) => void;
+  onIdentify: (monitorIndex: number) => void;
+}) {
+  const monitorAt = (cell: number): MonitorInfo | null => {
+    const idx = grid.cells?.[cell];
+    if (idx == null) return null;
+    return monitors.find((m) => m.index === idx) ?? null;
+  };
+
+  const handleCellClick = (cell: number) => {
+    if (selectedChip !== null) onMoveChip(selectedChip, cell);
+  };
+
+  return (
+    <div style={mgzGridStyle} data-testid="mgz-grid">
+      {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((cell) => {
+        const monitor = monitorAt(cell);
+        return (
+          <div
+            key={cell}
+            data-testid={`mgz-cell-${cell}`}
+            onClick={() => handleCellClick(cell)}
+            onDragOver={(e) => e.preventDefault()}
+            onDrop={(e) => {
+              e.preventDefault();
+              const raw = e.dataTransfer.getData('text/plain');
+              const idx = Number(raw);
+              if (Number.isInteger(idx)) onMoveChip(idx, cell);
+            }}
+            style={mgzCellStyle(selectedChip !== null && !monitor)}
+          >
+            {monitor && (
+              <MonitorChip
+                monitor={monitor}
+                selected={selectedChip === monitor.index}
+                onSelect={() =>
+                  onSelectChip(selectedChip === monitor.index ? null : monitor.index)
+                }
+                onIdentify={() => onIdentify(monitor.index)}
+              />
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function MonitorChip({
+  monitor,
+  selected,
+  onSelect,
+  onIdentify,
+}: {
+  monitor: MonitorInfo;
+  selected: boolean;
+  onSelect: () => void;
+  onIdentify: () => void;
+}) {
+  const [showInfo, setShowInfo] = useState(false);
+  return (
+    <div
+      draggable
+      data-testid={`mgz-chip-${monitor.index}`}
+      onDragStart={(e) => e.dataTransfer.setData('text/plain', String(monitor.index))}
+      onClick={(e) => {
+        e.stopPropagation();
+        onSelect();
+      }}
+      style={mgzChipStyle(selected)}
+      title="Drag to a cell, or click to select then click a target cell"
+    >
+      <span style={mgzChipLabelStyle}>Monitor {monitor.index + 1}</span>
+      {monitor.isPrimary && <span style={primaryBadgeStyle}>Primary</span>}
+      <span
+        data-testid={`mgz-info-${monitor.index}`}
+        style={mgzInfoBadgeStyle}
+        onMouseEnter={() => setShowInfo(true)}
+        onMouseLeave={() => setShowInfo(false)}
+        onClick={(e) => e.stopPropagation()}
+      >
+        i
+        {showInfo && (
+          <div style={mgzTooltipStyle} onClick={(e) => e.stopPropagation()}>
+            <div style={mgzTooltipRowStyle}>Monitor {monitor.index + 1}</div>
+            <div style={mgzTooltipDimStyle}>
+              {monitor.bounds.width} {'\u00d7'} {monitor.bounds.height}
+            </div>
+            <div style={mgzTooltipDimStyle}>
+              origin ({monitor.bounds.x}, {monitor.bounds.y})
+            </div>
+            <div style={mgzTooltipDimStyle}>
+              {monitor.isPrimary ? 'Primary' : 'Secondary'}
+            </div>
+            <button
+              data-testid={`mgz-identify-${monitor.index}`}
+              onClick={(e) => {
+                e.stopPropagation();
+                onIdentify();
+              }}
+              style={mgzIdentifyBtnStyle}
+            >
+              Identify
+            </button>
+          </div>
+        )}
+      </span>
     </div>
   );
 }
@@ -714,3 +935,127 @@ function gridCellDotStyle(selected: boolean): React.CSSProperties {
     transition: 'var(--transition-fast)',
   };
 }
+
+const mgzSectionStyle: React.CSSProperties = {
+  marginTop: 'var(--space-4)',
+  paddingTop: 'var(--space-3)',
+  borderTop: '1px solid var(--border-subtle)',
+};
+
+const mgzHeaderRowStyle: React.CSSProperties = {
+  display: 'flex',
+  alignItems: 'flex-start',
+  justifyContent: 'space-between',
+  gap: 'var(--space-3)',
+  marginBottom: 'var(--space-2)',
+};
+
+const mgzTitleStyle: React.CSSProperties = {
+  fontSize: 'var(--text-sm)',
+  fontWeight: 'var(--font-medium)' as React.CSSProperties['fontWeight'],
+  color: 'var(--text-primary)',
+};
+
+const mgzHintStyle: React.CSSProperties = {
+  fontSize: 'var(--text-xs)',
+  color: 'var(--text-muted)',
+  maxWidth: 360,
+  marginTop: 2,
+};
+
+const mgzGridStyle: React.CSSProperties = {
+  display: 'grid',
+  gridTemplateColumns: 'repeat(3, 1fr)',
+  gap: 'var(--space-2)',
+  maxWidth: 360,
+};
+
+function mgzCellStyle(isDropTarget: boolean): React.CSSProperties {
+  return {
+    minHeight: 48,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    background: 'var(--bg-overlay)',
+    border: `1px dashed ${isDropTarget ? 'var(--color-primary)' : 'var(--border-subtle)'}`,
+    borderRadius: 'var(--radius-sm)',
+    transition: 'var(--transition-fast)',
+  };
+}
+
+function mgzChipStyle(selected: boolean): React.CSSProperties {
+  return {
+    position: 'relative',
+    display: 'flex',
+    alignItems: 'center',
+    gap: 4,
+    padding: '4px 8px',
+    background: selected ? 'var(--color-primary-subtle)' : 'var(--bg-elevated)',
+    border: `1px solid ${selected ? 'var(--color-primary)' : 'var(--border-default)'}`,
+    borderRadius: 'var(--radius-sm)',
+    cursor: 'grab',
+    userSelect: 'none',
+  };
+}
+
+const mgzChipLabelStyle: React.CSSProperties = {
+  fontSize: 'var(--text-xs)',
+  fontWeight: 'var(--font-medium)' as React.CSSProperties['fontWeight'],
+  color: 'var(--text-secondary)',
+  whiteSpace: 'nowrap',
+};
+
+const mgzInfoBadgeStyle: React.CSSProperties = {
+  position: 'relative',
+  display: 'inline-flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  width: 14,
+  height: 14,
+  borderRadius: '50%',
+  background: 'var(--border-default)',
+  color: 'var(--text-primary)',
+  fontSize: '0.6rem',
+  fontStyle: 'italic',
+  fontWeight: 'var(--font-bold)' as React.CSSProperties['fontWeight'],
+  cursor: 'help',
+};
+
+const mgzTooltipStyle: React.CSSProperties = {
+  position: 'absolute',
+  bottom: '120%',
+  left: '50%',
+  transform: 'translateX(-50%)',
+  zIndex: 10,
+  background: 'var(--bg-elevated)',
+  border: '1px solid var(--border-default)',
+  borderRadius: 'var(--radius-md)',
+  padding: 'var(--space-2)',
+  boxShadow: 'var(--shadow-md)',
+  minWidth: 130,
+  textAlign: 'left',
+};
+
+const mgzTooltipRowStyle: React.CSSProperties = {
+  fontSize: 'var(--text-xs)',
+  fontWeight: 'var(--font-bold)' as React.CSSProperties['fontWeight'],
+  color: 'var(--text-primary)',
+  marginBottom: 2,
+};
+
+const mgzTooltipDimStyle: React.CSSProperties = {
+  fontSize: '0.65rem',
+  color: 'var(--text-muted)',
+};
+
+const mgzIdentifyBtnStyle: React.CSSProperties = {
+  marginTop: 'var(--space-2)',
+  width: '100%',
+  padding: '3px 6px',
+  fontSize: 'var(--text-xs)',
+  background: 'var(--color-primary-subtle)',
+  color: 'var(--color-primary)',
+  border: '1px solid var(--color-primary)',
+  borderRadius: 'var(--radius-sm)',
+  cursor: 'pointer',
+};
