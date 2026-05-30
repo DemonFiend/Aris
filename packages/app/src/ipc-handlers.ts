@@ -73,7 +73,7 @@ import {
   startPruneSchedule,
 } from './screenshot-store';
 import type { CaptureConfig, CaptureSettings, ScreenPositionMode } from '@aris/shared';
-import { getMonitorInfo, getScreenPositionState } from './screen-position';
+import { getMonitorInfo, getScreenPositionState, getMonitorGrid, setMonitorGrid } from './screen-position';
 import { getContextState, initContextState } from './context-state';
 import { scanForRunningGames, getCachedRunningGames } from './process-scanner';
 import { initScreenReactions, onScreenContextUpdate } from './screen-reaction';
@@ -635,6 +635,44 @@ export function registerIpcHandlers(): void {
       return true;
     },
   );
+
+  // Monitor Grid Zone (MGZ) handlers
+  ipcMain.handle('screen:get-monitor-grid', async () => {
+    const monitors = getMonitorInfo();
+    return getMonitorGrid(monitors);
+  });
+
+  ipcMain.handle('screen:set-monitor-grid', async (_event, layout: { cells: Record<number, number | null> }) => {
+    const monitors = getMonitorInfo();
+    setMonitorGrid(layout, monitors);
+    return true;
+  });
+
+  ipcMain.handle('screen:identify-monitor', async (_event, monitorIndex: number) => {
+    const monitors = getMonitorInfo();
+    const mon = monitors.find((m) => m.index === monitorIndex);
+    if (!mon) throw new Error(`No monitor at index ${monitorIndex}`);
+
+    const { x, y, width, height } = mon.bounds;
+    const overlayWin = new BrowserWindow({
+      x,
+      y,
+      width,
+      height,
+      frame: false,
+      transparent: true,
+      alwaysOnTop: true,
+      focusable: false,
+      skipTaskbar: true,
+      webPreferences: { nodeIntegration: false, contextIsolation: true },
+    });
+    overlayWin.setIgnoreMouseEvents(true);
+    const label = mon.index + 1;
+    const html = `<!DOCTYPE html><html><body style="margin:0;background:rgba(0,0,0,0.45);display:flex;align-items:center;justify-content:center;width:100vw;height:100vh"><span style="font-size:20vw;font-weight:bold;color:#fff;font-family:sans-serif;text-shadow:0 4px 24px rgba(0,0,0,0.8)">${label}</span></body></html>`;
+    await overlayWin.loadURL(`data:text/html,${encodeURIComponent(html)}`);
+    setTimeout(() => { if (!overlayWin.isDestroyed()) overlayWin.close(); }, 2000);
+    return true;
+  });
 
   // Service detection handlers
   ipcMain.handle('services:detect-all', async () => detectAllServices());

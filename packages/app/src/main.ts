@@ -86,7 +86,7 @@ function emitPositionContext(): void {
   if (!surface || surface.isDestroyed()) return;
   mainWindow.webContents.send('window:position-changed', getPositionContext(surface));
   const mode = getSetting('screenPosition.mode') ?? 'disabled';
-  if (mode === 'auto') {
+  if (mode === 'auto' || mode === 'custom') {
     mainWindow.webContents.send('screen:position-changed', getScreenPositionState(surface));
   }
 }

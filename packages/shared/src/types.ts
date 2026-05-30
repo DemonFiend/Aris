@@ -420,6 +420,18 @@ export interface MonitorInfo {
   isPrimary: boolean;
 }
 
+/** Monitor Grid Zone layout: cells 1-9 (row-major) → monitorIndex | null */
+export interface MonitorGridLayout {
+  cells: Record<number, number | null>;
+}
+
+/** Relative gaze direction from Aris's monitor toward the game monitor */
+export interface RelativeGaze {
+  dx: number;
+  dy: number;
+  direction: string; // "left","right","up","down","up-left","up-right","down-left","down-right","same-monitor"
+}
+
 /** Full screen position state */
 export interface ScreenPositionState {
   mode: ScreenPositionMode;
@@ -428,6 +440,9 @@ export interface ScreenPositionState {
   activeMonitorIndex: number | null;
   activeGridCell: number | null;
   globalPosition: number | null;
+  monitorGrid: MonitorGridLayout;
+  gameMonitorIndex: number | null;
+  relativeGaze: RelativeGaze | null;
 }
 
 /** Shake intensity reported in window:shake events */
@@ -818,6 +833,9 @@ export type IpcChannel =
   | 'screen:get-position-state'
   | 'screen:set-mode'
   | 'screen:set-custom-position'
+  | 'screen:get-monitor-grid'
+  | 'screen:set-monitor-grid'
+  | 'screen:identify-monitor'
   | 'services:detect-all'
   | 'services:detect'
   | 'install:get-info'
