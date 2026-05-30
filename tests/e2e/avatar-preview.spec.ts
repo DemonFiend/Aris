@@ -110,6 +110,66 @@ test.describe('Avatar preview rendering', () => {
     await electronApp.close();
   });
 
+  test('should expose VRM load status and reach a terminal state (not stuck loading)', async () => {
+    // Isolated userData so the bundled default VRM is auto-seeded and loaded,
+    // rather than depending on whatever the host machine has imported.
+    const tmpUserData = fs.mkdtempSync(path.join(os.tmpdir(), 'aris-test-'));
+    try {
+      const electronApp = await electron.launch({
+        args: [appPath, `--user-data-dir=${tmpUserData}`],
+      });
+      const window = await electronApp.firstWindow();
+      await window.waitForLoadState('domcontentloaded');
+
+      // Fresh userData shows the first-launch wizard, which hides the chat
+      // avatar. Mark setup complete via IPC and reload so the chat view
+      // (and AvatarDisplay) mounts directly.
+      await window.evaluate(async () => {
+        await (window as any).aris.invoke('setup:mark-complete');
+      });
+      await window.reload();
+      await window.waitForLoadState('domcontentloaded');
+
+      const canvas = window.locator('[data-testid="camera-viewer-canvas"]');
+      // The avatar must reach a terminal state — never stay stuck on 'loading'.
+      // This is the observability signal tests need to wait on VRM load.
+      await expect(canvas).toHaveAttribute('data-vrm-status', /loaded|fallback|error/, {
+        timeout: 15_000,
+      });
+
+      const status = await canvas.getAttribute('data-vrm-status');
+      expect(['loaded', 'fallback', 'error']).toContain(status);
+
+      // Read-only test inspector must agree with the DOM signal, so specs can
+      // both wait on the attribute and introspect bone state.
+      const inspected = await window.evaluate(() => {
+        return (window as any).__arisE2E?.getVrmStatus?.() ?? null;
+      });
+      expect(inspected).not.toBeNull();
+      expect(inspected.status).toBe(status);
+
+      if (status === 'loaded') {
+        // A real VRM loaded — filename and humanoid flag must be populated.
+        expect(await canvas.getAttribute('data-vrm-filename')).toBe('default-avatar.vrm');
+        expect(['true', 'false']).toContain(await canvas.getAttribute('data-vrm-humanoid'));
+      }
+      // NOTE: the bundled default-avatar.vrm is currently a degenerate VRM stub
+      // (0 meshes, no humanoid bones — see scripts/generate-default-vrm.mjs), so
+      // it loads as 'fallback'. Shipping a real humanoid default + a humanoid
+      // test fixture is tracked as follow-up work (ARI-245 children).
+
+      await electronApp.close();
+    } finally {
+      // On Windows the SQLite db file can remain briefly locked after the
+      // Electron process exits — don't let temp cleanup fail the assertions.
+      try {
+        fs.rmSync(tmpUserData, { recursive: true, force: true });
+      } catch {
+        /* temp dir is reclaimed by the OS; ignore lock races */
+      }
+    }
+  });
+
   test('should auto-seed default VRM on fresh startup with empty avatars directory', async () => {
     // Use an isolated userData dir so no pre-existing avatars exist
     const tmpUserData = fs.mkdtempSync(path.join(os.tmpdir(), 'aris-test-'));

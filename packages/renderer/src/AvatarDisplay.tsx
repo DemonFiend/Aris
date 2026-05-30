@@ -35,6 +35,10 @@ export function AvatarDisplay({ lastAssistantMessage, streaming, cameraMode, tra
   const audioAnalyzerRef = useRef<AudioAnalyzer | null>(null);
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Observable VRM load state for e2e tests (and runtime diagnostics).
+  const [vrmStatus, setVrmStatus] = useState<'loading' | 'loaded' | 'fallback' | 'error'>('loading');
+  const [vrmHumanoid, setVrmHumanoid] = useState<boolean | null>(null);
+  const [vrmFilename, setVrmFilename] = useState<string | null>(null);
 
   const initScene = useCallback(async () => {
     const canvas = canvasRef.current;
@@ -198,6 +202,9 @@ export function AvatarDisplay({ lastAssistantMessage, streaming, cameraMode, tra
             });
           }
           vrmLoaded = true;
+          setVrmHumanoid(scene.isHumanoid);
+          setVrmFilename(defaultAvatar.filename);
+          setVrmStatus('loaded');
         } catch {
           // VRM load failed — fall through to ghost fallback
         }
@@ -206,6 +213,8 @@ export function AvatarDisplay({ lastAssistantMessage, streaming, cameraMode, tra
       if (!vrmLoaded) {
         // Render a simple procedural ghost as fallback
         scene.loadGhostFallback();
+        setVrmHumanoid(false);
+        setVrmStatus('fallback');
       }
 
       // Apply virtual space config (only when VRM is loaded — skip ghost mode)
@@ -218,6 +227,7 @@ export function AvatarDisplay({ lastAssistantMessage, streaming, cameraMode, tra
       scene.start();
       setLoaded(true);
     } catch (e) {
+      setVrmStatus('error');
       setError(e instanceof Error ? e.message : 'Failed to load avatar');
     }
   }, []);
@@ -290,6 +300,30 @@ export function AvatarDisplay({ lastAssistantMessage, streaming, cameraMode, tra
       cancelled = true;
     };
   }, [loaded]);
+
+  // Read-only test inspector — lets e2e specs wait for and verify VRM load
+  // and confirm the bone-animation stack is actually ticking. Strictly
+  // read-only: it reads scene/VRM state, never mutates it.
+  useEffect(() => {
+    const w = window as unknown as {
+      __arisE2E?: {
+        getVrmStatus: () => { status: string; humanoid: boolean | null; filename: string | null };
+        getBoneEuler: (boneName: string) => { x: number; y: number; z: number } | null;
+      };
+    };
+    w.__arisE2E = {
+      getVrmStatus: () => ({ status: vrmStatus, humanoid: vrmHumanoid, filename: vrmFilename }),
+      getBoneEuler: (boneName: string) => {
+        const vrm = sceneRef.current?.getVRM();
+        const node = vrm?.humanoid?.getNormalizedBoneNode(boneName as never);
+        if (!node) return null;
+        return { x: node.rotation.x, y: node.rotation.y, z: node.rotation.z };
+      },
+    };
+    return () => {
+      delete w.__arisE2E;
+    };
+  }, [vrmStatus, vrmHumanoid, vrmFilename]);
 
   // Listen for gesture triggers from main process
   useEffect(() => {
@@ -512,6 +546,9 @@ export function AvatarDisplay({ lastAssistantMessage, streaming, cameraMode, tra
         style={canvasStyle}
         data-testid="camera-viewer-canvas"
         data-camera-mode={cameraMode ?? 'upper_torso'}
+        data-vrm-status={vrmStatus}
+        data-vrm-humanoid={vrmHumanoid == null ? '' : String(vrmHumanoid)}
+        data-vrm-filename={vrmFilename ?? ''}
       />
       {!loaded && !error && (
         <div style={overlayStyle}>
