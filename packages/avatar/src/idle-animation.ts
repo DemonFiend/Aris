@@ -27,6 +27,11 @@ const ANIMATED_BONES = [
   'leftLowerArm', 'rightLowerArm',
   'leftHand', 'rightHand',
   'leftShoulder', 'rightShoulder',
+  // Eye bones MUST be reset too: GazeController writes them additively (`+=`)
+  // every frame and relies on this reset. Without it the eye rotation
+  // accumulates and saturates against the gaze clamp, pinning the pupils to
+  // the corner of the eye opening ("eyes stuck out of view / rolling").
+  'leftEye', 'rightEye',
 ] as const;
 
 interface Vec3 { x: number; y: number; z: number }
